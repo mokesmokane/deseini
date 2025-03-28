@@ -33,7 +33,6 @@ export const TaskNode = ({ data, id }: TaskNodeProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
   const prevRightDaysRef = useRef<number | null>(null);
-  const prevLeftDaysRef = useRef<number | null>(null);
   const edges = useEdges();
 
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -66,33 +65,9 @@ export const TaskNode = ({ data, id }: TaskNodeProps) => {
     
     // Only call onResizeRight if days has changed
     if (prevRightDaysRef.current === null || prevRightDaysRef.current !== days) {
-      console.log('=== LEFT RESIZE EVENT DETAILS ===');
+      console.log('=== RIGHT RESIZE EVENT DETAILS ===');
       data.onResizeRight(id, roundedWidth, format(newEndDate, 'yyyy-MM-dd'));
       prevRightDaysRef.current = days;
-    }
-    
-    setTimeout(() => {
-      setResizing(false);
-    }, 100);
-  }, [data, id]);
-
-  const handleResizeLeft = useCallback((_: any, params: { width: number, direction: number[], x: number }) => {
-    setResizing(true);
-    const newWidth = Math.max(DAY_WIDTH, params.width);
-    
-    const days = Math.round(newWidth / DAY_WIDTH);
-    
-    const roundedWidth = days * DAY_WIDTH;
-    
-    const endDate = parseISO(data.end);
-    
-    const newStartDate = addDays(endDate, -(days - 1));
-    
-    // Only call onResizeLeft if days has changed
-    if (prevLeftDaysRef.current === null || prevLeftDaysRef.current !== days) {
-      console.log('=== LEFT RESIZE EVENT DETAILS ===');
-      data.onResizeLeft(id, roundedWidth, format(endDate, 'yyyy-MM-dd'), format(newStartDate, 'yyyy-MM-dd'));
-      prevLeftDaysRef.current = days;
     }
     
     setTimeout(() => {
@@ -178,13 +153,61 @@ export const TaskNode = ({ data, id }: TaskNodeProps) => {
         }}
       />
       
-      <NodeResizeControl
-        nodeId={id}
-        position="left"
-        minWidth={DAY_WIDTH}
-        onResize={handleResizeLeft}
+      {/* Custom left-resize handle */}
+      <div 
+        className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize z-10"
+        onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+          e.stopPropagation();
+          
+          // Initial mouse position and task state
+          const initialX = e.clientX;
+          const initialWidth = data.width;
+          const endDate = parseISO(data.end);
+          
+          // Set resizing state
+          setResizing(true);
+          data.setIsResizing(true);
+          
+          // Handle mouse movement during resize
+          const handleMouseMove = (moveEvent: MouseEvent) => {
+            const deltaX = initialX - moveEvent.clientX;
+            const newWidth = Math.max(DAY_WIDTH, initialWidth + deltaX);
+            const days = Math.round(newWidth / DAY_WIDTH);
+            const roundedWidth = days * DAY_WIDTH;
+            
+            // Calculate new start date based on end date
+            const newStartDate = addDays(endDate, -(days - 1));
+            const formattedStartDate = format(newStartDate, 'yyyy-MM-dd');
+            
+            console.log('Left resize in progress:', {
+              deltaX,
+              newWidth,
+              roundedWidth,
+              days,
+              newStartDate: formattedStartDate
+            });
+            
+            // Update task dimensions
+            data.onResizeLeft(id, roundedWidth, data.end, formattedStartDate);
+          };
+          
+          // Handle mouse up to stop resizing
+          const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            
+            setTimeout(() => {
+              setResizing(false);
+              data.setIsResizing(false);
+            }, 100);
+          };
+          
+          // Add event listeners for dragging
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }}
       />
-
+      
       <NodeResizeControl
         nodeId={id}
         position="right"

@@ -25,14 +25,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ projects: propProjects }) => 
   const context = useOutletContext<OutletContextType>();
   
   // Use props if provided, otherwise use context
-  const projects = propProjects?.length ? propProjects : context?.projects || [];
+  const [projects, setProjects] = useState(propProjects?.length ? propProjects : context?.projects || []);
   
-  // Log for debugging
   useEffect(() => {
-    console.log('LandingPage - Context Projects:', context?.projects);
-    console.log('LandingPage - Prop Projects:', propProjects);
-    console.log('LandingPage - Using Projects:', projects);
-  }, [context, propProjects, projects]);
+    const mergedProjects = propProjects || context?.projects || [];
+    setProjects(mergedProjects);
+  }, [context?.projects, propProjects]);
   
   const { allCharts, importChart } = useGantt();
 

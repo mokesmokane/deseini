@@ -70,7 +70,6 @@ export const supabaseDbService = {
         .select('*');
         
       if (error) {
-        console.error('Error fetching charts:', error);
         return [];
       }
       
@@ -79,15 +78,12 @@ export const supabaseDbService = {
       return data?.map(record => {
         // If this is the new structure with chart_data JSON blob
         if (record.chart_data) {
-          console.log('Using new chart structure with chart_data blob');
           return record.chart_data as GanttData;
         }
         // Fallback to treating the whole record as a GanttData object (legacy format)
-        console.log('Using legacy chart structure (direct properties)');
         return record as GanttData;
       }) || [];
     } catch (error) {
-      console.error('Error fetching charts:', error);
       return [];
     }
   },
@@ -97,10 +93,8 @@ export const supabaseDbService = {
    */
   getChartById: async (id: string): Promise<GanttData | null> => {
     try {
-      console.log('Fetching chart with ID:', id);
       // Convert ID to UUID format if it's not already
       const uuidId = ensureUUID(id);
-      console.log('Using UUID format:', uuidId);
       
       const { data, error } = await supabase
         .from('charts')
@@ -109,26 +103,21 @@ export const supabaseDbService = {
         .single();
         
       if (error) {
-        console.error('Error fetching chart:', error);
         return null;
       }
       
       if (!data) {
-        console.log('No chart found with ID:', uuidId);
         return null;
       }
       
       // Check if we have the new structure with chart_data or old direct format
       if (data.chart_data) {
-        console.log('Using new chart structure with chart_data blob');
         return data.chart_data as GanttData;
       }
       
       // Fallback to treating the whole record as a GanttData object (legacy format)
-      console.log('Using legacy chart structure (direct properties)');
       return data as GanttData;
     } catch (error) {
-      console.error('Error fetching chart:', error);
       return null;
     }
   },
@@ -144,7 +133,6 @@ export const supabaseDbService = {
       
       // Convert chart ID to UUID format if needed
       const uuidId = ensureUUID(chart.id);
-      console.log('Using UUID format for saving:', uuidId);
       
       // Prepare the record in the correct format for the database
       const record = isGanttDataOnly ? {
@@ -184,13 +172,11 @@ export const supabaseDbService = {
       }
       
       if (result.error) {
-        console.error('Error saving chart:', result.error);
         return false;
       }
       
       return true;
     } catch (error) {
-      console.error('Error saving chart:', error);
       return false;
     }
   },
@@ -209,13 +195,11 @@ export const supabaseDbService = {
         .eq('id', uuidId);
         
       if (error) {
-        console.error('Error deleting chart:', error);
         return false;
       }
       
       return true;
     } catch (error) {
-      console.error('Error deleting chart:', error);
       return false;
     }
   },
@@ -235,7 +219,6 @@ export const supabaseDbService = {
         const userId = sessionData.session?.user?.id;
         
         if (!userId) {
-          console.error('Cannot initialize demo data: No authenticated user');
           return;
         }
         
@@ -258,7 +241,6 @@ export const supabaseDbService = {
         await supabaseDbService.saveChart(record);
       }
     } catch (error) {
-      console.error('Error initializing with demo data:', error);
     }
   }
 };

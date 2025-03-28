@@ -20,6 +20,7 @@ interface GanttContextType {
   isLoading: boolean;
   error: string | null;
   hoveredNodes: string[];
+  hoveredDayIndex: number | null;
   
   // Actions
   loadAllCharts: () => void;
@@ -33,6 +34,7 @@ interface GanttContextType {
   setCurrentChart: (chart: GanttData | null) => void;
   importChart: (chartData: any) => Promise<string | null>;
   setHoveredNodes: React.Dispatch<React.SetStateAction<string[]>>;
+  setHoveredDayIndex: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 // Create the context
@@ -51,6 +53,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredNodes, setHoveredNodes] = useState<string[]>([]);
+  const [hoveredDayIndex, setHoveredDayIndex] = useState<number | null>(null);
   
   // Get the database service (defaults to mock, unless VITE_USE_SUPABASE env var is set)
   const dbService = getDbService(DbServiceType.SUPABASE);
@@ -346,6 +349,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
     isLoading,
     error,
     hoveredNodes,
+    hoveredDayIndex,
     
     // Actions
     loadAllCharts,
@@ -359,6 +363,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
     setCurrentChart,
     importChart,
     setHoveredNodes,
+    setHoveredDayIndex,
   };
 
   return (

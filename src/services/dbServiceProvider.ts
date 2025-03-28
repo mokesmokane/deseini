@@ -38,7 +38,6 @@ export const getDbService = (type: DbServiceType = DbServiceType.MOCK): DbServic
     
   // Only log the service type once
   if (!hasLoggedServiceType) {
-    console.log(`Using ${serviceType === DbServiceType.SUPABASE ? 'Supabase' : 'mock'} database service`);
     hasLoggedServiceType = true;
   }
   

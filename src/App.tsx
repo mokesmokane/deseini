@@ -3,10 +3,12 @@ import Sidebar from './components/Sidebar';
 import { supabase } from './lib/supabase';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
+import LogoCarousel from './components/LogoCarousel';
 import toast, { Toaster } from 'react-hot-toast';
 import { GanttProvider } from './context/GanttContext';
 import { Session } from '@supabase/supabase-js';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { DependencyViolationsProvider } from './contexts/DependencyViolationsContext';
 
 export default function App() {
   const [projects, setProjects] = useState<Array<{ id: string; projectName: string }>>([]);
@@ -84,43 +86,50 @@ export default function App() {
   }
 
   return (
-    <GanttProvider>
-      <div className="min-h-screen bg-gray-50 flex flex-col h-screen">
-        <Toaster position="top-right" />
-        <header className="bg-white shadow-sm w-full border-b border-gray-200">
-          <div className="py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h1 
-              className="text-3xl font-bold text-gray-900 cursor-pointer" 
-              onClick={navigateToLanding}
-            >
-              Deseini
-            </h1>
-            {!isLandingPage && (
-              <button
+    <DependencyViolationsProvider>
+      <GanttProvider>
+        <div className="min-h-screen bg-gray-50 flex flex-col h-screen">
+          <Toaster position="top-right" />
+          <header className="bg-white shadow-sm w-full border-b border-gray-200">
+            <div className="py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+              <div 
+                className="cursor-pointer flex items-center" 
                 onClick={navigateToLanding}
-                className="text-gray-500 hover:text-gray-700 text-sm"
+                style={{ width: '200px' }}
               >
-                Back to Home
-              </button>
+                <LogoCarousel 
+                  height="40px"
+                  width="100%"
+                  autoRotateInterval={5000}
+                />
+              </div>
+              {!isLandingPage && (
+                <button
+                  onClick={navigateToLanding}
+                  className="text-gray-500 hover:text-gray-700 text-sm"
+                >
+                  Back to Home
+                </button>
+              )}
+            </div>
+          </header>
+          <div className="flex flex-1 overflow-hidden">
+            {/* Keep the VS Code-like sidebar when not on landing page */}
+            {!isLandingPage && (
+              <Sidebar
+                projects={projects}
+                selectedProjectId={null}
+                onSelectProject={handleSelectProject}
+                onSelectGanttChart={handleSelectGanttChart}
+              />
             )}
-          </div>
-        </header>
-        <div className="flex flex-1 overflow-hidden">
-          {/* Keep the VS Code-like sidebar when not on landing page */}
-          {!isLandingPage && (
-            <Sidebar
-              projects={projects}
-              selectedProjectId={null}
-              onSelectProject={handleSelectProject}
-              onSelectGanttChart={handleSelectGanttChart}
-            />
-          )}
-          <div className="flex-1 overflow-auto bg-white">
-            {/* Render the appropriate route component */}
-            <Outlet context={{ projects }} />
+            <div className="flex-1 overflow-auto bg-white">
+              {/* Render the appropriate route component */}
+              <Outlet context={{ projects }} />
+            </div>
           </div>
         </div>
-      </div>
-    </GanttProvider>
+      </GanttProvider>
+    </DependencyViolationsProvider>
   );
 }
