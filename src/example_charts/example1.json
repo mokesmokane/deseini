@@ -1,0 +1,77 @@
+{
+    "name": "Car design",
+    "id": "1",
+    "description": "Exterior design phase",
+    "start": "2025-03-31",
+    "end": "2025-04-15",
+    "milestones": [
+      {
+        "name": "Milestone 1",
+        "id": "2",
+        "description": "First major project milestone",
+        "start": "2025-04-04"
+      },
+      {
+        "name": "Milestone 2",
+        "id": "3",
+        "description":  "Second major project milestone",
+        "start": "2025-04-11"
+      }
+    ],
+    "tasks": [
+      {
+        "name": "Exterior Design",
+        "id": "4",
+        "color": "green",
+        "tasks": [
+          {
+            "name": "Wireframes Medlab",
+            "id": "5",
+            "description": "Monotonectally drive unique platforms via covalent e-business. Proactively synergize cross-functional initiatives to unlock scalable value streams and digital stickiness",
+            "avatar": "https://api.dicebear.com/9.x/lorelei/svg?seed=Riley",
+            "start": "2025-03-31",
+            "end": "2025-04-12",
+            "dependsOn": [],
+            "relevantMilestones": ["2"]
+          },
+          {
+            "name": "Sketching for new projects",
+            "id": "6",
+            "description": "Distinctively maximize B2C mindshare rather than process-centric outcomes by delivering emotionally resonant, consumer-first experiences that drive loyalty and brand evangelism.",
+            "avatar": "https://api.dicebear.com/9.x/open-peeps/svg?seed=Valentina",
+            "start": "2025-03-31",
+            "end": "2025-04-12",
+            "dependsOn": [],
+            "relevantMilestones": ["2"]
+          }
+        ]
+      },
+      {
+        "name": "Interior Design",
+        "id": "7",
+        "color": "grey",
+        "tasks": [
+          {
+            "name": "Wireframes Medlab",
+            "id": "8",
+            "description": "Monotonectally drive unique platforms via covalent e-business. Proactively synergize cross-functional initiatives to unlock scalable value streams and digital stickiness",
+            "avatar": "https://api.dicebear.com/9.x/lorelei/svg?seed=Leo",
+            "start": "2025-04-02",
+            "end": "2025-04-15",
+            "dependsOn": [],
+            "relevantMilestones": ["3"]
+          },
+          {
+            "name": "Sketching for new projects",
+            "id": "9",
+            "description": "Distinctively maximize B2C mindshare rather than process-centric outcomes by delivering emotionally resonant, consumer-first experiences that drive loyalty and brand evangelism.",
+            "avatar": "https://api.dicebear.com/9.x/open-peeps/svg?seed=Valentina",
+            "start": "2025-04-02",
+            "end": "2025-04-15",
+            "dependsOn": [],
+            "relevantMilestones": ["2"]
+          }
+        ]
+      }
+    ]
+  }

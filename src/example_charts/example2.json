@@ -1,0 +1,161 @@
+{
+    "name": "Car design",
+    "id": "1",
+    "description": "Exterior design phase",
+    "start": "2025-01-29",
+    "end": "2025-06-03",
+    "milestones": [
+      {
+        "name": "Kick-off",
+        "id": "2",
+        "description": "Project kick-off milestone",
+        "start": "2025-01-29"
+      },
+      {
+        "name": "Milestone 1",
+        "id": "3",
+        "description": "First major milestone",
+        "start": "2025-02-12"
+      },
+      {
+        "name": "Milestone 2",
+        "id": "4",
+        "description": "Second major milestone",
+        "start": "2025-02-26"
+      },
+      {
+        "name": "Milestone 3",
+        "id": "5",
+        "description": "Third major milestone",
+        "start": "2025-03-26"
+      },
+      {
+        "name": "Milestone 4",
+        "id": "6",
+        "description": "Fourth major milestone",
+        "start": "2025-04-23"
+      },
+      {
+        "name": "Milestone 5",
+        "id": "7",
+        "description": "Fifth major milestone",
+        "start": "2025-05-28"
+      },
+      {
+        "name": "Surface review with 25% model",
+        "id": "8",
+        "description": "25% model surface review",
+        "start": "2025-04-23"
+      },
+      {
+        "name": "SR0",
+        "id": "9",
+        "description": "SR0 milestone",
+        "start": "2025-05-14"
+      }
+    ],
+    "tasks": [
+      {
+        "name": "Exterior Design",
+        "id": "8",
+        "color": "green",
+        "tasks": [
+          {
+            "name": "Concept Design",
+            "id": "9",
+            "description": "Creating initial design concepts",
+            "avatar": "https://api.dicebear.com/9.x/lorelei/svg?seed=Riley",
+            "start": "2025-01-29",
+            "end": "2025-03-19",
+            "dependsOn": [],
+            "relevantMilestones": ["2", "3", "4"],
+            "tasks": [
+              {
+                "name": "Create design brief",
+                "id": "9.1",
+                "start": "2025-01-29",
+                "end": "2025-02-05",
+                "dependsOn": []
+              },
+              {
+                "name": "Theme 1 (Blender)",
+                "id": "9.2",
+                "start": "2025-01-29",
+                "end": "2025-02-19",
+                "dependsOn": []
+              },
+              {
+                "name": "Theme 2 (Blender)",
+                "id": "9.3",
+                "start": "2025-01-29",
+                "end": "2025-02-19",
+                "dependsOn": []
+              },
+              {
+                "name": "Down selection",
+                "id": "9.4",
+                "start": "2025-02-19",
+                "end": "2025-02-19",
+                "dependsOn": ["9.2", "9.3"]
+              },
+              {
+                "name": "Chosen theme (Blender)",
+                "id": "9.5",
+                "start": "2025-02-19",
+                "end": "2025-03-12",
+                "dependsOn": ["9.4"]
+              },
+              {
+                "name": "Proportion model (Alias)",
+                "id": "9.6",
+                "start": "2025-01-29",
+                "end": "2025-03-19",
+                "dependsOn": []
+              },
+              {
+                "name": "Theme selection",
+                "id": "9.7",
+                "start": "2025-03-12",
+                "end": "2025-03-19",
+                "dependsOn": ["9.5"]
+              }
+            ]
+          },
+          {
+            "name": "Digital Modelling",
+            "id": "10",
+            "description": "Digital modeling and selection of design",
+            "avatar": "https://api.dicebear.com/9.x/open-peeps/svg?seed=Valentina",
+            "start": "2025-03-20",
+            "end": "2025-05-14",
+            "dependsOn": ["9"],
+            "relevantMilestones": ["4", "5", "6", "8", "9"],
+            "tasks": [
+              {
+                "name": "Design development",
+                "id": "10.1",
+                "start": "2025-03-20",
+                "end": "2025-05-14",
+                "dependsOn": []
+              },
+              {
+                "name": "Alias concept model",
+                "id": "10.2",
+                "start": "2025-03-20",
+                "end": "2025-05-14",
+                "dependsOn": []
+              },
+              {
+                "name": "Visualisation",
+                "id": "10.3",
+                "start": "2025-05-15",
+                "end": "2025-06-03",
+                "dependsOn": ["10.1", "10.2"]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  

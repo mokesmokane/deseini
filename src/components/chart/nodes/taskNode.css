@@ -1,0 +1,77 @@
+/* Remove the default blue outline from NodeResizeControl */
+.gantt-task-node .react-flow__resize-control.react-flow__resize-control {
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Only display left/right resize handles, hide others */
+.gantt-task-node .react-flow__resize-control.top,
+.gantt-task-node .react-flow__resize-control.bottom,
+.gantt-task-node .react-flow__resize-control.top-left,
+.gantt-task-node .react-flow__resize-control.top-right,
+.gantt-task-node .react-flow__resize-control.bottom-left,
+.gantt-task-node .react-flow__resize-control.bottom-right {
+  display: none !important;
+}
+
+/* Apply pointer events to the resize controls */
+.gantt-resize-control {
+  cursor: ew-resize !important;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* Show resize controls only on hover */
+.gantt-task-node:hover .react-flow__resize-control {
+  opacity: 1 !important;
+}
+
+/* Custom style for resize handles */
+.gantt-task-node .react-flow__resize-control.left::after,
+.gantt-task-node .react-flow__resize-control.right::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 24px;
+  background-color: #6366f1;
+  border-radius: 2px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.2s ease, width 0.1s ease;
+}
+
+.gantt-task-node:hover .react-flow__resize-control.left::after,
+.gantt-task-node:hover .react-flow__resize-control.right::after {
+  opacity: 0.8;
+}
+
+.gantt-task-node .react-flow__resize-control.left:hover::after,
+.gantt-task-node .react-flow__resize-control.right:hover::after {
+  width: 6px;
+  opacity: 1;
+}
+
+/* Prevent blue selection box around node */
+.react-flow__node.selected .gantt-task-node {
+  box-shadow: 0 0 0 2px #6366f1 !important;
+  outline: none !important;
+}
+
+/* Remove default react-flow resizer indicators */
+.react-flow__resize-control:before {
+  display: none !important;
+}
+
+/* Make the task node draggable in the middle, but resizable on the edges */
+.gantt-task-node.resizing {
+  cursor: ew-resize !important;
+}
+
+/* Prevent text selection during resize */
+.gantt-task-node.resizing {
+  user-select: none;
+}
