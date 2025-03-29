@@ -52,14 +52,23 @@ export interface Task {
   name: string;
   description?: string;
   avatar?: string;
-  start?: string;
-  end?: string;
+  start: string;
+  end: string;
   color?: string;
   milestone?: boolean;
-  dependsOn?: string[];
   tasks?: Task[];
   relevantMilestones?: string[];
 }
+
+export interface Dependency {
+  sourceId: string; 
+  targetId: string; 
+}
+
+// Helper function to create a unique key for a dependency relationship
+export const getDependencyKey = (sourceId: string, targetId: string): string => {
+  return `${sourceId}::${targetId}`;
+};
 
 export interface GanttData {
   id: string;
@@ -69,4 +78,5 @@ export interface GanttData {
   end: string;
   milestones: Milestone[];
   tasks: Task[];
+  dependencies: Dependency[]; 
 }

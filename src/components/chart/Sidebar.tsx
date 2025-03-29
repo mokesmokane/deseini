@@ -1,28 +1,30 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Task, Milestone } from '../../types';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { useGantt } from '../../context/GanttContext';
+import { useGantt } from '../../contexts/GanttContext';
 import { useDependencyViolations } from '../../contexts/DependencyViolationsContext';
+import { getDependencyKey } from '../../types';
 
 interface SidebarProps {
   selectedTask: Task | null;
   milestones: Milestone[];
   onClose: () => void;
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
+  onUpdateChart?: (updates: { dependencies: { sourceId: string; targetId: string }[] }) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   selectedTask, 
   milestones, 
   onClose, 
-  onUpdateTask
+  onUpdateTask,
+  onUpdateChart
 }) => {
   const { currentChart } = useGantt();
   const { dependencyViolations } = useDependencyViolations();
   const [showDependencySelector, setShowDependencySelector] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   
   // Effect to log selected task updates
   useEffect(() => {
@@ -87,48 +89,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   };
 
-  const handleAddDependency = (dependencyId: string) => {
-    if (!onUpdateTask || !selectedTask) return;
-    
-    // Create a new set of dependencies (eliminates duplicates)
-    const currentDependencies = selectedTask.dependsOn || [];
-    const updatedDependencies = [...new Set([...currentDependencies, dependencyId])];
-    
-    onUpdateTask(selectedTask.id, {
-      dependsOn: updatedDependencies
-    });
-    
-    // Hide the selector after adding
-    setShowDependencySelector(false);
-    setSearchTerm('');
-  };
-
-  const handleRemoveDependency = (dependencyId: string) => {
-    if (!onUpdateTask || !selectedTask || !selectedTask.dependsOn) return;
-    
-    const updatedDependencies = selectedTask.dependsOn.filter(id => id !== dependencyId);
-    
-    onUpdateTask(selectedTask.id, {
-      dependsOn: updatedDependencies
-    });
-  };
-
   // Find task violations related to the selected task
   const taskViolations = Object.entries(dependencyViolations)
-    .filter(([dependencyId]) => {
-      return selectedTask.dependsOn?.includes(dependencyId);
+    .filter(([_depKey, violation]) => {
+      // Check if this violation involves the selected task (either as source or target)
+      const violationObj = violation as { sourceTaskId: string; targetTaskId: string; message: string };
+      return violationObj.sourceTaskId === selectedTask.id || violationObj.targetTaskId === selectedTask.id;
     })
-    .map(([dependencyId, message]) => ({
-      dependencyId,
-      message
-    }));
-  
-  // Get all tasks except the current one
-  const availableTasks = currentChart 
-    ? findAllTasks(currentChart.tasks, selectedTask.id)
-      .filter(task => !selectedTask.dependsOn?.includes(task.id)) // Filter out already selected dependencies
-      .filter(task => task.name.toLowerCase().includes(searchTerm.toLowerCase())) // Filter by search term
-    : [];
+    .map(([depKey, violation]) => {
+      const violationObj = violation as { sourceTaskId: string; targetTaskId: string; message: string };
+      return {
+        dependencyId: depKey,
+        message: violationObj.message
+      };
+    });
+
+  // Get all existing dependencies for this task from the chart's dependencies
+  const existingDependencies = currentChart?.dependencies?.filter(dep => 
+    dep.targetId === selectedTask.id
+  ) || [];
+
+
+  const handleRemoveDependency = (sourceId: string, targetId: string) => {
+    if (!selectedTask || !currentChart?.dependencies) return;
+    // Find the dependency to remove
+    // The dependencyId passed in is the ID of the other task, not the dependency key
+
+    const dependencyToRemove = currentChart.dependencies.find(dep => 
+      (dep.targetId === targetId && dep.sourceId === sourceId)
+    );
+    
+    if (!dependencyToRemove) return;
+    // Filter out the dependency from the chart's dependencies array
+    const updatedDependencies = currentChart.dependencies.filter(dep => 
+      !(dep.targetId === dependencyToRemove.targetId && dep.sourceId === dependencyToRemove.sourceId)
+    );
+    // Update the chart's dependencies array
+    if (onUpdateChart) {
+      console.log('Removing dependency', dependencyToRemove, 'Updated dependencies:', updatedDependencies);
+      onUpdateChart({ dependencies: updatedDependencies });
+    } else {
+    }
+  };
 
   return (
     <div className="fixed right-0 top-0 h-screen w-96 bg-white shadow-lg border-l border-gray-200 overflow-y-auto">
@@ -199,35 +201,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
           
           {/* List of current dependencies */}
           <div className="space-y-2 mt-2">
-            {/* Debug: Display raw dependency IDs if they exist */}
-            {process.env.NODE_ENV === 'development' && selectedTask.dependsOn && (
+            {/* Debug: Display dependencies related to this task */}
+            {process.env.NODE_ENV === 'development' && (
               <div className="text-xs text-gray-500 mb-2">
-                Debug - Raw dependsOn: {JSON.stringify(selectedTask.dependsOn)}
+                Debug - Dependencies: {JSON.stringify(existingDependencies)}
               </div>
             )}
             
-            {Array.isArray(selectedTask.dependsOn) && selectedTask.dependsOn.length > 0 ? (
-              selectedTask.dependsOn.map(dependencyId => {
-                const hasViolation = taskViolations.some(v => v.dependencyId === dependencyId);
+            {existingDependencies.length > 0 ? (
+              existingDependencies.map(dependency => {
+                const depKey = getDependencyKey(dependency.sourceId, dependency.targetId);
+                const hasViolation = taskViolations.some(v => v.dependencyId === depKey);
                 
                 return (
                   <div 
-                    key={dependencyId} 
+                    key={depKey} 
                     className={`flex items-center justify-between p-2 rounded-md ${hasViolation ? 'bg-red-50 border border-red-200' : 'bg-gray-50 border border-gray-200'}`}
                   >
                     <div className="flex items-center">
-                      <div className={`w-3 h-3 ${hasViolation ? 'bg-red-500' : 'bg-blue-500'} rounded-full mr-2`}></div>
+                      {hasViolation && <i className="fas fa-exclamation-triangle text-red-500 mr-2"></i>}
                       <div>
-                        <p className="text-sm font-medium">{getTaskNameById(dependencyId)}</p>
+                        <p className="text-sm font-medium">{getTaskNameById(dependency.sourceId)}</p>
                         {hasViolation && (
                           <p className="text-xs text-red-500">
-                            {taskViolations.find(v => v.dependencyId === dependencyId)?.message}
+                            {taskViolations.find(v => v.dependencyId === depKey)?.message}
                           </p>
                         )}
                       </div>
                     </div>
                     <button
-                      onClick={() => handleRemoveDependency(dependencyId)}
+                      onClick={() => handleRemoveDependency(dependency.sourceId, dependency.targetId)}
                       className="text-gray-400 hover:text-red-500"
                       title="Remove dependency"
                     >
@@ -245,46 +248,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
           
-          {/* Add dependency button */}
-          <button
-            onClick={() => setShowDependencySelector(prev => !prev)}
-            className="mt-3 flex items-center text-sm bg-blue-50 hover:bg-blue-100 text-blue-600 py-1 px-3 rounded-md border border-blue-200"
-          >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {showDependencySelector ? 'Cancel' : 'Add Dependency'}
-          </button>
-          
-          {/* Dependency selector */}
-          {showDependencySelector && (
-            <div className="mt-2 p-3 border border-gray-200 bg-white rounded-md shadow-sm">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search tasks..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm mb-2 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              />
-              
-              <div className="max-h-48 overflow-y-auto">
-                {availableTasks.length > 0 ? (
-                  availableTasks.map(task => (
-                    <button
-                      key={task.id}
-                      onClick={() => handleAddDependency(task.id)}
-                      className="w-full text-left p-2 hover:bg-gray-100 rounded-md flex items-center"
-                    >
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                      <span className="text-sm">{task.name}</span>
-                    </button>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500 p-2">No available tasks found</p>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Divider */}

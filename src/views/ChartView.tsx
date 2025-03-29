@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { GanttChart } from '../components/chart/GanttChart';
 import { useEffect, useState, useRef } from 'react';
-import { useGantt } from '../context/GanttContext';
+import { useGantt } from '../contexts/GanttContext';
 
 // Following the Single Responsibility Principle - this component is only responsible for chart viewing
 const ChartView = () => {

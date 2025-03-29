@@ -1,7 +1,7 @@
 // React is needed for JSX transformation
 import { FolderIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import { useState } from 'react';
-import { useGantt } from '../context/GanttContext';
+import { useGantt } from '../contexts/GanttContext';
 
 // Import example chart data
 import example1 from '../example_charts/example1.json';

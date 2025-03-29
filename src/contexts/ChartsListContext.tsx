@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { GanttData, Task } from '../types';
+import { GanttData } from '../types';
 import { getDbService, DbServiceType } from '../services/dbServiceProvider';
 import { supabase } from '../lib/supabase';
 
@@ -13,49 +13,37 @@ const generateUUID = (): string => {
 };
 
 // Context interface
-interface GanttContextType {
+interface ChartsListContextType {
   // State
   allCharts: GanttData[];
-  currentChart: GanttData | null;
   isLoading: boolean;
   error: string | null;
-  hoveredNodes: string[];
-  hoveredDayIndex: number | null;
   
   // Actions
   loadAllCharts: () => void;
-  loadChartById: (id: string) => void;
-  loadChart: (id: string) => Promise<GanttData | null>;
+  loadChartById: (id: string) => Promise<GanttData | null>;
   saveChart: (chart: GanttData) => Promise<boolean>;
   createNewChart: (chart: GanttData) => Promise<boolean>;
   deleteChart: (id: string) => Promise<boolean>;
-  updateTask: (chartId: string, taskId: string, updates: Partial<Task>) => Promise<boolean>;
-  setCurrentChartDirectly: (chart: GanttData) => void;
-  setCurrentChart: (chart: GanttData | null) => void;
   importChart: (chartData: any) => Promise<string | null>;
-  setHoveredNodes: React.Dispatch<React.SetStateAction<string[]>>;
-  setHoveredDayIndex: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 // Create the context
-const GanttContext = createContext<GanttContextType | undefined>(undefined);
+const ChartsListContext = createContext<ChartsListContextType | undefined>(undefined);
 
 // Provider props
-interface GanttProviderProps {
+interface ChartsListProviderProps {
   children: ReactNode;
   initialData?: GanttData;
 }
 
 // Provider component
-export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialData }) => {
+export const ChartsListProvider: React.FC<ChartsListProviderProps> = ({ children, initialData }) => {
   const [allCharts, setAllCharts] = useState<GanttData[]>([]);
-  const [currentChart, setCurrentChart] = useState<GanttData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [hoveredNodes, setHoveredNodes] = useState<string[]>([]);
-  const [hoveredDayIndex, setHoveredDayIndex] = useState<number | null>(null);
   
-  // Get the database service (defaults to mock, unless VITE_USE_SUPABASE env var is set)
+  // Get the database service
   const dbService = getDbService(DbServiceType.SUPABASE);
 
   // Initialize with demo data if provided
@@ -69,17 +57,14 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
 
   // Load all charts
   const loadAllCharts = async () => {
+    console.log('Loading all charts...');
     try {
       setIsLoading(true);
       setError(null);
       
       const charts = await dbService.getAllCharts();
+      console.log('Charts loaded:', charts);
       setAllCharts(charts);
-      
-      // Set the first chart as current if no chart is selected
-      if (charts.length > 0 && !currentChart) {
-        setCurrentChart(charts[0]);
-      }
     } catch (error) {
       setError('Failed to load charts');
       console.error(error);
@@ -88,29 +73,8 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
     }
   };
   
-  // Load a specific chart by ID
-  const loadChartById = async (id: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const chart = await dbService.getChartById(id);
-      
-      if (chart) {
-        setCurrentChart(chart);
-      } else {
-        setError(`Chart with ID ${id} not found`);
-      }
-    } catch (error) {
-      setError('Failed to load chart');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // Load chart (returns the chart without setting as current)
-  const loadChart = async (id: string): Promise<GanttData | null> => {
+  // Load a specific chart by ID (returns the chart without setting as current)
+  const loadChartById = async (id: string): Promise<GanttData | null> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -131,11 +95,6 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
     }
   };
   
-  // Set current chart directly (without loading from DB)
-  const setCurrentChartDirectly = (chart: GanttData) => {
-    setCurrentChart(chart);
-  };
-  
   // Save existing chart
   const saveChart = async (chart: GanttData): Promise<boolean> => {
     try {
@@ -154,7 +113,6 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
             return [...prev, chart];
           }
         });
-        setCurrentChart(chart);
       } else {
         setError('Failed to save chart');
       }
@@ -180,7 +138,6 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       if (success) {
         // Update local state
         setAllCharts(prev => [...prev, chart]);
-        setCurrentChart(chart);
         setError(null);
       } else {
         setError('Failed to create chart');
@@ -205,13 +162,6 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       if (success) {
         // Update local state
         setAllCharts(prev => prev.filter(chart => chart.id !== id));
-        
-        // If we deleted the current chart, set current to null or the first available
-        if (currentChart && currentChart.id === id) {
-          const remainingCharts = allCharts.filter(chart => chart.id !== id);
-          setCurrentChart(remainingCharts.length > 0 ? remainingCharts[0] : null);
-        }
-        
         setError(null);
       } else {
         setError('Failed to delete chart');
@@ -224,60 +174,6 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       return false;
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Update a specific task within a chart
-  const updateTask = async (chartId: string, taskId: string, updates: Partial<Task>): Promise<boolean> => {
-    if (!currentChart || currentChart.id !== chartId) {
-      // Load the chart first if it's not the current one
-      loadChartById(chartId);
-      if (!currentChart) {
-        setError('Chart not found');
-        return false;
-      }
-    }
-    
-    try {
-      // Deep clone the current chart to avoid direct state mutation
-      const updatedChart = JSON.parse(JSON.stringify(currentChart)) as GanttData;
-      
-      // Helper function to recursively find and update task
-      const updateTaskRecursive = (tasks: Task[] | undefined): boolean => {
-        if (!tasks) return false;
-        
-        for (let i = 0; i < tasks.length; i++) {
-          if (tasks[i].id === taskId) {
-            // Found the task, update it
-            tasks[i] = { ...tasks[i], ...updates };
-            return true;
-          }
-          
-          // Check nested tasks if any
-          if (tasks[i].tasks) {
-            const nestedTasks = tasks[i].tasks || [];
-            if (updateTaskRecursive(nestedTasks)) {
-              return true;
-            }
-          }
-        }
-        
-        return false;
-      };
-      
-      const taskFound = updateTaskRecursive(updatedChart.tasks);
-      
-      if (!taskFound) {
-        setError(`Task with ID ${taskId} not found`);
-        return false;
-      }
-      
-      // Save the updated chart
-      return saveChart(updatedChart);
-    } catch (error) {
-      setError('Failed to update task');
-      console.error(error);
-      return false;
     }
   };
   
@@ -302,9 +198,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       // Always generate a new UUID for imported charts to avoid conflicts
       chartDataCopy.id = generateUUID();
       
-      // Prepare the structure following the new database schema
-      // Note: We're explicitly typing this as 'any' since it's not a GanttData object
-      // but rather a database record with chart_data field
+      // Prepare the structure following the database schema
       const chart: any = {
         id: chartDataCopy.id,
         name: chartDataCopy.name || `Imported Chart (${new Date().toLocaleDateString()})`,
@@ -322,9 +216,6 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       if (success) {
         // Update local state
         setAllCharts(prev => [...prev, chartDataCopy]);
-        
-        // Set as current chart
-        setCurrentChart(chartDataCopy);
         setError(null);
         
         return chart.id;
@@ -342,42 +233,33 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
   };
 
   // Provide the context value
-  const contextValue: GanttContextType = {
+  const contextValue: ChartsListContextType = {
     // State
     allCharts,
-    currentChart,
     isLoading,
     error,
-    hoveredNodes,
-    hoveredDayIndex,
     
     // Actions
     loadAllCharts,
     loadChartById,
-    loadChart,
     saveChart,
     createNewChart,
     deleteChart,
-    updateTask,
-    setCurrentChartDirectly,
-    setCurrentChart,
     importChart,
-    setHoveredNodes,
-    setHoveredDayIndex,
   };
 
   return (
-    <GanttContext.Provider value={contextValue}>
+    <ChartsListContext.Provider value={contextValue}>
       {children}
-    </GanttContext.Provider>
+    </ChartsListContext.Provider>
   );
 };
 
-// Custom hook for using the Gantt context
-export const useGantt = (): GanttContextType => {
-  const context = useContext(GanttContext);
+// Custom hook for using the ChartsListContext
+export const useChartsList = (): ChartsListContextType => {
+  const context = useContext(ChartsListContext);
   if (!context) {
-    throw new Error('useGantt must be used within a GanttProvider');
+    throw new Error('useChartsList must be used within a ChartsListProvider');
   }
   return context;
 };

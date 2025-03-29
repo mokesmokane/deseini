@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ChartBarIcon, FolderIcon } from '@heroicons/react/24/outline';
-import { useGantt } from '../context/GanttContext';
 import { Link, useOutletContext, useNavigate } from 'react-router-dom';
 import ImportChartDialog from './ImportChartDialog';
+import { useChartsList } from '../contexts/ChartsListContext';
 
 interface ProjectItem {
   id: string;
@@ -32,9 +32,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ projects: propProjects }) => 
     setProjects(mergedProjects);
   }, [context?.projects, propProjects]);
   
-  const { allCharts, importChart } = useGantt();
+  const { allCharts, importChart } = useChartsList();
 
   const handleImportChart = async (jsonData: string) => {
+    if (!importChart) {
+      console.error('Import chart function not available');
+      alert('Chart import is not available at the moment');
+      return;
+    }
+    
     try {
       // Parse JSON to validate format
       const chartData = JSON.parse(jsonData);
@@ -106,17 +112,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ projects: propProjects }) => 
             <ChartBarIcon className="h-6 w-6 inline-block mr-2 text-gray-600" />
             Gantt Charts
           </h2>
-          <button 
-            onClick={() => setIsImportDialogOpen(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-          >
-            Import Chart
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setIsImportDialogOpen(true)}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              Import Chart
+            </button>
+            <Link 
+              to="/charts/new"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              New Chart
+            </Link>
+          </div>
         </div>
         
-        {!allCharts || allCharts.length === 0 ? (
+        {allCharts.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <p className="text-gray-500">No charts available. Import your first Gantt chart!</p>
+            <p className="text-gray-500">No charts available. Create your first Gantt chart!</p>
           </div>
         ) : (
           <div className="overflow-x-auto pb-4">
@@ -132,7 +146,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ projects: propProjects }) => 
                   </div>
                   <div className="p-4">
                     <h3 className="font-medium text-lg text-gray-900 truncate">{chart.name}</h3>
-                    <p className="text-gray-500 text-sm mt-2">Click to view chart</p>
+                    <p className="text-gray-500 text-sm mt-2">{chart.tasks?.length || 0} tasks</p>
                   </div>
                 </Link>
               ))}
@@ -141,7 +155,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ projects: propProjects }) => 
         )}
       </section>
       
-      {/* Import Chart Dialog */}
+      {/* Import Dialog */}
       <ImportChartDialog 
         isOpen={isImportDialogOpen}
         onClose={() => setIsImportDialogOpen(false)}

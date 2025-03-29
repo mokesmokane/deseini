@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useGantt } from '../../context/GanttContext';
+import { useGantt } from '../../contexts/GanttContext';
 import { GanttData } from '../../types'; 
 import { v4 as uuidv4 } from 'uuid';
 

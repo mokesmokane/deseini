@@ -1,6 +1,6 @@
 import React from 'react';
 import { parseISO, addDays, format, differenceInDays } from 'date-fns';
-import { useGantt } from '../../../context/GanttContext';
+import { useGantt } from '../../../contexts/GanttContext';
 
 // Import DAY_WIDTH properly
 const DAY_WIDTH = 30; // Ensure this matches the value in GanttChart.tsx

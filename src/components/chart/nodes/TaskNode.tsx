@@ -8,7 +8,7 @@ import { DAY_WIDTH, TASK_MILESTONE_SIZE } from '../constants/gantt';
 import './taskNode.css';
 
 export interface TaskNodeProps {
-  data: {
+    data: {
     name: string;
     description?: string;
     avatar?: string;
@@ -19,16 +19,15 @@ export interface TaskNodeProps {
     milestones: Milestone[];
     width: number;
     onResizeRight: (id: string, width: number, endDate: string) => void;
-    onResizeLeft: (id: string, width: number, endDate: string, startDate: string) => void;
-    isResizing: boolean;
-    setIsResizing: (value: boolean) => void;
+    onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
     onClick: (task: Task) => void;
-  };
-  id: string;
-  selected?: boolean;
+    },
+    id: string;
+    selected?: boolean;
 }
 
-export const TaskNode = ({ data, id }: TaskNodeProps) => {
+export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
+  const { name, description, avatar, start, end, color, relevantMilestones, milestones, width, onResizeRight, onUpdateTask, onClick } = data;
   const [resizing, setResizing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
@@ -38,18 +37,18 @@ export const TaskNode = ({ data, id }: TaskNodeProps) => {
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (!resizing) {
       e.stopPropagation();
-      data.onClick({
+      onClick({
         id,
-        name: data.name,
-        description: data.description,
-        avatar: data.avatar,
-        start: data.start,
-        end: data.end,
-        color: data.color,
-        relevantMilestones: data.relevantMilestones,
+        name,
+        description,
+        avatar,
+        start,
+        end,
+        color,
+        relevantMilestones,
       });
     }
-  }, [data, id, resizing]);
+  }, [id, name, description, avatar, start, end, color, relevantMilestones, resizing]);
 
   const handleResizeRight = useCallback((_: any, params: { width: number, direction: number[], x: number }) => {
     setResizing(true);
@@ -59,21 +58,37 @@ export const TaskNode = ({ data, id }: TaskNodeProps) => {
     
     const roundedWidth = days * DAY_WIDTH;
     // Right resize: Adjust end date while start date remains fixed
-    const startDate = parseISO(data.start);
+    const startDate = parseISO(start);
     
     const newEndDate = addDays(startDate, days - 1);
     
     // Only call onResizeRight if days has changed
     if (prevRightDaysRef.current === null || prevRightDaysRef.current !== days) {
       console.log('=== RIGHT RESIZE EVENT DETAILS ===');
-      data.onResizeRight(id, roundedWidth, format(newEndDate, 'yyyy-MM-dd'));
+      console.log('New width:', newWidth);
+      console.log('New end date:', format(newEndDate, 'yyyy-MM-dd'));
+      console.log('=== END ===');
+      onResizeRight(id, roundedWidth, format(newEndDate, 'yyyy-MM-dd'));
       prevRightDaysRef.current = days;
     }
     
     setTimeout(() => {
       setResizing(false);
     }, 100);
-  }, [data, id]);
+  }, [id]);
+
+  const handleResizeEnd = useCallback((event: any, params: any)  => {
+    const newWidth = Math.max(DAY_WIDTH, params.width);
+    
+    const days = Math.round(newWidth / DAY_WIDTH);
+    
+    const startDate = parseISO(start);
+    
+    const newEndDate = addDays(startDate, days - 1);
+    onUpdateTask(id, {
+      end: format(newEndDate, 'yyyy-MM-dd')
+    });
+  }, [id]);
 
   const hasInputEdge = useCallback(() => {
     return edges.some(edge => edge.target === id);
@@ -83,13 +98,13 @@ export const TaskNode = ({ data, id }: TaskNodeProps) => {
     return edges.some(edge => edge.source === id);
   }, [edges, id]);
 
-  const milestoneDots = data.relevantMilestones?.map((milestoneId) => {
-    const milestone = data.milestones.find((m) => m.id === milestoneId);
+  const milestoneDots = relevantMilestones?.map((milestoneId) => {
+    const milestone = milestones.find((m) => m.id === milestoneId);
     if (!milestone) return null;
 
     const milestoneDate = parseISO(milestone.start);
-    const taskStartDate = parseISO(data.start);
-    const taskEndDate = parseISO(data.end);
+    const taskStartDate = parseISO(start);
+    const taskEndDate = parseISO(end);
 
     if (milestoneDate < taskStartDate || milestoneDate > taskEndDate) return null;
 
@@ -111,7 +126,7 @@ export const TaskNode = ({ data, id }: TaskNodeProps) => {
   });
 
   const nodeStyle = {
-    width: `${data.width}px`,
+    width: `${width}px`,
     position: 'relative' as const,
     zIndex: resizing ? 1000 : 10,
   };
@@ -153,88 +168,37 @@ export const TaskNode = ({ data, id }: TaskNodeProps) => {
         }}
       />
       
-      {/* Custom left-resize handle */}
-      <div 
-        className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize z-10"
-        onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-          e.stopPropagation();
-          
-          // Initial mouse position and task state
-          const initialX = e.clientX;
-          const initialWidth = data.width;
-          const endDate = parseISO(data.end);
-          
-          // Set resizing state
-          setResizing(true);
-          data.setIsResizing(true);
-          
-          // Handle mouse movement during resize
-          const handleMouseMove = (moveEvent: MouseEvent) => {
-            const deltaX = initialX - moveEvent.clientX;
-            const newWidth = Math.max(DAY_WIDTH, initialWidth + deltaX);
-            const days = Math.round(newWidth / DAY_WIDTH);
-            const roundedWidth = days * DAY_WIDTH;
-            
-            // Calculate new start date based on end date
-            const newStartDate = addDays(endDate, -(days - 1));
-            const formattedStartDate = format(newStartDate, 'yyyy-MM-dd');
-            
-            console.log('Left resize in progress:', {
-              deltaX,
-              newWidth,
-              roundedWidth,
-              days,
-              newStartDate: formattedStartDate
-            });
-            
-            // Update task dimensions
-            data.onResizeLeft(id, roundedWidth, data.end, formattedStartDate);
-          };
-          
-          // Handle mouse up to stop resizing
-          const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-            
-            setTimeout(() => {
-              setResizing(false);
-              data.setIsResizing(false);
-            }, 100);
-          };
-          
-          // Add event listeners for dragging
-          document.addEventListener('mousemove', handleMouseMove);
-          document.addEventListener('mouseup', handleMouseUp);
-        }}
-      />
       
       <NodeResizeControl
         nodeId={id}
         position="right"
         minWidth={DAY_WIDTH}
         onResize={handleResizeRight}
+        onResizeEnd={handleResizeEnd}
+        style={{
+          top: '10px' 
+        }}
       />
       <div
         className="w-1.5 h-full flex-shrink-0 rounded-l-md"
-        style={{ backgroundColor: data.color || '#6366f1' }}
+        style={{ backgroundColor: color || '#6366f1' }}
       />
 
       <div className="flex-grow px-3 py-2 min-w-0">
-        <div className="font-medium text-sm truncate text-gray-900">{data.name}</div>
-        {data.description && (
+        <div className="font-medium text-sm truncate text-gray-900">{name}</div>
+        {description && (
           <div className="text-xs text-gray-500 truncate">
-            {data.description}
+            {description}
           </div>
         )}
       </div>
 
       <div className="flex items-center gap-2 px-3 border-l border-gray-100">
-        {data.avatar && (
+        {avatar && (
           <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100">
             <img
-              src={data.avatar}
+              src={avatar}
               alt="avatar"
-              className="w-6 h-6 rounded-full"
             />
           </div>
         )}

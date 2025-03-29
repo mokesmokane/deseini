@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGantt } from '../../../context/GanttContext';
+import { useGantt } from '../../../contexts/GanttContext';
 import { format } from 'date-fns';
 
 interface DayGridLineProps {
