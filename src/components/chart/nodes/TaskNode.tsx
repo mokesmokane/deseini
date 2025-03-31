@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { NodeResizeControl, Handle, Position, useEdges } from 'reactflow';
+import { Menu, Transition } from '@headlessui/react';
+import { createPortal } from 'react-dom';
 import { Task, Milestone } from '../../../types';
 import { DAY_WIDTH, MILESTONE_SIZE, TASK_MILESTONE_SIZE } from '../constants/gantt';
 
@@ -22,15 +24,51 @@ export interface TaskNodeProps {
     onResizeRight: (id: string, width: number, endDate: string) => void;
     onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
     onClick: (task: Task) => void;
+    onAddAboveClone?: (task: Task) => void;
+    onAddAboveNewTask?: (task: Task) => void;
+    onAddAboveNewEvent?: (task: Task) => void;
+    onAddBelowClone?: (task: Task) => void;
+    onAddBelowNewTask?: (task: Task) => void;
+    onAddBelowNewEvent?: (task: Task) => void;
+    onCreateSubTask?: (task: Task) => void;
+    onDeleteTask?: (task: Task) => void;
     },
     id: string;
     selected?: boolean;
 }
 
+// Type for submenu operations to ensure type safety
+type SubMenuAction = 'clone' | 'newTask' | 'newEvent';
+type MenuPosition = 'above' | 'below';
+
 export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
-  const { name, description, avatar, start, end, color, relevantMilestones, milestones, width, onResizeRight, onUpdateTask, onClick, type = undefined } = data;
+  const { 
+    name, 
+    description, 
+    avatar, 
+    start, 
+    end, 
+    color, 
+    relevantMilestones, 
+    milestones, 
+    width, 
+    onResizeRight, 
+    onUpdateTask, 
+    onClick, 
+    onAddAboveClone,
+    onAddAboveNewTask,
+    onAddAboveNewEvent,
+    onAddBelowClone,
+    onAddBelowNewTask,
+    onAddBelowNewEvent,
+    onCreateSubTask,
+    onDeleteTask,
+    type = undefined 
+  } = data;
+  
   const [resizing, setResizing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [submenuPosition, setSubmenuPosition] = useState<MenuPosition | null>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const prevRightDaysRef = useRef<number | null>(null);
   const edges = useEdges();
@@ -51,6 +89,83 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
       });
     }
   }, [id, name, description, avatar, start, end, color, relevantMilestones, resizing, type]);
+
+  // Create a task object for callback functions
+  const getTaskData = useCallback(() => ({
+    id,
+    name,
+    description,
+    avatar,
+    start,
+    end,
+    color,
+    relevantMilestones,
+    type,
+  }), [id, name, description, avatar, start, end, color, relevantMilestones, type]);
+
+  const handleMenuItemClick = useCallback((action: string) => (e: React.MouseEvent, close: () => void) => {
+    e.stopPropagation();
+    const taskData = getTaskData();
+    
+    // Handle direct actions
+    if (action === 'createSubTask') {
+      console.log('Menu action: Create Sub Task');
+      onCreateSubTask?.(taskData);
+      setSubmenuPosition(null);
+      close(); // Close the menu using the provided close function
+    } else if (action === 'deleteTask') {
+      console.log('Menu action: Delete Task');
+      onDeleteTask?.(taskData);
+      setSubmenuPosition(null);
+      close(); // Close the menu using the provided close function
+    }
+  }, [getTaskData, onCreateSubTask, onDeleteTask]);
+
+  const handleSubmenuAction = useCallback((position: MenuPosition, action: SubMenuAction) => (e: React.MouseEvent, close: () => void) => {
+    e.stopPropagation();
+    const taskData = getTaskData();
+    
+    console.log(`Submenu action: ${position} - ${action}`);
+    
+    // Call the appropriate callback based on position and action
+    if (position === 'above') {
+      switch (action) {
+        case 'clone':
+          onAddAboveClone?.(taskData);
+          break;
+        case 'newTask':
+          onAddAboveNewTask?.(taskData);
+          break;
+        case 'newEvent':
+          onAddAboveNewEvent?.(taskData);
+          break;
+      }
+    } else if (position === 'below') {
+      switch (action) {
+        case 'clone':
+          onAddBelowClone?.(taskData);
+          break;
+        case 'newTask':
+          onAddBelowNewTask?.(taskData);
+          break;
+        case 'newEvent':
+          onAddBelowNewEvent?.(taskData);
+          break;
+      }
+    }
+    
+    // Close both the submenu and the main menu
+    setSubmenuPosition(null);
+    close(); // Close the menu using the provided close function
+  }, [
+    getTaskData, 
+    onAddAboveClone, 
+    onAddAboveNewTask, 
+    onAddAboveNewEvent, 
+    onAddBelowClone, 
+    onAddBelowNewTask, 
+    onAddBelowNewEvent
+  ]);
 
   const handleResizeRight = useCallback((_: any, params: { width: number, direction: number[], x: number }) => {
     setResizing(true);
@@ -169,6 +284,24 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     />
   );
 
+  // Portal container for menu
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  
+  const handleOpenMenu = useCallback((e: React.MouseEvent) => {
+    if (e.currentTarget) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom,
+        left: rect.right
+      });
+    }
+  }, []);
+
+  // Handle showing submenu on hover
+  const handleMenuHover = useCallback((position: MenuPosition | null) => {
+    setSubmenuPosition(position);
+  }, []);
+
   // Render differently based on node type
   if (type === 'event') {
     return (
@@ -281,6 +414,179 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
             />
           </div>
         )}
+
+        {/* Menu Button using Headless UI */}
+        <Menu as="div" className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+          {({ close }) => (
+            <>
+              <Menu.Button 
+                className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 transition-colors" 
+                aria-label="Open menu"
+                onClick={handleOpenMenu}
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4 text-gray-600"
+                  viewBox="0 0 20 20" 
+                  fill="currentColor"
+                >
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </Menu.Button>
+              {createPortal(
+                <Transition
+                  as={React.Fragment}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                >
+                  <Menu.Items 
+                    className="fixed w-40 origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    style={{ 
+                      top: `${menuPosition.top}px`,
+                      left: `${menuPosition.left - 160}px`,
+                      zIndex: 9999 // Very high z-index to ensure it's above everything
+                    }}
+                  >
+                    <div className="py-1">
+                      {/* Add Above with submenu */}
+                      <div 
+                        className="relative" 
+                        onMouseEnter={() => handleMenuHover('above')}
+                        onMouseLeave={() => handleMenuHover(null)}
+                      >
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              className={`${
+                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                              } group flex w-full items-center justify-between px-4 py-2 text-sm`}
+                              aria-label="Add above options"
+                            >
+                              <span>Add Above</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          )}
+                        </Menu.Item>
+                        
+                        {/* Submenu for Add Above */}
+                        {submenuPosition === 'above' && (
+                          <div className="absolute left-full top-0 mt-0 ml-0 w-36 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                            <div className="py-1">
+                              <button
+                                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex w-full items-center px-4 py-2 text-sm"
+                                onClick={(e) => handleSubmenuAction('above', 'clone')(e, close)}
+                              >
+                                Clone
+                              </button>
+                              <button
+                                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex w-full items-center px-4 py-2 text-sm"
+                                onClick={(e) => handleSubmenuAction('above', 'newTask')(e, close)}
+                              >
+                                New Task
+                              </button>
+                              <button
+                                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex w-full items-center px-4 py-2 text-sm"
+                                onClick={(e) => handleSubmenuAction('above', 'newEvent')(e, close)}
+                              >
+                                New Event
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Add Below with submenu */}
+                      <div 
+                        className="relative" 
+                        onMouseEnter={() => handleMenuHover('below')}
+                        onMouseLeave={() => handleMenuHover(null)}
+                      >
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              className={`${
+                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                              } group flex w-full items-center justify-between px-4 py-2 text-sm`}
+                              aria-label="Add below options"
+                            >
+                              <span>Add Below</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          )}
+                        </Menu.Item>
+                        
+                        {/* Submenu for Add Below */}
+                        {submenuPosition === 'below' && (
+                          <div className="absolute left-full top-0 mt-0 ml-0 w-36 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                            <div className="py-1">
+                              <button
+                                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex w-full items-center px-4 py-2 text-sm"
+                                onClick={(e) => handleSubmenuAction('below', 'clone')(e, close)}
+                              >
+                                Clone
+                              </button>
+                              <button
+                                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex w-full items-center px-4 py-2 text-sm"
+                                onClick={(e) => handleSubmenuAction('below', 'newTask')(e, close)}
+                              >
+                                New Task
+                              </button>
+                              <button
+                                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex w-full items-center px-4 py-2 text-sm"
+                                onClick={(e) => handleSubmenuAction('below', 'newEvent')(e, close)}
+                              >
+                                New Event
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Create Sub Chart (direct action) */}
+                      <Menu.Item>
+                        {({ active }) => (
+                          <button
+                            className={`${
+                              active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                            } group flex w-full items-center px-4 py-2 text-sm`}
+                            onClick={(e) => handleMenuItemClick('createSubTask')(e, close)}
+                            aria-label="Create sub task"
+                          >
+                            Create Sub Task
+                          </button>
+                        )}
+                      </Menu.Item>
+                      
+                      {/* Delete Task (direct action) */}
+                      <Menu.Item>
+                        {({ active }) => (
+                          <button
+                            className={`${
+                              active ? 'bg-red-100 text-red-900' : 'text-red-700'
+                            } group flex w-full items-center px-4 py-2 text-sm`}
+                            onClick={(e) => handleMenuItemClick('deleteTask')(e, close)}
+                            aria-label="Delete task"
+                          >
+                            Delete Task
+                          </button>
+                        )}
+                      </Menu.Item>
+                    </div>
+                  </Menu.Items>
+                </Transition>,
+                document.body
+              )}
+            </>
+          )}
+        </Menu>
       </div>
 
       {milestoneDots}

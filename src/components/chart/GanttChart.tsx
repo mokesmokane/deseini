@@ -37,6 +37,7 @@ import { useGantt } from '../../contexts/GanttContext';
 import { useDependencyViolations } from '../../contexts/DependencyViolationsContext';
 import 'reactflow/dist/style.css';
 import { useChartsList } from '../../contexts/ChartsListContext';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 // Shared constants that are exported to be used by node components
 export const NODE_HEIGHT = 60;
@@ -374,6 +375,14 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
             onResizeLeft: null,
             onResizeRight: task.type === 'event' ? null : handleResizeRight, // Events don't resize
             onUpdateTask: updateTask,
+            onAddAboveClone,
+            onAddAboveNewTask,
+            onAddAboveNewEvent,
+            onAddBelowClone,
+            onAddBelowNewTask,
+            onAddBelowNewEvent,
+            onCreateSubTask,
+            onDeleteTask,
             isResizing,
             setIsResizing,
             milestones: currentChart.milestones,
@@ -401,6 +410,358 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     [isResizing, currentChart, handleTaskClick, handleResizeRight, updateTask]
   );
 
+
+  // Helper function to find a task in the task hierarchy
+  const findTask = useCallback(
+    (taskId: string, tasks?: Task[]): { task: Task | null; parent: Task[] | null; index: number } => {
+      if (!tasks) {
+        if (!currentChart || !currentChart.tasks) return { task: null, parent: null, index: -1 };
+        tasks = currentChart.tasks;
+      }
+      
+      for (let i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === taskId) {
+          return { task: tasks[i], parent: tasks, index: i };
+        }
+        
+        // Safely check for subtasks using optional chaining
+        const subtasks = tasks[i].tasks;
+        if (subtasks && Array.isArray(subtasks) && subtasks.length > 0) {
+          const result = findTask(taskId, subtasks);
+          if (result.task) {
+            return result;
+          }
+        }
+      }
+      
+      return { task: null, parent: null, index: -1 };
+    },
+    [currentChart]
+  );
+  
+  // Helper function to generate a unique ID for a new task
+  const generateTaskId = useCallback(() => {
+    return 'task-' + Math.random().toString(36).substring(2, 11);
+  }, []);
+  
+  // Helper function to validate task dates when adding new tasks
+  const validateTaskDates = useCallback(
+    (task: Task, tasks: Task[], dependencies: Dependency[]) => {
+      // This calls the validation function from the dependency violations context
+      // which combines all validation to prevent race conditions
+      if (tasks && dependencies) {
+        checkForViolations(tasks, dependencies);
+      }
+      return task;
+    },
+    [checkForViolations]
+  );
+  
+  // Add a cloned task above the current task
+  const onAddAboveClone = useCallback(
+    (sourceTask: Task) => {
+      if (!currentChart) return;
+      
+      const { parent, index } = findTask(sourceTask.id);
+      if (!parent || index === -1) return;
+      
+      // Deep clone the task and generate a new ID
+      const clonedTask: Task = JSON.parse(JSON.stringify(sourceTask));
+      clonedTask.id = generateTaskId();
+      
+      // Clear any subtasks from the clone (we're just cloning the parent)
+      clonedTask.tasks = [];
+      
+      // Insert the cloned task at the proper position
+      const updatedChart = { ...currentChart };
+      const updatedTasks = [...updatedChart.tasks];
+      
+      // Find the parent array and update it
+      const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
+      if (targetParent) {
+        targetParent.splice(index, 0, clonedTask);
+        
+        // Validate dependencies to prevent race conditions
+        validateTaskDates(clonedTask, updatedTasks, updatedChart.dependencies || []);
+        
+        setCurrentChart(updatedChart);
+        setHasUnsavedChanges(true);
+      }
+    },
+    [currentChart, findTask, generateTaskId, validateTaskDates, setCurrentChart, setHasUnsavedChanges]
+  );
+  
+  // Add a new task above the current task
+  const onAddAboveNewTask = useCallback(
+    (sourceTask: Task) => {
+      if (!currentChart) return;
+      
+      const { parent, index } = findTask(sourceTask.id);
+      if (!parent || index === -1) return;
+      
+      // Create a new task with same dates but empty properties
+      const newTask: Task = {
+        id: generateTaskId(),
+        name: 'New Task',
+        start: sourceTask.start,
+        end: sourceTask.end,
+        color: sourceTask.color,
+        tasks: []
+      };
+      
+      // Insert the new task at the proper position
+      const updatedChart = { ...currentChart };
+      const updatedTasks = [...updatedChart.tasks];
+      
+      // Find the parent array and update it
+      const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
+      if (targetParent) {
+        targetParent.splice(index, 0, newTask);
+        
+        // Validate dependencies to prevent race conditions
+        validateTaskDates(newTask, updatedTasks, updatedChart.dependencies || []);
+        
+        setCurrentChart(updatedChart);
+        setHasUnsavedChanges(true);
+      }
+    },
+    [currentChart, findTask, generateTaskId, validateTaskDates, setCurrentChart, setHasUnsavedChanges]
+  );
+  
+  // Add a new event above the current task
+  const onAddAboveNewEvent = useCallback(
+    (sourceTask: Task) => {
+      if (!currentChart) return;
+      
+      const { parent, index } = findTask(sourceTask.id);
+      if (!parent || index === -1) return;
+      
+      // Create a new event task (events are single-day tasks)
+      const newEvent: Task = {
+        id: generateTaskId(),
+        name: 'New Event',
+        start: sourceTask.start, // Same start as the source task
+        end: sourceTask.start,   // Events are single-day, so end = start
+        type: 'event',
+        color: '#3b82f6', // Default blue for events
+        tasks: []
+      };
+      
+      // Insert the new event at the proper position
+      const updatedChart = { ...currentChart };
+      const updatedTasks = [...updatedChart.tasks];
+      
+      // Find the parent array and update it
+      const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
+      if (targetParent) {
+        targetParent.splice(index, 0, newEvent);
+        
+        // Validate dependencies to prevent race conditions
+        validateTaskDates(newEvent, updatedTasks, updatedChart.dependencies || []);
+        
+        setCurrentChart(updatedChart);
+        setHasUnsavedChanges(true);
+      }
+    },
+    [currentChart, findTask, generateTaskId, validateTaskDates, setCurrentChart, setHasUnsavedChanges]
+  );
+  
+  // Add a cloned task below the current task
+  const onAddBelowClone = useCallback(
+    (sourceTask: Task) => {
+      if (!currentChart) return;
+      
+      const { parent, index } = findTask(sourceTask.id);
+      if (!parent || index === -1) return;
+      
+      // Deep clone the task and generate a new ID
+      const clonedTask: Task = JSON.parse(JSON.stringify(sourceTask));
+      clonedTask.id = generateTaskId();
+      
+      // Clear any subtasks from the clone (we're just cloning the parent)
+      clonedTask.tasks = [];
+      
+      // Insert the cloned task at the proper position (below the source task)
+      const updatedChart = { ...currentChart };
+      const updatedTasks = [...updatedChart.tasks];
+      
+      // Find the parent array and update it
+      const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
+      if (targetParent) {
+        targetParent.splice(index + 1, 0, clonedTask);
+        
+        // Validate dependencies to prevent race conditions
+        validateTaskDates(clonedTask, updatedTasks, updatedChart.dependencies || []);
+        
+        setCurrentChart(updatedChart);
+        setHasUnsavedChanges(true);
+      }
+    },
+    [currentChart, findTask, generateTaskId, validateTaskDates, setCurrentChart, setHasUnsavedChanges]
+  );
+  
+  // Add a new task below the current task
+  const onAddBelowNewTask = useCallback(
+    (sourceTask: Task) => {
+      if (!currentChart) return;
+      
+      const { parent, index } = findTask(sourceTask.id);
+      if (!parent || index === -1) return;
+      
+      // Create a new task with same dates but empty properties
+      const newTask: Task = {
+        id: generateTaskId(),
+        name: 'New Task',
+        start: sourceTask.start,
+        end: sourceTask.end,
+        color: sourceTask.color,
+        tasks: []
+      };
+      
+      // Insert the new task at the proper position (below the source task)
+      const updatedChart = { ...currentChart };
+      const updatedTasks = [...updatedChart.tasks];
+      
+      // Find the parent array and update it
+      const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
+      if (targetParent) {
+        targetParent.splice(index + 1, 0, newTask);
+        
+        // Validate dependencies to prevent race conditions
+        validateTaskDates(newTask, updatedTasks, updatedChart.dependencies || []);
+        
+        setCurrentChart(updatedChart);
+        setHasUnsavedChanges(true);
+      }
+    },
+    [currentChart, findTask, generateTaskId, validateTaskDates, setCurrentChart, setHasUnsavedChanges]
+  );
+  
+  // Add a new event below the current task
+  const onAddBelowNewEvent = useCallback(
+    (sourceTask: Task) => {
+      if (!currentChart) return;
+      
+      const { parent, index } = findTask(sourceTask.id);
+      if (!parent || index === -1) return;
+      
+      // Create a new event task (events are single-day tasks)
+      const newEvent: Task = {
+        id: generateTaskId(),
+        name: 'New Event',
+        start: sourceTask.start, // Same start as the source task
+        end: sourceTask.start,   // Events are single-day, so end = start
+        type: 'event',
+        color: '#3b82f6', // Default blue for events
+        tasks: []
+      };
+      
+      // Insert the new event at the proper position (below the source task)
+      const updatedChart = { ...currentChart };
+      const updatedTasks = [...updatedChart.tasks];
+      
+      // Find the parent array and update it
+      const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
+      if (targetParent) {
+        targetParent.splice(index + 1, 0, newEvent);
+        
+        // Validate dependencies to prevent race conditions
+        validateTaskDates(newEvent, updatedTasks, updatedChart.dependencies || []);
+        
+        setCurrentChart(updatedChart);
+        setHasUnsavedChanges(true);
+      }
+    },
+    [currentChart, findTask, generateTaskId, validateTaskDates, setCurrentChart, setHasUnsavedChanges]
+  );
+  
+  // Placeholder for the createSubChart function (to be implemented later)
+  const onCreateSubTask = useCallback((task: Task) => {
+    if (!currentChart) return;
+    
+    // Create a new subtask
+    const newSubTask: Task = {
+      id: generateTaskId(),
+      name: 'New Subtask',
+      start: task.start,
+      end: task.end,
+      color: task.color,
+      tasks: []
+    };
+    
+    // Update the chart with the new subtask
+    const updatedChart = { ...currentChart };
+    const updatedTasks = [...updatedChart.tasks];
+    
+    // Find the task and add the subtask to its tasks array
+    const updateTaskRecursive = (tasks: Task[]): boolean => {
+      for (let i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === task.id) {
+          // Initialize tasks array if it doesn't exist
+          tasks[i].tasks = tasks[i].tasks || [];
+          tasks[i].tasks!.push(newSubTask);
+          return true;
+        }
+        
+        if (tasks[i].tasks && tasks[i].tasks!.length > 0) {
+          if (updateTaskRecursive(tasks[i].tasks!)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    
+    if (updateTaskRecursive(updatedTasks)) {
+      setCurrentChart(updatedChart);
+      setHasUnsavedChanges(true);
+    }
+  }, []);
+
+  // State for task deletion confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+
+  const onDeleteTask = useCallback((task: Task) => {
+    console.log('Delete task:', task.id);
+    if (!currentChart) return;
+    
+    // Open the confirm dialog and set the task to delete
+    setTaskToDelete(task);
+    setDeleteConfirmOpen(true);
+  }, [currentChart]);
+
+  // Actual delete function to be called after confirmation
+  const confirmDeleteTask = useCallback(() => {
+    if (!currentChart || !taskToDelete) return;
+    
+    // Create a copy of the chart
+    const updatedChart = { ...currentChart };
+    const updatedTasks = [...updatedChart.tasks];
+    
+    const { parent } = findTask(taskToDelete.id, updatedTasks);
+    if (parent) {
+      // Find and remove the task from its parent array
+      const taskIndex = parent.findIndex(t => t.id === taskToDelete.id);
+      if (taskIndex !== -1) {
+        parent.splice(taskIndex, 1);
+        
+        // Also remove any dependencies involving this task
+        if (updatedChart.dependencies) {
+          updatedChart.dependencies = updatedChart.dependencies.filter(
+            dep => dep.sourceId !== taskToDelete.id && dep.targetId !== taskToDelete.id
+          );
+        }
+        
+        setCurrentChart(updatedChart);
+        setHasUnsavedChanges(true);
+      }
+    }
+    
+    // Close the dialog and reset the task to delete
+    setDeleteConfirmOpen(false);
+    setTaskToDelete(null);
+  }, [currentChart, findTask, taskToDelete, setCurrentChart, setHasUnsavedChanges]);
 
   // Handle new connections between nodes
   const onConnect = useCallback((connection: Connection) => {
@@ -550,6 +911,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
         type: 'milestone',
         position: { x, y: TIMELINE_HEIGHT },
         draggable: false,
+        selectable: false,
         data: milestone,
       });
     });
@@ -657,13 +1019,25 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
         onClose={() => setSelectedTask(null)}
         onUpdateTask={updateTask}
         onUpdateChart={onUpdateChart}
+        onDeleteTask={onDeleteTask}
       />
       {hasUnsavedChanges && (
         <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded shadow-md">
           <button onClick={() => saveChanges()}>Save Changes</button>
         </div>
       )}
-    {Object.keys(dependencyViolations).length > 0 && (
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        title="Confirm Deletion"
+        message={taskToDelete ? `Are you sure you want to delete "${taskToDelete.name}"?` : ""}
+        confirmLabel="Delete"
+        onConfirm={confirmDeleteTask}
+        onCancel={() => {
+          setDeleteConfirmOpen(false);
+          setTaskToDelete(null);
+        }}
+      />
+      {Object.keys(dependencyViolations).length > 0 && (
         <div className="absolute bottom-4 right-4 bg-red-500 text-white rounded-lg shadow-lg overflow-hidden max-w-md">
           <div className="bg-red-600 px-4 py-2 font-semibold border-b border-red-700">
             <div className="flex items-center">

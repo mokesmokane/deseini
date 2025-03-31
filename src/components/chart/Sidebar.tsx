@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Task, Milestone } from '../../types';
 import DatePicker from 'react-datepicker';
@@ -13,6 +13,7 @@ interface SidebarProps {
   onClose: () => void;
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
   onUpdateChart?: (updates: { dependencies: { sourceId: string; targetId: string }[] }) => void;
+  onDeleteTask?: (task: Task) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -20,11 +21,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   milestones, 
   onClose, 
   onUpdateTask,
-  onUpdateChart
+  onUpdateChart,
+  onDeleteTask
 }) => {
   const { currentChart } = useGantt();
   const { dependencyViolations } = useDependencyViolations();
-  const [showDependencySelector, setShowDependencySelector] = useState(false);
   
   // Effect to log selected task updates
   useEffect(() => {
@@ -275,6 +276,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className="border-t border-gray-200"></div>
+
+        {/* Delete Task Button */}
+        {onDeleteTask && (
+          <div>
+            <button
+              onClick={() => {
+                //close sidebar
+                onClose();
+                //delete task
+                onDeleteTask?.(selectedTask);
+              }}
+              className="w-full px-4 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+            >
+              <div className="flex items-center justify-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete Task
+              </div>
+            </button>
           </div>
         )}
       </div>
