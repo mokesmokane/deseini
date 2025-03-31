@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { GanttChart } from '../components/chart/GanttChart';
 import { useEffect, useState, useRef } from 'react';
 import { useGantt } from '../contexts/GanttContext';
+import ChartSidebar from '../components/chart/ChartSidebar';
 
 // Following the Single Responsibility Principle - this component is only responsible for chart viewing
 const ChartView = () => {
@@ -55,8 +56,11 @@ const ChartView = () => {
   }
   
   return (
-    <div className="h-full">
-      <GanttChart />
+    <div className="h-full flex">
+      <ChartSidebar />
+      <div className="flex-1 ml-16">
+        <GanttChart />
+      </div>
     </div>
   );
 };

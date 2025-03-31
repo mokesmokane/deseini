@@ -56,6 +56,7 @@ export interface Task {
   end: string;
   color?: string;
   milestone?: boolean;
+  type?: 'task' | 'event';  
   tasks?: Task[];
   relevantMilestones?: string[];
 }

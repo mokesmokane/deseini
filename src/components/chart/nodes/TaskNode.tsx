@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { NodeResizeControl, Handle, Position, useEdges } from 'reactflow';
 import { Task, Milestone } from '../../../types';
-import { DAY_WIDTH, TASK_MILESTONE_SIZE } from '../constants/gantt';
+import { DAY_WIDTH, MILESTONE_SIZE, TASK_MILESTONE_SIZE } from '../constants/gantt';
 
 // Custom CSS to remove the blue outline
 import './taskNode.css';
@@ -12,6 +12,7 @@ export interface TaskNodeProps {
     name: string;
     description?: string;
     avatar?: string;
+    type?: undefined | 'task' | 'event';
     start: string;
     end: string;
     color?: string;
@@ -27,7 +28,7 @@ export interface TaskNodeProps {
 }
 
 export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
-  const { name, description, avatar, start, end, color, relevantMilestones, milestones, width, onResizeRight, onUpdateTask, onClick } = data;
+  const { name, description, avatar, start, end, color, relevantMilestones, milestones, width, onResizeRight, onUpdateTask, onClick, type = undefined } = data;
   const [resizing, setResizing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
@@ -46,9 +47,10 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
         end,
         color,
         relevantMilestones,
+        type,
       });
     }
-  }, [id, name, description, avatar, start, end, color, relevantMilestones, resizing]);
+  }, [id, name, description, avatar, start, end, color, relevantMilestones, resizing, type]);
 
   const handleResizeRight = useCallback((_: any, params: { width: number, direction: number[], x: number }) => {
     setResizing(true);
@@ -125,6 +127,108 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     );
   });
 
+  // Common handlers and elements for both task and event nodes
+  
+  // Input handle for incoming dependencies
+  const inputHandle = (
+    <Handle
+      type="target"
+      position={Position.Left}
+      id="target"
+      className={`w-2 h-2 rounded-full bg-blue-500 ${type === 'event' ? 'left-0 top-1/2 -translate-y-1/2' : ''}`}
+      isConnectable={true}
+      style={{ 
+        opacity: type === 'event' ? 1 : (isHovered || hasInputEdge() ? 0.8 : 0),
+        width: type === 'event' ? '8px' : '10px', 
+        height: type === 'event' ? '8px' : '10px',
+        left: type === 'event' ? '-4px' : '-6px',  
+        top: '50%', 
+        transform: 'translateY(-50%)',
+        transition: 'opacity 0.2s ease'
+      }}
+    />
+  );
+  
+  // Output handle for outgoing dependencies
+  const outputHandle = (
+    <Handle
+      type="source"
+      position={Position.Right}
+      id="source"
+      className={`w-2 h-2 rounded-full bg-blue-500 ${type === 'event' ? 'right-0 top-1/2 -translate-y-1/2' : ''}`}
+      isConnectable={true}
+      style={{ 
+        opacity: type === 'event' ? 1 : (isHovered || hasOutputEdge() ? 0.8 : 0),
+        width: type === 'event' ? '8px' : '10px', 
+        height: type === 'event' ? '8px' : '10px',
+        right: type === 'event' ? '-4px' : '-6px', 
+        top: '50%', 
+        transform: 'translateY(-50%)',
+        transition: 'opacity 0.2s ease'
+      }}
+    />
+  );
+
+  // Render differently based on node type
+  if (type === 'event') {
+    return (
+      <div 
+        ref={nodeRef}
+        className="relative"
+        style={{ 
+          width: `${MILESTONE_SIZE}px`, 
+          height: `${MILESTONE_SIZE}px`,
+          zIndex: resizing ? 1000 : 10 
+        }}
+        onClick={handleClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Diamond shape styled exactly like milestone but with blue color */}
+        <div 
+          className="absolute left-1/2 top-1/2 bg-blue-500 -translate-x-1/2 -translate-y-1/2 rotate-45"
+          style={{ 
+            width: `${MILESTONE_SIZE}px`,
+            height: `${MILESTONE_SIZE}px`,
+            backgroundColor: color || '#3b82f6', // Blue color as default for events
+            borderRadius: `${MILESTONE_SIZE * 0.15}px`,
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+            border: selected ? '2px solid #000' : '1px solid rgba(0, 0, 0, 0.1)'
+          }}
+        />
+        
+        {/* Name tooltip to the right like milestone */}
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap text-sm">
+          {name}
+          {description && isHovered && (
+            <div className="text-xs text-gray-500 mt-1">
+              {description}
+            </div>
+          )}
+        </div>
+
+        {/* Input handle on the left (for incoming connections) */}
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="target"
+          className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full z-20"
+          isConnectable={true}
+        />
+        
+        {/* Output handle on the right (for outgoing connections) */}
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="source"
+          className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full z-20"
+          isConnectable={true}
+        />
+      </div>
+    );
+  }
+
+  // Regular task node rendering
   const nodeStyle = {
     width: `${width}px`,
     position: 'relative' as const,
@@ -140,34 +244,8 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Input handle for incoming dependencies */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id={`${id}-input`}
-        style={{ 
-          opacity: isHovered || hasInputEdge() ? 0.8 : 0, 
-          width: '10px', 
-          height: '10px', 
-          left: '-6px',
-          transition: 'opacity 0.2s ease'
-        }}
-      />
-      
-      {/* Output handle for outgoing dependencies */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id={`${id}-output`}
-        style={{ 
-          opacity: isHovered || hasOutputEdge() ? 0.8 : 0, 
-          width: '10px', 
-          height: '10px', 
-          right: '-6px',
-          transition: 'opacity 0.2s ease'
-        }}
-      />
-      
+      {inputHandle}
+      {outputHandle}
       
       <NodeResizeControl
         nodeId={id}
@@ -199,18 +277,10 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
             <img
               src={avatar}
               alt="avatar"
+              className="w-full h-full rounded-full object-cover"
             />
           </div>
         )}
-
-        <button 
-          className="flex flex-col items-center justify-center w-6 h-6 gap-0.5 opacity-60 hover:opacity-100 ml-1 p-1 rounded-full hover:bg-gray-100"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-          <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-          <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
-        </button>
       </div>
 
       {milestoneDots}

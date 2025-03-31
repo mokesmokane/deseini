@@ -8,7 +8,6 @@ import {
   eachWeekOfInterval,
   endOfWeek,
   differenceInCalendarDays,
-  isBefore,
 } from 'date-fns';
 import ReactFlow, {
   Node,
@@ -19,10 +18,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   MarkerType,
-  Position,
-  getSmoothStepPath,
   Connection,
-  addEdge,
   ConnectionLineType,
 } from 'reactflow';
 import {
@@ -50,6 +46,7 @@ export const VERTICAL_SPACING = 20;
 
 const nodeTypes = {
   task: TaskNode,
+  event: TaskNode, // Also use TaskNode for event type nodes
   milestone: MilestoneNode,
   month: MonthNode,
   week: WeekNode,
@@ -359,17 +356,23 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
           result.nextRow = context.currentRow + 1;
         }
 
+        // Create the node with unified TaskNode handling both types
         result.nodes.push({
           id: task.id,
-          type: 'task',
-          position: { x, y },
-          draggable: true, // Always set to true, we'll handle resize vs drag in the component
+          type: task.type || 'task',
+          position: { 
+            // For event nodes, center them exactly on the day like milestone nodes
+            x: task.type === 'event' ? (x + (DAY_WIDTH / 2) - 12) : x, 
+            // For event nodes, centered vertically in the row
+            y: task.type === 'event' ? (y + (NODE_HEIGHT / 2) - 12) : y 
+          },
+          draggable: true,
           data: {
             ...task,
-            width,
-            color: task.color || parentColor,
+            width: task.type === 'event' ? undefined : width, // Width only needed for regular tasks
+            color: task.color || (task.type === 'event' ? '#3b82f6' : parentColor), // Default blue for events
             onResizeLeft: null,
-            onResizeRight: handleResizeRight,
+            onResizeRight: task.type === 'event' ? null : handleResizeRight, // Events don't resize
             onUpdateTask: updateTask,
             isResizing,
             setIsResizing,
@@ -377,8 +380,6 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
             onClick: handleTaskClick,
           },
         });
-
-        
       }
 
       const subtasks = task.tasks;
@@ -397,7 +398,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
 
       return result;
     },
-    [isResizing, currentChart, handleTaskClick, dependencyViolations]
+    [isResizing, currentChart, handleTaskClick, handleResizeRight, updateTask]
   );
 
 
