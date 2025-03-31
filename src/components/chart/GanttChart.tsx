@@ -38,7 +38,7 @@ import { useDependencyViolations } from '../../contexts/DependencyViolationsCont
 import 'reactflow/dist/style.css';
 import { useChartsList } from '../../contexts/ChartsListContext';
 import ConfirmDialog from '../common/ConfirmDialog';
-
+import { AssignRoleDialog } from '../common/AssignRoleDialog';
 // Shared constants that are exported to be used by node components
 export const NODE_HEIGHT = 60;
 export const TIMELINE_HEIGHT = 100;
@@ -64,6 +64,29 @@ interface GanttChartProps {
 const edgeTypes = {
   default: CustomEdge,
 };
+
+const roles = [
+  { id: '1', name: 'Jessica', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Jessica', isFavorite: true },
+  { id: '2', name: 'Maria', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Maria', isFavorite: false },
+  { id: '3', name: 'Sophia', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Sophia', isFavorite: false },
+  { id: '4', name: 'Caleb', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Caleb', isFavorite: false },
+  { id: '5', name: 'Aiden', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Aiden', isFavorite: false },
+  { id: '6', name: 'Liliana', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Liliana', isFavorite: false },
+  { id: '7', name: 'George', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=George', isFavorite: false },
+  { id: '8', name: 'Eden', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Eden', isFavorite: false },
+  { id: '9', name: 'Ryan', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Ryan', isFavorite: false },
+  { id: '10', name: 'Wyatt', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Wyatt', isFavorite: false },
+  { id: '11', name: 'Leo', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Leo', isFavorite: false },
+  { id: '12', name: 'Valentina', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Valentina', isFavorite: false },
+  { id: '13', name: 'Oliver', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Oliver', isFavorite: false },
+  { id: '14', name: 'Eliza', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Eliza', isFavorite: false },
+  { id: '15', name: 'Jack', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Jack', isFavorite: false },
+  { id: '16', name: 'Jocelyn', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Jocelyn', isFavorite: false },
+  { id: '17', name: 'Ryker', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Ryker', isFavorite: false },
+  { id: '18', name: 'Sawyer', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Sawyer', isFavorite: true },
+  { id: '19', name: 'Kimberly', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Kimberly', isFavorite: true },
+  { id: '20', name: 'Alexander', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Alexander', isFavorite: true }
+];
 
 export const GanttChart: React.FC<GanttChartProps> = () => {
   const { currentChart, setHoveredNodes, setCurrentChart } = useGantt();
@@ -391,6 +414,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
             onAddBelowNewEvent,
             onCreateSubTask,
             onDeleteTask,
+            onAssignRole: onShowAssignRoleDialog,
             isResizing,
             setIsResizing,
             milestones: currentChart.milestones,
@@ -791,6 +815,8 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
   // State for task deletion confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [assignRoleOpen, setAssignRoleOpen] = useState(false);
+  const [taskToAssign, setTaskToAssign] = useState<Task | null>(null);
 
   const onDeleteTask = useCallback((task: Task) => {
     console.log('Delete task:', task.id);
@@ -799,6 +825,15 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     // Open the confirm dialog and set the task to delete
     setTaskToDelete(task);
     setDeleteConfirmOpen(true);
+  }, [currentChart]);
+
+  const onShowAssignRoleDialog = useCallback((task: Task) => {
+    console.log('Assign role to task:', task.id);
+    if (!currentChart) return;
+    
+    // Open the confirm dialog and set the task to delete
+    setTaskToAssign(task);
+    setAssignRoleOpen(true);
   }, [currentChart]);
 
   // Actual delete function to be called after confirmation
@@ -1028,7 +1063,47 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
   // Separate effect for initial dependency validation
   // This runs only once after nodes are initially loaded
   const [hasValidatedInitialDependencies, setHasValidatedInitialDependencies] = useState(false);
-
+const handleAssign = useCallback((roleId: string) => {
+  if (!currentChart || !taskToAssign) return;
+  
+  // Create a deep copy of the chart
+  const updatedChart = {...currentChart};
+  
+  // Find and update the task with the assigned role
+  const updateTaskWithRole = (tasks: Task[]): Task[] => {
+    return tasks.map(task => {
+      if (task.id === taskToAssign.id) {
+        // Update the task with the assigned role
+        return {
+          ...task,
+          assignedRoleId: roleId,
+          avatar: roles.find(role => role.id === roleId)?.avatar
+        };
+      }
+      
+      // If this task has subtasks, update them recursively
+      if (task.tasks && task.tasks.length > 0) {
+        return {
+          ...task,
+          tasks: updateTaskWithRole(task.tasks)
+        };
+      }
+      
+      return task;
+    });
+  };
+  
+  // Update the tasks in the chart
+  updatedChart.tasks = updateTaskWithRole(updatedChart.tasks);
+  
+  // Update the chart state
+  setCurrentChart(updatedChart);
+  saveChart(updatedChart);
+  
+  // Close the dialog
+  setAssignRoleOpen(false);
+  setTaskToAssign(null);
+}, [currentChart, taskToAssign, setCurrentChart, saveChart]);
   useEffect(() => {
     // Only run this once after the chart and nodes are loaded
     if (currentChart?.tasks && nodes.length > 0 && !hasValidatedInitialDependencies) {
@@ -1108,6 +1183,16 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
         onCancel={() => {
           setDeleteConfirmOpen(false);
           setTaskToDelete(null);
+        }}
+      />
+      <AssignRoleDialog
+        isOpen={assignRoleOpen}
+        onAssign={handleAssign}
+        roles={roles}
+        task={taskToAssign}
+        onClose={() => {
+          setAssignRoleOpen(false);
+          setTaskToAssign(null);
         }}
       />
       {Object.keys(dependencyViolations).length > 0 && (

@@ -33,6 +33,7 @@ export interface TaskNodeProps {
     onAddBelowNewEvent?: (task: Task) => void;
     onCreateSubTask?: (task: Task) => void;
     onDeleteTask?: (task: Task) => void;
+    onAssignRole?: (task: Task) => void;
     tasks?: Task[];
     },
     id: string;
@@ -66,6 +67,7 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     onAddBelowNewEvent,
     onCreateSubTask,
     onDeleteTask,
+    onAssignRole,
     type = undefined 
   } = data;
   
@@ -305,6 +307,16 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     setSubmenuPosition(position);
   }, []);
 
+  // Handle avatar click to launch assign role dialog
+  const handleAvatarClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent task selection when clicking on avatar
+    
+    if (onAssignRole) {
+      const taskData = getTaskData();
+      onAssignRole(taskData);
+    }
+  }, [getTaskData, onAssignRole]);
+
   // Render differently based on node type
   if (type === 'event') {
     return (
@@ -423,15 +435,32 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
             {data.tasks.length}
           </div>
         )}
-        {avatar && (
-          <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100">
+        <div 
+          className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 cursor-pointer hover:bg-gray-200 transition-colors"
+          onClick={handleAvatarClick}
+          title={avatar ? "Change assigned role" : "Assign role"}
+        >
+          {avatar ? (
             <img
               src={avatar}
               alt="avatar"
               className="w-full h-full rounded-full object-cover"
             />
-          </div>
-        )}
+          ) : (
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-4 w-4 text-gray-400" 
+              viewBox="0 0 20 20" 
+              fill="currentColor"
+            >
+              <path 
+                fillRule="evenodd" 
+                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" 
+                clipRule="evenodd" 
+              />
+            </svg>
+          )}
+        </div>
         
         {/* Menu Button using Headless UI */}
         <Menu as="div" className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
