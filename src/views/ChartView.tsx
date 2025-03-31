@@ -58,7 +58,7 @@ const ChartView = () => {
   return (
     <div className="h-full flex">
       <ChartSidebar />
-      <div className="flex-1 ml-16">
+      <div className="flex-1">
         <GanttChart />
       </div>
     </div>
