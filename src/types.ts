@@ -78,6 +78,7 @@ export interface GanttData {
   start: string;
   end: string;
   milestones: Milestone[];
+  color?: string;
   tasks: Task[];
   dependencies: Dependency[]; 
 }

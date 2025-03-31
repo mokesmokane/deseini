@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Cog6ToothIcon,
   InformationCircleIcon,
@@ -7,6 +7,7 @@ import {
   ChevronLeftIcon
 } from '@heroicons/react/24/outline';
 import { useGantt } from '../../contexts/GanttContext';
+import { useChartsList } from '../../contexts/ChartsListContext';
 
 // Define sidebar menu sections following the Single Responsibility Principle
 interface SidebarSection {
@@ -20,7 +21,12 @@ const ChartSidebar: React.FC = () => {
   // State for managing sidebar expansion and active section
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
-  const { currentChart } = useGantt();
+  const { currentChart, setCurrentChart, setHasUnsavedChanges } = useGantt();
+  const { saveChart } = useChartsList();
+
+  // State for JSON editing
+  const [jsonContent, setJsonContent] = useState('');
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
   // Debug actions
   const logChartData = () => {
@@ -40,6 +46,43 @@ const ChartSidebar: React.FC = () => {
   // Format the JSON representation of the chart
   const getChartJsonRepresentation = () => {
     return JSON.stringify(currentChart, null, 2);
+  };
+
+  // Update the JSON content whenever the chart changes
+  useEffect(() => {
+    setJsonContent(getChartJsonRepresentation());
+  }, [currentChart]);
+
+  // Handle JSON content change
+  const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setJsonContent(e.target.value);
+    setJsonError(null); // Clear any previous errors
+  };
+
+  // Apply edited JSON to the chart
+  const saveJsonChanges = () => {
+    try {
+      const parsedJson = JSON.parse(jsonContent);
+      setCurrentChart(parsedJson);
+      
+      // Save to database as well
+      if (currentChart?.id) {
+        saveChart(parsedJson).then((success: boolean) => {
+          if (success) {
+            setJsonError(null);
+            setHasUnsavedChanges(false); // No unsaved changes since we just saved
+          } else {
+            setJsonError('Failed to save to database. Changes applied to chart locally only.');
+            setHasUnsavedChanges(true); // Mark as having unsaved changes
+          }
+        });
+      } else {
+        setHasUnsavedChanges(true);
+        setJsonError(null);
+      }
+    } catch (error) {
+      setJsonError(`Invalid JSON: ${(error as Error).message}`);
+    }
   };
 
   // Define sidebar sections - reordered with settings and debug at the bottom
@@ -145,8 +188,24 @@ const ChartSidebar: React.FC = () => {
           </div>
           
           <h4 className="font-medium mb-2">JSON Representation</h4>
-          <div className="flex-grow p-2 bg-gray-100 rounded-md text-xs font-mono overflow-auto whitespace-pre">
-            {getChartJsonRepresentation()}
+          <div className="flex-grow flex flex-col">
+            <textarea
+              value={jsonContent}
+              onChange={handleJsonChange}
+              className="flex-grow p-2 bg-gray-100 rounded-md text-xs font-mono mb-2 overflow-auto"
+              style={{ resize: 'vertical', minHeight: '150px' }}
+            />
+            {jsonError && (
+              <div className="text-red-500 text-xs mb-2">
+                {jsonError}
+              </div>
+            )}
+            <button 
+              onClick={saveJsonChanges}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium w-full"
+            >
+              Save JSON Changes
+            </button>
           </div>
         </div>
       )

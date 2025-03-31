@@ -25,7 +25,6 @@ export const CustomEdge = ({
   
     // Check if this edge (source->target) has a dependency violation
     let isViolation = false;
-    console.log('dependencyViolations', dependencyViolations, target);
     // Check for dependency violations using central dependency model
     if (currentChart?.dependencies && currentChart.dependencies.length > 0 && dependencyViolations) {
       // In React Flow, an edge goes from source to target
@@ -36,7 +35,6 @@ export const CustomEdge = ({
       );
   
       if (hasDependency) {
-        console.log('hasDependency', hasDependency, dependencyViolations[getDependencyKey(source, target)]);
         // Check for violations using target (dependent task) ID
         if (dependencyViolations[getDependencyKey(source, target)]) {
           isViolation = true;

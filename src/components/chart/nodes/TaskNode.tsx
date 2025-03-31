@@ -18,6 +18,7 @@ export interface TaskNodeProps {
     start: string;
     end: string;
     color?: string;
+    parentColor: string;
     relevantMilestones?: string[];
     milestones: Milestone[];
     width: number;
@@ -32,6 +33,7 @@ export interface TaskNodeProps {
     onAddBelowNewEvent?: (task: Task) => void;
     onCreateSubTask?: (task: Task) => void;
     onDeleteTask?: (task: Task) => void;
+    tasks?: Task[];
     },
     id: string;
     selected?: boolean;
@@ -48,7 +50,8 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     avatar, 
     start, 
     end, 
-    color, 
+    parentColor, 
+    color,
     relevantMilestones, 
     milestones, 
     width, 
@@ -323,7 +326,7 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
           style={{ 
             width: `${MILESTONE_SIZE}px`,
             height: `${MILESTONE_SIZE}px`,
-            backgroundColor: color || '#3b82f6', // Blue color as default for events
+            backgroundColor: parentColor || '#3b82f6', // Blue color as default for events
             borderRadius: `${MILESTONE_SIZE * 0.15}px`,
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
             border: selected ? '2px solid #000' : '1px solid rgba(0, 0, 0, 0.1)'
@@ -367,7 +370,8 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     position: 'relative' as const,
     zIndex: resizing ? 1000 : 10,
   };
-
+  console.log('Parent color:', parentColor);
+  console.log('Task color:', color);
   return (
     <div 
       ref={nodeRef}
@@ -392,7 +396,7 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
       />
       <div
         className="w-1.5 h-full flex-shrink-0 rounded-l-md"
-        style={{ backgroundColor: color || '#6366f1' }}
+        style={{ backgroundColor: parentColor!}}
       />
 
       <div className="flex-grow px-3 py-2 min-w-0">
@@ -405,6 +409,20 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
       </div>
 
       <div className="flex items-center gap-2 px-3 border-l border-gray-100">
+        {data.tasks && data.tasks.length > 0 && (
+          <div 
+            className="flex items-center justify-center rounded-full text-xs font-medium text-white" 
+            style={{ 
+              backgroundColor: color || '#6366f1',
+              width: '20px',
+              height: '20px',
+              minWidth: '20px'
+            }}
+            title={`${data.tasks.length} subtask${data.tasks.length > 1 ? 's' : ''}`}
+          >
+            {data.tasks.length}
+          </div>
+        )}
         {avatar && (
           <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100">
             <img
@@ -414,7 +432,7 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
             />
           </div>
         )}
-
+        
         {/* Menu Button using Headless UI */}
         <Menu as="div" className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
           {({ close }) => (

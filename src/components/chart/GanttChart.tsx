@@ -338,7 +338,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     (
       task: Task,
       context: ProcessTaskContext,
-      parentColor?: string,
+      parentColor: string,
       isSubtask: boolean = false
     ): { nodes: Node[]; nextRow: number } => {
       if (!currentChart) return { nodes: [], nextRow: context.currentRow };
@@ -347,13 +347,20 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
 
       if (task.start && task.end) {
         const startDate = parseISO(task.start);
-        const x = differenceInDays(startDate, parseISO(currentChart.start)) * DAY_WIDTH;
+        const endDate = parseISO(task.end);
+        
+        // Ensure startDate is before endDate for width calculation
+        const [earlierDate, laterDate] = startDate <= endDate ? [startDate, endDate] : [endDate, startDate];
+        
+        const x = differenceInDays(earlierDate, parseISO(currentChart.start)) * DAY_WIDTH;
         const y = context.currentRow * (NODE_HEIGHT + VERTICAL_SPACING) + TIMELINE_HEIGHT;
 
-        const endDate = parseISO(task.end);
-        const width = (differenceInDays(endDate, startDate) + 1) * DAY_WIDTH;
+        const width = (differenceInDays(laterDate, earlierDate) + 1) * DAY_WIDTH;
 
-        if (!task.tasks || isSubtask) {
+        // Always increment row for parent tasks with children
+        if (task.tasks && task.tasks.length > 0) {
+          result.nextRow = context.currentRow + 1;
+        } else if (!task.tasks || isSubtask) {
           result.nextRow = context.currentRow + 1;
         }
 
@@ -371,6 +378,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
           data: {
             ...task,
             width: task.type === 'event' ? undefined : width, // Width only needed for regular tasks
+            parentColor: parentColor,
             color: task.color || (task.type === 'event' ? '#3b82f6' : parentColor), // Default blue for events
             onResizeLeft: null,
             onResizeRight: task.type === 'event' ? null : handleResizeRight, // Events don't resize
@@ -397,7 +405,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
           const childResult = processTask(
             childTask,
             { currentRow: result.nextRow },
-            task.color,
+            task.color || parentColor,
             true
           );
           result.nodes.push(...childResult.nodes);
@@ -675,17 +683,79 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     [currentChart, findTask, generateTaskId, validateTaskDates, setCurrentChart, setHasUnsavedChanges]
   );
   
+
+
+  // Function to generate a slightly different color for subtasks
+  const getNextColor = (baseColor?: string): string => {
+    // Default color if none provided
+    const defaultColor = '#3b82f6'; // Primary blue
+    
+    if (!baseColor) return defaultColor;
+    
+    try {
+      // Modern, professional color palette with hex codes
+      const colors = [
+        '#3b82f6', // Primary blue
+        '#10b981', // Emerald green
+        '#ef4444', // Red
+        '#f59e0b', // Amber
+        '#8b5cf6', // Violet
+        '#ec4899', // Pink
+        '#06b6d4', // Cyan
+        '#6366f1', // Indigo
+        '#84cc16', // Lime
+        '#14b8a6', // Teal
+        '#a855f7', // Purple
+        '#f97316'  // Orange
+      ];
+      
+      // Handle both hex codes and named colors
+      let index = colors.indexOf(baseColor);
+      if (index === -1) {
+        // Try to find by simple name
+        const colorNameMap: Record<string, string> = {
+          'blue': '#3b82f6',
+          'green': '#10b981',
+          'red': '#ef4444',
+          'yellow': '#f59e0b',
+          'violet': '#8b5cf6',
+          'pink': '#ec4899',
+          'cyan': '#06b6d4',
+          'indigo': '#6366f1',
+          'lime': '#84cc16',
+          'teal': '#14b8a6',
+          'purple': '#a855f7',
+          'orange': '#f97316'
+        };
+        
+        const matchedHex = colorNameMap[baseColor.toLowerCase()];
+        if (matchedHex) {
+          index = colors.indexOf(matchedHex);
+        }
+      }
+      
+      // If still not found, start from beginning
+      if (index === -1) return colors[0];
+      
+      return colors[(index + 1) % colors.length];
+    } catch (error) {
+      console.error('Error generating next color:', error);
+      // If any error in color conversion, return default
+      return defaultColor;
+    }
+  };
+
   // Placeholder for the createSubChart function (to be implemented later)
   const onCreateSubTask = useCallback((task: Task) => {
     if (!currentChart) return;
-    
-    // Create a new subtask
+    let nextColor = getNextColor(task.color);
+    // Create a new subtask with a slightly different color
     const newSubTask: Task = {
       id: generateTaskId(),
       name: 'New Subtask',
       start: task.start,
       end: task.end,
-      color: task.color,
+      color: nextColor,
       tasks: []
     };
     
@@ -716,7 +786,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       setCurrentChart(updatedChart);
       setHasUnsavedChanges(true);
     }
-  }, []);
+  }, [currentChart, generateTaskId, setCurrentChart, setHasUnsavedChanges]);
 
   // State for task deletion confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -801,7 +871,6 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     setCurrentChart(updatedChart);
     setHasUnsavedChanges(true);
   }, [currentChart, setEdges, setCurrentChart, checkForViolations]);
-
 
   // Modified drag handlers with isDragging state
   const onNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
@@ -917,7 +986,11 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     });
 
     currentChart.tasks.forEach((task) => {
-      const result = processTask(task, { currentRow });
+      if (!task.color) return;
+      // For root-level tasks, use the chart's color as the parent color 
+      // to ensure consistent brand coloring at top level
+      const parentColor = currentChart.color || task.color;
+      const result = processTask(task, { currentRow }, parentColor);
       allNodes.push(...result.nodes);
       currentRow = result.nextRow;
     });

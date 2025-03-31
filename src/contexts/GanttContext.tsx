@@ -10,6 +10,7 @@ interface GanttContextType {
   error: string | null;
   hoveredNodes: string[];
   hoveredDayIndex: number | null;
+  hasUnsavedChanges?: boolean;
   
   // Actions
   loadChartById: (id: string) => void;
@@ -17,6 +18,7 @@ interface GanttContextType {
   setCurrentChart: (chart: GanttData | null) => void;
   setHoveredNodes: React.Dispatch<React.SetStateAction<string[]>>;
   setHoveredDayIndex: React.Dispatch<React.SetStateAction<number | null>>;
+  setHasUnsavedChanges: (hasChanges: boolean) => void;
 }
 
 // Create the context
@@ -30,11 +32,12 @@ interface GanttProviderProps {
 
 // Provider component
 export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialData }) => {
-  const [currentChart, setCurrentChart] = useState<GanttData | null>(null);
+  const [currentChart, setCurrentChart] = useState<GanttData | null>(initialData || null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredNodes, setHoveredNodes] = useState<string[]>([]);
   const [hoveredDayIndex, setHoveredDayIndex] = useState<number | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   
   // Access ChartsListContext
   const { loadChartById: fetchChartById, saveChart } = useChartsList();
@@ -130,6 +133,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
     error,
     hoveredNodes,
     hoveredDayIndex,
+    hasUnsavedChanges,
     
     // Actions
     loadChartById,
@@ -137,6 +141,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
     setCurrentChart,
     setHoveredNodes,
     setHoveredDayIndex,
+    setHasUnsavedChanges,
   };
 
   return (
