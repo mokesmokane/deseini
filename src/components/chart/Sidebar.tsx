@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Task, Milestone } from '../../types';
 import DatePicker from 'react-datepicker';
@@ -27,10 +27,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { currentChart } = useGantt();
   const { dependencyViolations } = useDependencyViolations();
   
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
+  
   // Effect to log selected task updates
   useEffect(() => {
     if (selectedTask) {
       // Selected task changes
+      // Reset edit state when task changes
+      setIsEditing(false);
+      setEditedName(selectedTask.name);
+      setEditedDescription(selectedTask.description || '');
     }
   }, [selectedTask]);
 
@@ -75,6 +84,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return findTaskName(currentChart.tasks) || taskId;
   }, [currentChart]);
   
+  // Handle save edited task name and description
+  const handleSaveEdit = () => {
+    if (!selectedTask || !onUpdateTask) return;
+    
+    onUpdateTask(selectedTask.id, {
+      name: editedName,
+      description: editedDescription
+    });
+    
+    setIsEditing(false);
+  };
+  
+  // Handle cancel edit
+  const handleCancelEdit = () => {
+    if (!selectedTask) return;
+    
+    setEditedName(selectedTask.name);
+    setEditedDescription(selectedTask.description || '');
+    setIsEditing(false);
+  };
+
   // IMPORTANT: Early return must come AFTER all hook definitions
   if (!selectedTask) return null;
 
@@ -84,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .filter((m): m is Milestone => m !== undefined);
 
   const handleDateChange = (date: Date | null, field: 'start' | 'end') => {
-    if (!date || !onUpdateTask || !selectedTask) return;
+    if (!date || !onUpdateTask || !selectedTask || !isEditing) return;
     onUpdateTask(selectedTask.id, {
       [field]: format(date, 'yyyy-MM-dd')
     });
@@ -138,14 +168,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Header */}
       <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
         <h2 className="text-lg font-semibold text-gray-900">Task Details</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center space-x-2">
+          {!isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="text-blue-500 hover:text-blue-700"
+              title="Edit task"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -153,41 +196,88 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Basic Info */}
         <div>
           <h3 className="text-sm font-medium text-gray-500">Task Name</h3>
-          <p className="mt-1 text-base text-gray-900 font-medium">{selectedTask.name}</p>
+          {isEditing ? (
+            <input
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+          ) : (
+            <p className="mt-1 text-base text-gray-900 font-medium">{selectedTask.name}</p>
+          )}
         </div>
 
-        {selectedTask.description && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Description</h3>
-            <p className="mt-1 text-base text-gray-900">{selectedTask.description}</p>
-          </div>
-        )}
+        <div>
+          <h3 className="text-sm font-medium text-gray-500">Description</h3>
+          {isEditing ? (
+            <textarea
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+              rows={4}
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+          ) : (
+            selectedTask.description ? (
+              <p className="mt-1 text-base text-gray-900">{selectedTask.description}</p>
+            ) : (
+              <p className="mt-1 text-base text-gray-400 italic">No description</p>
+            )
+          )}
+        </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-200"></div>
 
         {/* Dates */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-1">Start Date</h3>
-            <DatePicker
-              selected={selectedTask.start ? parseISO(selectedTask.start) : null}
-              onChange={(date) => handleDateChange(date, 'start')}
-              dateFormat="MMM d, yyyy"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            />
+            {isEditing ? (
+              <DatePicker
+                selected={selectedTask.start ? parseISO(selectedTask.start) : null}
+                onChange={(date) => handleDateChange(date, 'start')}
+                dateFormat="MMM d, yyyy"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
+            ) : (
+              <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-900">
+                {selectedTask.start ? format(parseISO(selectedTask.start), 'MMM d, yyyy') : 'No start date'}
+              </div>
+            )}
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-1">End Date</h3>
-            <DatePicker
-              selected={selectedTask.end ? parseISO(selectedTask.end) : null}
-              onChange={(date) => handleDateChange(date, 'end')}
-              dateFormat="MMM d, yyyy"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            />
+            {isEditing ? (
+              <DatePicker
+                selected={selectedTask.end ? parseISO(selectedTask.end) : null}
+                onChange={(date) => handleDateChange(date, 'end')}
+                dateFormat="MMM d, yyyy"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
+            ) : (
+              <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-900">
+                {selectedTask.end ? format(parseISO(selectedTask.end), 'MMM d, yyyy') : 'No end date'}
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Edit action buttons */}
+        {isEditing && (
+          <div className="flex space-x-2">
+            <button
+              onClick={handleSaveEdit}
+              className="flex-1 px-3 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {/* Divider */}
         <div className="border-t border-gray-200"></div>
 
