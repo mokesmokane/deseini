@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+        import { createBrowserRouter } from 'react-router-dom';
 import App from './App';
 import ProjectView from './views/ProjectView';
 import ChartView from './views/ChartView';
@@ -18,7 +18,11 @@ const router = createBrowserRouter([
         element: <ProjectView />
       },
       {
-        path: 'charts/:chartId',
+        path: 'projects/:projectId/chart/:chartId',
+        element: <ProjectView />
+      },
+      {
+        path: 'projects/:projectId/charts/new',
         element: <ChartView />
       }
     ]

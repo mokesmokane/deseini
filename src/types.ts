@@ -32,6 +32,7 @@ export interface Role {
 }
 
 export interface Project {
+  id?: string;
   bannerImage: string;
   projectName: string;
   description: string;

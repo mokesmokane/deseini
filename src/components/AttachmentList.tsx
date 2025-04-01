@@ -10,7 +10,7 @@ interface Attachment {
   url?: string;
 }
 
-interface AttachmentListProps {
+export interface AttachmentListProps {
   attachments: Attachment[];
   onDelete: (id: string) => void;
   onDownload: (attachment: Attachment) => void;

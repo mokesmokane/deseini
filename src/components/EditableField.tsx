@@ -1,23 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-interface EditableFieldProps {
+export interface EditableFieldProps {
   value: string | number;
+  fieldName?: string; 
   type?: 'text' | 'number' | 'textarea' | 'select' | 'date';
   options?: { value: string; label: string }[];
   onSave: (value: string | number) => void;
   className?: string;
-  textClassName?: string;
-  inputClassName?: string;
+  displayClasses?: string; 
+  inputClasses?: string; 
+  textareaRows?: number; 
 }
 
 export default function EditableField({
   value,
+  fieldName,
   type = 'text',
   options,
   onSave,
   className = '',
-  textClassName = 'cursor-pointer hover:bg-gray-50 p-1 rounded',
-  inputClassName = 'w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm'
+  displayClasses = 'cursor-pointer hover:bg-gray-50 p-1 rounded',
+  inputClasses = 'w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm',
+  textareaRows = 3
 }: EditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
@@ -28,6 +32,10 @@ export default function EditableField({
       inputRef.current.focus();
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    setCurrentValue(value);
+  }, [value]);
 
   const handleBlur = () => {
     setIsEditing(false);
@@ -49,95 +57,94 @@ export default function EditableField({
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
     try {
-      // Parse the date string and adjust for timezone
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-    } catch (e) {
-      return dateStr;
-    }
-  };
-
-  const formatDateForInput = (dateStr: string) => {
-    if (!dateStr) return '';
-    try {
-      // Parse the date string and adjust for timezone
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    } catch (e) {
-      // If the date is in a different format (e.g., "1-Jul-21"), try to parse it
       const date = new Date(dateStr);
-      if (!isNaN(date.getTime())) {
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-      }
+      return date.toLocaleDateString();
+    } catch (e) {
       return dateStr;
     }
   };
 
-  if (!isEditing) {
-    return (
-      <div
-        className={`${className} ${textClassName}`}
-        onClick={() => setIsEditing(true)}
-      >
-        {type === 'date' ? formatDate(value.toString()) : value}
-      </div>
-    );
-  }
-
-  if (type === 'select' && options) {
-    return (
-      <select
-        ref={inputRef as React.RefObject<HTMLSelectElement>}
-        value={currentValue}
-        onChange={(e) => setCurrentValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className={inputClassName}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  if (type === 'textarea') {
-    return (
-      <textarea
-        ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-        value={currentValue}
-        onChange={(e) => setCurrentValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className={inputClassName}
-        rows={3}
-      />
-    );
+  if (isEditing) {
+    if (type === 'textarea') {
+      return (
+        <div className={className}>
+          {fieldName && <div className="mb-1 text-sm font-medium text-gray-700">{fieldName}</div>}
+          <textarea
+            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+            value={currentValue}
+            onChange={(e) => setCurrentValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className={inputClasses}
+            rows={textareaRows}
+          />
+        </div>
+      );
+    } else if (type === 'select' && options) {
+      return (
+        <div className={className}>
+          {fieldName && <div className="mb-1 text-sm font-medium text-gray-700">{fieldName}</div>}
+          <select
+            ref={inputRef as React.RefObject<HTMLSelectElement>}
+            value={currentValue as string}
+            onChange={(e) => setCurrentValue(e.target.value)}
+            onBlur={handleBlur}
+            className={inputClasses}
+          >
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    } else if (type === 'date') {
+      return (
+        <div className={className}>
+          {fieldName && <div className="mb-1 text-sm font-medium text-gray-700">{fieldName}</div>}
+          <input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            type="date"
+            value={currentValue as string}
+            onChange={(e) => setCurrentValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className={inputClasses}
+          />
+        </div>
+      );
+    } else {
+      return (
+        <div className={className}>
+          {fieldName && <div className="mb-1 text-sm font-medium text-gray-700">{fieldName}</div>}
+          <input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            type={type}
+            value={currentValue}
+            onChange={(e) => setCurrentValue(type === 'number' ? Number(e.target.value) : e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className={inputClasses}
+          />
+        </div>
+      );
+    }
   }
 
   return (
-    <input
-      ref={inputRef as React.RefObject<HTMLInputElement>}
-      type={type}
-      value={type === 'date' ? formatDateForInput(currentValue.toString()) : currentValue}
-      onChange={(e) => setCurrentValue(type === 'number' ? Number(e.target.value) : e.target.value)}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      className={inputClassName}
-    />
+    <div 
+      onClick={() => setIsEditing(true)} 
+      className={`${displayClasses} ${className}`}
+    >
+      {fieldName && <div className="text-sm font-medium text-gray-500">{fieldName}</div>}
+      <div>
+        {type === 'date'
+          ? formatDate(value as string)
+          : type === 'select' && options
+          ? options.find((option) => option.value === value)?.label || value
+          : value || <span className="italic text-gray-400">Click to edit</span>}
+      </div>
+    </div>
   );
 }

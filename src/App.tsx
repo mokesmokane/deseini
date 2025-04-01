@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import Sidebar from './components/Sidebar';
 import { supabase } from './lib/supabase';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
@@ -7,19 +6,18 @@ import LogoCarousel from './components/LogoCarousel';
 import toast, { Toaster } from 'react-hot-toast';
 import { GanttProvider } from './contexts/GanttContext';
 import { Session } from '@supabase/supabase-js';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { DependencyViolationsProvider } from './contexts/DependencyViolationsContext';
 import { ChartsListProvider } from './contexts/ChartsListContext';
+import { ProjectProvider } from './contexts/ProjectContext';
 
 export default function App() {
   const [projects, setProjects] = useState<Array<{ id: string; projectName: string }>>([]);
   const [session, setSession] = useState<Session | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId?: string }>(); // Get projectId from URL params
   
-  // Check if we're on the landing page (root path)
-  const isLandingPage = location.pathname === '/';
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -68,10 +66,6 @@ export default function App() {
     navigate(`/projects/${projectId}`);
   };
 
-  const handleSelectGanttChart = (chartId: string | null) => {
-    navigate(`/charts/${chartId || 'new'}`);
-  };
-
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -96,7 +90,7 @@ export default function App() {
           <div 
             className="cursor-pointer flex items-center" 
             onClick={navigateToLanding}
-            style={{ width: '200px' }}
+            style={{ minWidth: '150px' }} // Adjust width as needed
           >
             <LogoCarousel 
               height="40px"
@@ -104,14 +98,27 @@ export default function App() {
               autoRotateInterval={5000}
             />
           </div>
-          {!isLandingPage && (
-            <button
-              onClick={navigateToLanding}
-              className="text-gray-500 hover:text-gray-700 text-sm"
-            >
-              Back to Home
-            </button>
+         
+          {/* Project Dropdown - Conditionally Rendered */}
+          {projectId && projects.length > 0 && (
+            <div className="flex-1 flex justify-start px-4"> 
+              <select
+                value={projectId}
+                onChange={(e) => handleSelectProject(e.target.value)}
+                className="block w-auto max-w-xs pl-3 pr-10 py-2 text-base focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white appearance-none border-none"
+                aria-label="Select Project"
+              >
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.projectName}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
+          
+          {/* Placeholder for potential right-aligned items if needed */}
+          <div style={{ minWidth: '150px' }}></div> 
         </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
@@ -119,7 +126,9 @@ export default function App() {
           {/* Render the appropriate route component */}
            <DependencyViolationsProvider>
             <GanttProvider>
-              <Outlet context={{ projects }} />
+              <ProjectProvider>
+                <Outlet context={{ projects }} />
+              </ProjectProvider>
             </GanttProvider>
           </DependencyViolationsProvider>
         </div>

@@ -1,85 +1,110 @@
 import { Project, Role, Attachment } from '../types';
-import RoleList from './RoleList';
-import EditableField from './EditableField';
+import { useParams, useNavigate } from 'react-router-dom';
+import RoleList, { RoleListProps } from './RoleList'; 
+import EditableField, { EditableFieldProps } from './EditableField';
 import { DocumentDuplicateIcon } from '@heroicons/react/24/outline';
-import FileUpload from './FileUpload';
-import AttachmentList from './AttachmentList';
+import FileUpload, { FileUploadProps } from './FileUpload';
+import AttachmentList, { AttachmentListProps } from './AttachmentList';
 import { supabase } from '../lib/supabase';
+import { useProject } from '../contexts/ProjectContext';
+import { useState } from 'react';
+import RoleCard from './RoleCard';
 
-interface ProjectFormProps {
-  project: Project;
-  onUpdate: (project: Project) => void;
-  onSave: () => void;
-  onClone: () => void;
-  projectId?: string | null;
-  onDeleteRole: (roleId: string) => void;
-  onDeleteDeliverable: (deliverableId: string) => void;
-}
+export default function ProjectForm() {
+  const [selectedRoleIndex, setSelectedRoleIndex] = useState<number | null>(null);
 
-export default function ProjectForm({ project, onUpdate, onSave, onClone, projectId, onDeleteRole, onDeleteDeliverable }: ProjectFormProps) {
+  const { 
+    setProject,
+    saveProject,
+    cloneProject, 
+    deleteRole,
+    deleteDeliverable,
+    project
+  } = useProject();
+
+  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+
+  const handleProjectUpdate = (updatedProject: Project) => {
+    setProject(updatedProject);
+  };
+
+  const handleSaveProject = async () => {
+    const savedProjectId = await saveProject();
+    
+    if (projectId === 'new' && savedProjectId) {
+      navigate(`/projects/${savedProjectId}`, { replace: true });
+    }
+  };
   const handleProjectNameChange = (value: string | number) => {
-    onUpdate({
+    if (!project) return;
+    handleProjectUpdate({
       ...project,
       projectName: value.toString()
-    });
+    } );
   };
 
   const handleDescriptionChange = (value: string | number) => {
-    onUpdate({
+    if (!project) return;
+    handleProjectUpdate({
       ...project,
       description: value.toString()
     });
   };
 
   const handleAddRole = (newRole: Omit<Role, 'id'>) => {
-    onUpdate({
+    if (!project) return;
+    handleProjectUpdate({
       ...project,
       roles: [
         ...project.roles,
-        newRole
+        {
+            ...newRole,
+            id: `temp-${Date.now()}-${Math.random()}` 
+        }
       ]
     });
   };
 
   const handleUpdateRole = (index: number, updatedRole: Role) => {
+    if (!project) return;
     const newRoles = [...project.roles];
     newRoles[index] = updatedRole;
-    onUpdate({
+    handleProjectUpdate({
       ...project,
       roles: newRoles
     });
   };
 
   const handleCloneRole = (index: number) => {
+    if (!project) return;
     const roleToClone = project.roles[index];
     const clonedRole = {
       ...roleToClone,
-      id: undefined, // Remove the ID so it's treated as a new role in the database
+      id: `temp-clone-${Date.now()}-${Math.random()}`,
       title: `${roleToClone.title} (Copy)`,
       deliverables: roleToClone.deliverables ? roleToClone.deliverables.map(deliverable => ({
         ...deliverable,
-        id: undefined // Remove deliverable IDs as well
+        id: undefined
       })) : []
     };
-    onUpdate({
+    handleProjectUpdate({
       ...project,
       roles: [...project.roles, clonedRole]
     });
   };
 
-  const handleFileUpload = async (files: File[]) => {
-    try {
-      if (!projectId) {
-        throw new Error('Project must be saved before adding attachments');
+  const handleFileUpload: FileUploadProps['onUpload'] = async (files: File[]) => {
+    if (!project || !projectId || projectId === 'new') {
+        console.warn('Project must be saved before adding attachments');
+        return;
       }
-
+    try {
       const newAttachments: Attachment[] = [];
 
       for (const file of files) {
-        // Upload file to Supabase Storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const fileName = `${projectId}/${Date.now()}-${file.name}`;
+        const filePath = fileName;
 
         const { error: uploadError } = await supabase.storage
           .from('project-attachments')
@@ -87,7 +112,6 @@ export default function ProjectForm({ project, onUpdate, onSave, onClone, projec
 
         if (uploadError) throw uploadError;
 
-        // Create attachment record in the database
         const { data: attachmentData, error: attachmentError } = await supabase
           .from('attachments')
           .insert({
@@ -108,15 +132,14 @@ export default function ProjectForm({ project, onUpdate, onSave, onClone, projec
             name: attachmentData.name,
             size: attachmentData.size,
             type: attachmentData.type,
-            url: attachmentData.file_path
+            url: attachmentData.file_path 
           };
 
           newAttachments.push(newAttachment);
         }
       }
 
-      // Update project with new attachments
-      onUpdate({
+      handleProjectUpdate({
         ...project,
         attachments: [...project.attachments, ...newAttachments]
       });
@@ -125,19 +148,20 @@ export default function ProjectForm({ project, onUpdate, onSave, onClone, projec
     }
   };
 
-  const handleDeleteAttachment = async (attachmentId: string) => {
+  const handleDeleteAttachment: AttachmentListProps['onDelete'] = async (attachmentId: string) => {
+    if (!project) return;
     try {
       const attachment = project.attachments.find(a => a.id === attachmentId);
       if (!attachment?.url) return;
 
-      // Delete from storage
       const { error: deleteStorageError } = await supabase.storage
         .from('project-attachments')
-        .remove([attachment.url]);
+        .remove([attachment.url]); 
 
-      if (deleteStorageError) throw deleteStorageError;
+      if (deleteStorageError && deleteStorageError.message !== 'The resource was not found') {
+         throw deleteStorageError;
+       }
 
-      // Delete from database
       const { error: deleteDbError } = await supabase
         .from('attachments')
         .delete()
@@ -145,8 +169,7 @@ export default function ProjectForm({ project, onUpdate, onSave, onClone, projec
 
       if (deleteDbError) throw deleteDbError;
 
-      // Update project state
-      onUpdate({
+      handleProjectUpdate({
         ...project,
         attachments: project.attachments.filter(a => a.id !== attachmentId)
       });
@@ -154,127 +177,159 @@ export default function ProjectForm({ project, onUpdate, onSave, onClone, projec
       console.error('Error deleting attachment:', error);
     }
   };
-
-  const handleDownloadAttachment = async (attachment: Attachment) => {
+  
+  const handleDownloadAttachment: AttachmentListProps['onDownload'] = async (attachment: Attachment) => {
     try {
       if (!attachment.url) return;
 
       const { data, error } = await supabase.storage
         .from('project-attachments')
-        .download(attachment.url);
+        .download(attachment.url); 
 
       if (error) throw error;
 
-      // Create download link
-      const blob = new Blob([data]);
+      const blob = new Blob([data!]); 
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = attachment.name;
+      link.download = attachment.name; 
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       console.error('Error downloading attachment:', error);
     }
   };
 
+  const handleCloneProject = () => {
+    if (project && project.id && projectId !== 'new') { 
+      // cloneProject(project.id); 
+    }
+  }
+  
+  const handleDeleteRoleByIndex = (index: number) => {
+    if (!project) return;
+    const roleToDelete = project.roles[index];
+    if (roleToDelete.id && !roleToDelete.id.startsWith('temp')) {
+      deleteRole(roleToDelete.id);
+    } else {
+      const newRoles = [...project.roles];
+      newRoles.splice(index, 1);
+      handleProjectUpdate({ ...project, roles: newRoles });
+    }
+    
+    // If the deleted role was selected, clear the selection
+    if (selectedRoleIndex === index) {
+      setSelectedRoleIndex(null);
+    } else if (selectedRoleIndex !== null && selectedRoleIndex > index) {
+      // If a role above the selected one was deleted, adjust the selection index
+      setSelectedRoleIndex(selectedRoleIndex - 1);
+    }
+  };
+
+  const handleSelectRole = (role: Role, index: number) => {
+    setSelectedRoleIndex(index === selectedRoleIndex ? null : index);
+  };
+
+  if (!project) {
+    return <div className="p-8 text-center text-red-500">Project not found</div>;
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Project Details</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Click on any field to edit it directly.
-          </p>
-        </div>
-        <div className="flex space-x-3">
+    <div className="p-6 md:p-8 bg-gray-50 min-h-full flex flex-col">
+      {/* Project Header & Actions */}
+      <div className="mb-6 pb-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
+        <h1 className="text-2xl font-semibold text-gray-800 truncate pr-4">Project Details</h1>
+        <div className="flex space-x-2">
           <button
-            onClick={onClone}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <DocumentDuplicateIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-            Clone Project
-          </button>
-          <button
-            onClick={onSave}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            onClick={handleSaveProject}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out text-sm font-medium"
           >
             Save Project
           </button>
+          {projectId !== 'new' && (
+            <button
+              onClick={handleCloneProject} 
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out"
+              title="Clone Project"
+              disabled={!project.id} 
+            >
+              <DocumentDuplicateIcon className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Project Name
-            </label>
-            <div className="mt-1">
-              <EditableField
-                value={project.projectName}
-                onSave={handleProjectNameChange}
-                className="text-lg"
-              />
-            </div>
-          </div>
+      {/* Top Section: Project Details & Attachments */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Project Details */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 md:col-span-2">
+          <EditableField
+            fieldName="Project Name" 
+            value={project.projectName}
+            onSave={handleProjectNameChange}
+            displayClasses="text-xl font-medium text-gray-700"
+            inputClasses="text-xl font-medium"
+          />
+          <EditableField
+            fieldName="Description" 
+            value={project.description || ''}
+            onSave={handleDescriptionChange}
+            type="textarea"
+            displayClasses="text-sm text-gray-600 mt-3"
+            inputClasses="text-sm text-gray-600"
+            textareaRows={3} 
+          />
+          <RoleList
+          roles={project.roles}
+          onAddRole={handleAddRole}
+          onUpdateRole={handleUpdateRole}
+          onCloneRole={handleCloneRole}
+          onDeleteRole={handleDeleteRoleByIndex}
+          onDeleteDeliverable={deleteDeliverable}
+          displayMode="card"
+          onSelectRole={handleSelectRole}
+          selectedRoleIndex={selectedRoleIndex !== null ? selectedRoleIndex : undefined}
+        />
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Description
-            </label>
-            <div className="mt-1">
-              <EditableField
-                value={project.description}
-                type="textarea"
-                onSave={handleDescriptionChange}
-              />
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Attachments</h3>
-            {projectId ? (
-              <>
-                <FileUpload onUpload={handleFileUpload} />
-                <div className="mt-4">
-                  <AttachmentList
-                    attachments={project.attachments}
-                    onDelete={handleDeleteAttachment}
-                    onDownload={handleDownloadAttachment}
-                  />
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">Save the project first to add attachments.</p>
-            )}
-          </div>
+        {/* Attachments Section */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-800 mb-3">Attachments</h2>
+          <FileUpload onUpload={handleFileUpload} disabled={!projectId || projectId === 'new'} /> 
+          {(!projectId || projectId === 'new') && (
+            <p className="text-xs text-gray-500 mt-1">Save the project first to add attachments.</p>
+          )}
+          <AttachmentList 
+            attachments={project.attachments} 
+            onDelete={handleDeleteAttachment} 
+            onDownload={handleDownloadAttachment} 
+          />
         </div>
       </div>
 
-      <RoleList 
-        roles={project.roles}
-        onAddRole={handleAddRole}
-        onDeleteRole={(index) => {
-          const role = project.roles[index];
-          if (role.id) {
-            onDeleteRole(role.id);
-          } else {
-            // For roles that haven't been saved to the database yet
-            const newRoles = [...project.roles];
-            newRoles.splice(index, 1);
-            onUpdate({
-              ...project,
-              roles: newRoles
-            });
-          }
-        }}
-        onUpdateRole={handleUpdateRole}
-        onCloneRole={handleCloneRole}
-        onDeleteDeliverable={onDeleteDeliverable}
-      />
+      {/* Roles Grid Section */}
+      {/* <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">Roles</h2>
+        <p className="text-sm text-gray-600 mb-4">Click on a role to view or edit its details.</p>
+        
+        
+      </div> */}
+
+      {/* Selected Role Detail View */}
+      {selectedRoleIndex !== null && project.roles[selectedRoleIndex] && (
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Role Details</h2>
+          <RoleCard
+            role={project.roles[selectedRoleIndex]}
+            onDelete={() => handleDeleteRoleByIndex(selectedRoleIndex)}
+            onUpdate={(updatedRole) => handleUpdateRole(selectedRoleIndex, updatedRole)}
+            onClone={handleCloneRole ? () => handleCloneRole(selectedRoleIndex) : undefined}
+            onDeleteDeliverable={deleteDeliverable}
+          />
+        </div>
+      )}
     </div>
   );
 }

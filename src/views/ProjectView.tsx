@@ -1,426 +1,48 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { GanttChart } from '../components/chart/GanttChart';
+import { useEffect } from 'react';
+import { useProject } from '../contexts/ProjectContext';
+import Sidebar from '../components/Sidebar';
 import ProjectForm from '../components/ProjectForm';
-import { Project } from '../types';
-import { supabase } from '../lib/supabase';
-import toast from 'react-hot-toast';
 
-// This follows the Single Responsibility Principle - handling only project view concerns
 const ProjectView = () => {
-  const { projectId } = useParams<{ projectId: string }>();
-  const [project, setProject] = useState<Project | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [databaseRoleIds, setDatabaseRoleIds] = useState<Set<string>>(new Set());
-  const navigate = useNavigate();
+  const { projectId, chartId } = useParams<{ projectId: string; chartId?: string }>();
+  const { project, isLoading, errorMessage, fetchProject } = useProject();
 
+  // Only handle project loading via useEffect
   useEffect(() => {
-    if (projectId === 'new') {
-      // Initialize a new project
-      setProject({
-        projectName: "",
-        description: "",
-        bannerImage: "",
-        attachments: [],
-        roles: []
-      });
-      setIsLoading(false);
-      setDatabaseRoleIds(new Set());
-      return;
+    if (projectId && projectId !== 'new') {
+      if (project?.id !== projectId) {
+        console.log(`ProjectView: Fetching project ${projectId}. Current project ID: ${project?.id}`);
+        fetchProject(projectId!);
+      }
     }
-
-    // Load existing project
-    fetchProject(projectId!);
-  }, [projectId]);
-
-  const fetchProject = async (id: string) => {
-    setIsLoading(true);
-    try {
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (projectError) throw projectError;
-      if (!projectData) throw new Error('Project not found');
-
-      // Fetch roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('roles')
-        .select('*, deliverables(*)')
-        .eq('project_id', id);
-
-      if (rolesError) throw rolesError;
-
-      // Fetch attachments
-      const { data: attachmentsData, error: attachmentsError } = await supabase
-        .from('attachments')
-        .select('*')
-        .eq('project_id', id);
-
-      if (attachmentsError) throw attachmentsError;
-
-      // Transform data to match our frontend model
-      const roles = rolesData?.map(role => {
-        // Track role IDs that exist in the database
-        if (role.id) {
-          setDatabaseRoleIds(prev => new Set(prev).add(role.id));
-        }
-
-        return {
-          id: role.id,
-          title: role.title,
-          type: role.type,
-          country: role.country,
-          region: role.region,
-          town: role.town,
-          level: role.level,
-          professions: role.professions,
-          startDate: role.start_date,
-          endDate: role.end_date,
-          paymentBy: role.payment_by,
-          hourlyRate: role.hourly_rate,
-          description: role.description,
-          deliverables: role.deliverables?.map((d: any) => ({
-            id: d.id,
-            deliverableName: d.deliverable_name,
-            deadline: d.deadline,
-            fee: d.fee,
-            description: d.description
-          })) || []
-        };
-      }) || [];
-
-      const attachments = attachmentsData?.map(attachment => ({
-        id: attachment.id,
-        name: attachment.name,
-        size: attachment.size,
-        type: attachment.type,
-        url: attachment.file_path
-      })) || [];
-
-      setProject({
-        projectName: projectData.project_name,
-        description: projectData.description,
-        bannerImage: projectData.banner_image || '',
-        attachments,
-        roles
-      });
-
-      toast.success('Project loaded successfully');
-    } catch (error) {
-      console.error('Error fetching project details:', error);
-      toast.error('Failed to load project');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleProjectUpdate = (updatedProject: Project) => {
-    setProject(updatedProject);
-  };
-
-  const handleSaveProject = async () => {
-    if (!project) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('No authenticated user found');
-      }
-
-      let savedProjectId = projectId;
-      const isNewProject = projectId === 'new';
-
-      if (isNewProject) {
-        // Create new project
-        const { data: projectData, error: projectError } = await supabase
-          .from('projects')
-          .insert({
-            project_name: project.projectName,
-            description: project.description,
-            banner_image: project.bannerImage,
-            user_id: user.id
-          })
-          .select()
-          .single();
-
-        if (projectError) throw projectError;
-        if (!projectData) throw new Error('No project data returned');
-
-        savedProjectId = projectData.id;
-      } else {
-        // Update existing project
-        const { error: projectError } = await supabase
-          .from('projects')
-          .update({
-            project_name: project.projectName,
-            description: project.description,
-            banner_image: project.bannerImage
-          })
-          .eq('id', savedProjectId);
-
-        if (projectError) throw projectError;
-      }
-
-      // Handle roles
-      const newDatabaseRoleIds = new Set<string>();
-
-      for (const role of project.roles) {
-        let roleData;
-
-        if (role.id && databaseRoleIds.has(role.id)) {
-          // Update existing role
-          const { data, error: roleError } = await supabase
-            .from('roles')
-            .update({
-              title: role.title,
-              type: role.type,
-              country: role.country,
-              region: role.region,
-              town: role.town,
-              level: role.level,
-              professions: role.professions,
-              start_date: role.startDate,
-              end_date: role.endDate,
-              payment_by: role.paymentBy,
-              hourly_rate: role.hourlyRate,
-              description: role.description
-            })
-            .eq('id', role.id)
-            .select()
-            .single();
-
-          if (roleError) throw roleError;
-          roleData = data;
-          if (roleData) {
-            newDatabaseRoleIds.add(roleData.id);
-          }
-        } else {
-          // Create new role
-          const { data, error: roleError } = await supabase
-            .from('roles')
-            .insert({
-              project_id: savedProjectId,
-              title: role.title,
-              type: role.type,
-              country: role.country,
-              region: role.region,
-              town: role.town,
-              level: role.level,
-              professions: role.professions,
-              start_date: role.startDate,
-              end_date: role.endDate,
-              payment_by: role.paymentBy,
-              hourly_rate: role.hourlyRate,
-              description: role.description
-            })
-            .select()
-            .single();
-
-          if (roleError) throw roleError;
-          roleData = data;
-          if (roleData) {
-            newDatabaseRoleIds.add(roleData.id);
-          }
-        }
-
-        if (!roleData) throw new Error('No role data returned');
-
-        // Handle deliverables
-        if (role.deliverables && role.deliverables.length > 0) {
-          // Delete existing deliverables
-          if (role.id) {
-            const { error: deleteDeliverablesError } = await supabase
-              .from('deliverables')
-              .delete()
-              .eq('role_id', role.id);
-
-            if (deleteDeliverablesError) throw deleteDeliverablesError;
-          }
-
-          // Create new deliverables
-          const deliverablesData = role.deliverables.map(deliverable => ({
-            role_id: roleData.id,
-            deliverable_name: deliverable.deliverableName,
-            deadline: deliverable.deadline,
-            fee: deliverable.fee,
-            description: deliverable.description
-          }));
-
-          const { data: insertedDeliverables, error: deliverablesError } = await supabase
-            .from('deliverables')
-            .insert(deliverablesData)
-            .select();
-
-          if (deliverablesError) throw deliverablesError;
-
-          // Update local state with new deliverable IDs
-          if (insertedDeliverables) {
-            role.deliverables = role.deliverables.map((deliverable, index) => ({
-              ...deliverable,
-              id: insertedDeliverables[index]?.id
-            }));
-          }
-        }
-      }
-
-      setDatabaseRoleIds(newDatabaseRoleIds);
-      
-      toast.success('Project saved successfully');
-      
-      // If it was a new project, navigate to the new project URL
-      if (isNewProject && savedProjectId) {
-        navigate(`/projects/${savedProjectId}`, { replace: true });
-      }
-    } catch (error) {
-      console.error('Error saving project:', error);
-      toast.error('Failed to save project');
-    }
-  };
-
-  const handleCloneProject = async () => {
-    if (!project) return;
-    
-    try {
-      const clonedProject = {
-        ...project,
-        projectName: `${project.projectName} (Copy)`,
-        roles: project.roles.map(role => ({
-          ...role,
-          id: undefined // Remove IDs when cloning
-        }))
-      };
-      setProject(clonedProject);
-      setDatabaseRoleIds(new Set());
-      toast.success('Project cloned successfully');
-      navigate('/projects/new', { replace: true });
-    } catch (error) {
-      console.error('Error cloning project:', error);
-      toast.error('Failed to clone project');
-    }
-  };
-
-  const handleDeleteRole = async (roleId: string) => {
-    try {
-      // First verify the role exists
-      const { data: roleExists, error: checkError } = await supabase
-        .from('roles')
-        .select('id')
-        .eq('id', roleId)
-        .single();
-
-      if (checkError) {
-        console.error('Error checking role:', checkError);
-        throw new Error('Failed to verify role');
-      }
-
-      if (!roleExists) {
-        throw new Error('Role not found');
-      }
-
-      // Delete the role (cascade will handle deliverables)
-      const { error: deleteError } = await supabase
-        .from('roles')
-        .delete()
-        .eq('id', roleId);
-
-      if (deleteError) {
-        console.error('Error deleting role:', deleteError);
-        throw deleteError;
-      }
-
-      // Remove from our tracking set
-      const newDatabaseRoleIds = new Set(databaseRoleIds);
-      newDatabaseRoleIds.delete(roleId);
-      setDatabaseRoleIds(newDatabaseRoleIds);
-
-      // Update the local state
-      if (project) {
-        setProject({
-          ...project,
-          roles: project.roles.filter(role => role.id !== roleId)
-        });
-      }
-
-      toast.success('Role deleted successfully');
-    } catch (error) {
-      console.error('Error deleting role:', error);
-      toast.error(`Failed to delete role: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
-
-  const handleDeleteDeliverable = async (deliverableId: string) => {
-    try {
-      // First verify the deliverable exists
-      const { data: deliverableExists, error: checkError } = await supabase
-        .from('deliverables')
-        .select('id')
-        .eq('id', deliverableId)
-        .single();
-
-      if (checkError) {
-        console.error('Error checking deliverable:', checkError);
-        throw new Error('Failed to verify deliverable');
-      }
-
-      if (!deliverableExists) {
-        throw new Error('Deliverable not found');
-      }
-
-      // Delete the deliverable
-      const { error: deleteError } = await supabase
-        .from('deliverables')
-        .delete()
-        .eq('id', deliverableId);
-
-      if (deleteError) {
-        console.error('Error deleting deliverable:', deleteError);
-        throw deleteError;
-      }
-
-      // Update the local state
-      if (project) {
-        setProject({
-          ...project,
-          roles: project.roles.map(role => {
-            if (!role.deliverables) return role;
-            
-            return {
-              ...role,
-              deliverables: role.deliverables.filter(d => d.id !== deliverableId)
-            };
-          })
-        });
-      }
-
-      toast.success('Deliverable deleted successfully');
-    } catch (error) {
-      console.error('Error deleting deliverable:', error);
-      toast.error(`Failed to delete deliverable: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
+  }, [projectId, fetchProject, project?.id]);
 
   if (isLoading) {
-    return <div className="p-8 text-center">Loading project...</div>;
+    return <div className="p-8 text-center">Loading chart...</div>;
   }
 
-  if (!project) {
-    return <div className="p-8 text-center text-red-500">Project not found</div>;
+  if (errorMessage) {
+    return (
+      <div className="h-full flex">
+        <Sidebar />
+        <div className="flex-1 p-8 text-center">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md inline-block">
+            <p className="font-medium">Error loading project</p>
+            <p className="text-sm">{errorMessage}</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="py-6 px-6">
-      <ProjectForm 
-        project={project} 
-        onUpdate={handleProjectUpdate}
-        onSave={handleSaveProject}
-        onClone={handleCloneProject}
-        projectId={projectId === 'new' ? null : projectId}
-        onDeleteRole={handleDeleteRole}
-        onDeleteDeliverable={handleDeleteDeliverable}
-      />
+    <div className="h-full flex">
+      <Sidebar />
+      <div className="flex-1">
+        {chartId ? <GanttChart /> : <ProjectForm />}
+      </div>
     </div>
   );
 };

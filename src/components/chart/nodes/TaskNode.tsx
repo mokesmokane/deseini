@@ -114,12 +114,10 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     
     // Handle direct actions
     if (action === 'createSubTask') {
-      console.log('Menu action: Create Sub Task');
       onCreateSubTask?.(taskData);
       setSubmenuPosition(null);
       close(); // Close the menu using the provided close function
     } else if (action === 'deleteTask') {
-      console.log('Menu action: Delete Task');
       onDeleteTask?.(taskData);
       setSubmenuPosition(null);
       close(); // Close the menu using the provided close function
@@ -129,8 +127,6 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
   const handleSubmenuAction = useCallback((position: MenuPosition, action: SubMenuAction) => (e: React.MouseEvent, close: () => void) => {
     e.stopPropagation();
     const taskData = getTaskData();
-    
-    console.log(`Submenu action: ${position} - ${action}`);
     
     // Call the appropriate callback based on position and action
     if (position === 'above') {
@@ -186,10 +182,6 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     
     // Only call onResizeRight if days has changed
     if (prevRightDaysRef.current === null || prevRightDaysRef.current !== days) {
-      console.log('=== RIGHT RESIZE EVENT DETAILS ===');
-      console.log('New width:', newWidth);
-      console.log('New end date:', format(newEndDate, 'yyyy-MM-dd'));
-      console.log('=== END ===');
       onResizeRight(id, roundedWidth, format(newEndDate, 'yyyy-MM-dd'));
       prevRightDaysRef.current = days;
     }
@@ -382,8 +374,7 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     position: 'relative' as const,
     zIndex: resizing ? 1000 : 10,
   };
-  console.log('Parent color:', parentColor);
-  console.log('Task color:', color);
+
   return (
     <div 
       ref={nodeRef}

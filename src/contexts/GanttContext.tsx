@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { GanttData, Task } from '../types';
 import { useChartsList } from './ChartsListContext';
 
@@ -50,7 +50,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
   }, [initialData]);
   
   // Load a specific chart by ID
-  const loadChartById = async (id: string) => {
+  const loadChartById = useCallback(async (id: string) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -68,21 +68,32 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchChartById]);
 
   // Update a specific task within a chart
-  const updateTask = async (chartId: string, taskId: string, updates: Partial<Task>): Promise<boolean> => {
-    if (!currentChart || currentChart.id !== chartId) {
-      // Load the chart first if it's not the current one
-      loadChartById(chartId);
-      if (!currentChart) {
-        setError('Chart not found');
+  const updateTask = useCallback(async (chartId: string, taskId: string, updates: Partial<Task>): Promise<boolean> => {
+    // Get the current chart value from state at call time rather than from closure
+    const chart = currentChart;
+    if (!chart || chart.id !== chartId) {
+      try {
+        // Properly await the chart loading
+        await loadChartById(chartId);
+        // After loading, we need to check again if currentChart is available
+        // We need to get the fresh value after the async operation
+        const freshChart = currentChart;
+        if (!freshChart) {
+          setError('Chart not found after loading');
+          return false;
+        }
+      } catch (error) {
+        setError('Error loading chart for task update');
         return false;
       }
     }
     
     try {
       // Deep clone the current chart to avoid direct state mutation
+      // Get the fresh value after possible async operations
       const updatedChart = JSON.parse(JSON.stringify(currentChart)) as GanttData;
       
       // Helper function to recursively find and update task
@@ -123,7 +134,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       console.error(error);
       return false;
     }
-  };
+  }, [loadChartById, saveChart, setError, setCurrentChart]);
 
   // Provide the context value
   const contextValue: GanttContextType = {
