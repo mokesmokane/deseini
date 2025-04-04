@@ -20,7 +20,7 @@ export default function EditableField({
   onSave,
   className = '',
   displayClasses = 'cursor-pointer hover:bg-gray-50 p-1 rounded',
-  inputClasses = 'w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm',
+  inputClasses = 'w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm',
   textareaRows = 3
 }: EditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -64,6 +64,8 @@ export default function EditableField({
     }
   };
 
+  const textareaClasses = 'w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm';
+
   if (isEditing) {
     if (type === 'textarea') {
       return (
@@ -75,7 +77,7 @@ export default function EditableField({
             onChange={(e) => setCurrentValue(e.target.value)}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className={inputClasses}
+            className={textareaClasses}
             rows={textareaRows}
           />
         </div>

@@ -1,0 +1,57 @@
+import React from 'react';
+import { MessagesProvider } from '../contexts/MessagesContext';
+import { ProjectPlanProvider } from '../contexts/ProjectPlanContext';
+import Canvas from '../components/Canvas';
+import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
+
+interface ProjectPageProps {
+  projectId: string;
+  project: any; // Replace with your Project type
+  userCharts: any[]; // Replace with your Chart type
+}
+
+/**
+ * Example page showing how to integrate the separated contexts
+ * while preserving the existing UI behavior
+ */
+const ProjectPage: React.FC<ProjectPageProps> = ({
+  projectId,
+  project,
+  userCharts,
+}) => {
+  const handleInitiateTaskGeneration = async (messages: any[]) => {
+    // Your existing task generation logic
+    return null;
+  };
+
+  return (
+    <div className="project-page">
+      {/* 
+        ProjectPlanProvider is higher in the tree, as Canvas and potentially 
+        other components will consume its state
+      */}
+      <ProjectPlanProvider
+        projectId={projectId}
+        project={project}
+        userCharts={userCharts}
+      >
+        <MessagesProvider
+          projectId={projectId}
+          project={project}
+          userCharts={userCharts}
+          onInitiateTaskGeneration={handleInitiateTaskGeneration}
+        >
+          {/* This invisible component connects the message and plan contexts */}
+          <ProjectPlanTrigger />
+          
+          {/* Canvas now uses ProjectPlanContext instead of MessagesContext */}
+          <Canvas />
+          
+          {/* Your other components */}
+        </MessagesProvider>
+      </ProjectPlanProvider>
+    </div>
+  );
+};
+
+export default ProjectPage;

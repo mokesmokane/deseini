@@ -20,14 +20,14 @@ export default function FileUpload({ onUpload, disabled = false }: FileUploadPro
   return (
     <div
       {...getRootProps()}
-      className={`mt-2 flex justify-center rounded-lg border border-dashed px-6 py-10 ${
-        isDragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
-      } ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+      className={`flex justify-center items-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors duration-200 ease-in-out ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-gray-400'} ${
+        isDragActive ? 'border-neutral-400 bg-neutral-50' : 'border-gray-300'
+      }`}
     >
       <div className="text-center">
         <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
         <div className="mt-4 flex text-sm leading-6 text-gray-600">
-          <label className={`relative rounded-md bg-white font-semibold text-blue-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 hover:text-blue-500 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+          <label className={`relative rounded-md bg-white font-semibold text-neutral-700 focus-within:outline-none focus-within:ring-2 focus-within:ring-neutral-600 focus-within:ring-offset-2 hover:text-neutral-600 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
             <span>Upload files</span>
             <input {...getInputProps()} />
           </label>

@@ -12,3 +12,21 @@ body {
   width: 100%;
   min-height: 100vh;
 }
+
+/* Diff animation transitions */
+.diff-span.color-transition {
+  transition: color 1s ease-in-out, background-color 1s ease-in-out, opacity 1s ease-in-out;
+}
+
+.diff-span.height-transition {
+  transition: height 1s ease-in-out, margin 1s ease-in-out, padding 1s ease-in-out;
+}
+
+.line.color-transition {
+  transition: color 1s ease-in-out, background-color 1s ease-in-out, opacity 1s ease-in-out;
+}
+
+.line.height-transition {
+  transition: height 1s ease-in-out, margin 1s ease-in-out, padding 1s ease-in-out;
+  overflow: hidden;
+}

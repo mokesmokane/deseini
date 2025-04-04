@@ -18,9 +18,29 @@ export function createApiRouter(apiKey: string): express.Router {
     roleController.extractRoleInfo(req, res);
   });
   
-  // Task generation endpoint
-  router.post('/generate-tasks', (req: express.Request, res: express.Response) => {
-    taskController.generateTasks(req, res);
+  // Task generation / Conversation endpoint
+  // router.post('/generate-tasks', (req: express.Request, res: express.Response) => {
+  //   taskController.generateTasks(req, res);
+  // });
+
+  // Conversation endpoint (streaming)
+  router.post('/conversation', (req: express.Request, res: express.Response) => {
+    taskController.handleConversationStep(req, res);
+  });
+
+  // Task creation endpoint (non-streaming, returns JSON)
+  router.post('/create-tasks', (req: express.Request, res: express.Response) => {
+    taskController.createTasksFromConversation(req, res);
+  });
+
+  // Suggested replies endpoint
+  router.post('/generate-suggestions', (req: express.Request, res: express.Response) => {
+    taskController.generateSuggestions(req, res);
+  });
+  
+  // Project plan generation endpoint
+  router.post('/generate-project-plan', (req: express.Request, res: express.Response) => {
+    taskController.generateProjectPlan(req, res);
   });
   
   return router;

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
-import { Project } from '../types';
+import { Project, Chart, TreeTaskNode, ChatMessage, Role, Deliverable } from '../types';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +9,11 @@ interface ProjectContextType {
   isLoading: boolean;
   errorMessage: string | undefined;
   projectsList: Project[];
-  userCharts: { id: string; name: string; description: string; project_id: string }[];
+  userCharts: Chart[];
+  isGeneratingTasks: boolean;
+  taskGenerationError: string | null;
+  initialTasksForDialog: TreeTaskNode[];
+  isCreateChartDialogOpen: boolean;
   setProject: React.Dispatch<React.SetStateAction<Project | null>>;
   fetchProject: (id: string) => Promise<void>;
   fetchAllProjects: () => Promise<void>;
@@ -19,6 +23,8 @@ interface ProjectContextType {
   deleteRole: (roleId: string) => Promise<void>;
   deleteDeliverable: (deliverableId: string) => Promise<void>;
   createNewProject: () => void;
+  handleInitiateTaskGeneration: (chatMessages: ChatMessage[]) => Promise<TreeTaskNode[] | null>;
+  setIsCreateChartDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -38,14 +44,21 @@ interface ProjectProviderProps {
 export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) => {
   const [project, setProject] = useState<Project | null>(null);
   const [projectsList, setProjectsList] = useState<Project[]>([]);
-  const [userCharts, setUserCharts] = useState<{ id: string; name: string; description: string; project_id: string }[]>([]);
+  const [userCharts, setUserCharts] = useState<Chart[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [databaseRoleIds, setDatabaseRoleIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
+  
+  // State for task generation (moved from Sidebar)
+  const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+  const [taskGenerationError, setTaskGenerationError] = useState<string | null>(null);
+  const [initialTasksForDialog, setInitialTasksForDialog] = useState<TreeTaskNode[]>([]);
+  const [isCreateChartDialogOpen, setIsCreateChartDialogOpen] = useState(false);
 
   const createNewProject = () => {
     setProject({
+      id: `new-${Date.now()}`,
       projectName: "",
       description: "",
       bannerImage: "",
@@ -159,7 +172,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       await fetchProjectCharts(id);
 
       // Transform data to match our frontend model
-      const roles = rolesData?.map(role => {
+      const roles = rolesData?.map((role): Role => {
         // Track role IDs that exist in the database
         if (role.id) {
           setDatabaseRoleIds(prev => new Set(prev).add(role.id));
@@ -179,7 +192,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           paymentBy: role.payment_by,
           hourlyRate: role.hourly_rate,
           description: role.description,
-          deliverables: role.deliverables?.map((d: any) => ({
+          deliverables: role.deliverables?.map((d: any): Deliverable => ({
             id: d.id,
             deliverableName: d.deliverable_name,
             deadline: d.deadline,
@@ -226,8 +239,8 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         throw new Error('No authenticated user found');
       }
 
-      let savedProjectId: string | undefined;
-      const isNewProject = !project.id;
+      let savedProjectId: string | undefined = project.id?.startsWith('new-') ? undefined : project.id;
+      const isNewProject = !savedProjectId;
 
       if (isNewProject) {
         // Create new project
@@ -248,7 +261,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         savedProjectId = projectData.id;
         
         // Update local state with new project ID
-        setProject(prevProject => prevProject ? { ...prevProject, id: savedProjectId } : null);
+        setProject(prevProject => prevProject ? { ...prevProject, id: savedProjectId! } : null);
       } else {
         // Update existing project
         savedProjectId = project.id;
@@ -265,249 +278,265 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       }
 
       // Handle roles
-      const newDatabaseRoleIds = new Set<string>();
+      const rolesToUpsert: any[] = [];
+      const roleIdsToDelete: string[] = [];
 
-      for (const role of project.roles) {
-        let roleData;
-
-        if (role.id && databaseRoleIds.has(role.id)) {
-          // Update existing role
-          const { data, error: roleError } = await supabase
-            .from('roles')
-            .update({
-              title: role.title,
-              type: role.type,
-              country: role.country,
-              region: role.region,
-              town: role.town,
-              level: role.level,
-              professions: role.professions,
-              start_date: role.startDate,
-              end_date: role.endDate,
-              payment_by: role.paymentBy,
-              hourly_rate: role.hourlyRate,
-              description: role.description
-            })
-            .eq('id', role.id)
-            .select()
-            .single();
-
-          if (roleError) throw roleError;
-          roleData = data;
-          if (roleData) {
-            newDatabaseRoleIds.add(roleData.id);
-          }
-        } else {
-          // Create new role
-          const { data, error: roleError } = await supabase
-            .from('roles')
-            .insert({
-              project_id: savedProjectId,
-              title: role.title,
-              type: role.type,
-              country: role.country,
-              region: role.region,
-              town: role.town,
-              level: role.level,
-              professions: role.professions,
-              start_date: role.startDate,
-              end_date: role.endDate,
-              payment_by: role.paymentBy,
-              hourly_rate: role.hourlyRate,
-              description: role.description
-            })
-            .select()
-            .single();
-
-          if (roleError) throw roleError;
-          roleData = data;
-          if (roleData) {
-            newDatabaseRoleIds.add(roleData.id);
-          }
+      // Roles currently in DB but not in local state should be deleted
+      databaseRoleIds.forEach(dbRoleId => {
+        if (!project.roles?.some(role => role.id === dbRoleId)) {
+          roleIdsToDelete.push(dbRoleId);
         }
+      });
 
-        if (!roleData) throw new Error('No role data returned');
-
-        // Handle deliverables
-        if (role.deliverables && role.deliverables.length > 0) {
-          // Delete existing deliverables
-          if (role.id) {
-            const { error: deleteDeliverablesError } = await supabase
-              .from('deliverables')
-              .delete()
-              .eq('role_id', role.id);
-
-            if (deleteDeliverablesError) throw deleteDeliverablesError;
-          }
-
-          // Create new deliverables
-          const deliverablesData = role.deliverables.map(deliverable => ({
-            role_id: roleData.id,
-            deliverable_name: deliverable.deliverableName,
-            deadline: deliverable.deadline,
-            fee: deliverable.fee,
-            description: deliverable.description
-          }));
-
-          const { data: insertedDeliverables, error: deliverablesError } = await supabase
-            .from('deliverables')
-            .insert(deliverablesData)
-            .select();
-
-          if (deliverablesError) throw deliverablesError;
-
-          // Update local state with new deliverable IDs
-          if (insertedDeliverables) {
-            role.deliverables = role.deliverables.map((deliverable, index) => ({
-              ...deliverable,
-              id: insertedDeliverables[index]?.id
-            }));
-          }
-        }
+      // Roles in local state need to be upserted
+      project.roles?.forEach(role => {
+        rolesToUpsert.push({
+          id: role.id?.startsWith('new-') ? undefined : role.id,
+          project_id: savedProjectId,
+          title: role.title,
+          type: role.type,
+          country: role.country,
+          region: role.region,
+          town: role.town,
+          level: role.level,
+          professions: role.professions,
+          start_date: role.startDate,
+          end_date: role.endDate,
+          payment_by: role.paymentBy,
+          hourly_rate: role.hourlyRate,
+          description: role.description
+        });
+      });
+      
+      // Upsert roles
+      if (rolesToUpsert.length > 0) {
+          const { data: upsertedRolesData, error: upsertError } = await supabase
+              .from('roles')
+              .upsert(rolesToUpsert)
+              .select();
+              
+          if (upsertError) throw upsertError;
+          
+          // Update local role IDs with DB IDs & update databaseRoleIds set
+          const newDatabaseRoleIds = new Set(databaseRoleIds);
+          const updatedLocalRoles = project.roles?.map(localRole => {
+              const dbRole = upsertedRolesData?.find(ur => 
+                  (localRole.id && ur.id === localRole.id) ||
+                  (localRole.title === ur.title && localRole.description === ur.description)
+              );
+              if (dbRole) {
+                  newDatabaseRoleIds.add(dbRole.id);
+                  return { ...localRole, id: dbRole.id };
+              } 
+              return localRole;
+          }) || [];
+          setProject(prev => prev ? { ...prev, roles: updatedLocalRoles } : null);
+          setDatabaseRoleIds(newDatabaseRoleIds);
       }
 
-      setDatabaseRoleIds(newDatabaseRoleIds);
+      // Delete roles
+      if (roleIdsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('roles')
+          .delete()
+          .in('id', roleIdsToDelete);
+
+        if (deleteError) throw deleteError;
+        
+        // Update the set of known DB IDs
+        setDatabaseRoleIds(prev => {
+            const updated = new Set(prev);
+            roleIdsToDelete.forEach(id => updated.delete(id));
+            return updated;
+        });
+      }
       
       toast.success('Project saved successfully');
       
       return savedProjectId;
     } catch (error) {
       console.error('Error saving project:', error);
-      toast.error('Failed to save project');
+      toast.error(error instanceof Error ? error.message : 'Failed to save project');
+      return undefined;
     }
   };
 
   const cloneProject = async () => {
     if (!project) return;
-    
-    try {
-      const clonedProject = {
-        ...project,
-        id: undefined, // Remove ID when cloning
+    // Basic clone: create new project object with a new temporary ID
+    const newTempId = `new-${Date.now()}`;
+    const clonedProjectData = { 
+        ...project, 
+        id: newTempId, // Assign a new temporary ID
         projectName: `${project.projectName} (Copy)`,
-        roles: project.roles.map(role => ({
-          ...role,
-          id: undefined // Remove IDs when cloning
+        roles: project.roles?.map(role => ({ // Clone roles with new temp IDs
+            ...role,
+            id: `new-role-${Date.now()}-${Math.random()}`, // Assign new temp ID to roles
+            deliverables: role.deliverables?.map((del: Deliverable) => ({ 
+                ...del, 
+                id: `new-del-${Date.now()}-${Math.random()}` // Assign new temp ID to deliverables
+            })) 
         }))
-      };
-      setProject(clonedProject);
-      setDatabaseRoleIds(new Set());
-      toast.success('Project cloned successfully');
-      navigate('/projects/new', { replace: true });
-    } catch (error) {
-      console.error('Error cloning project:', error);
-      toast.error('Failed to clone project');
-    }
+    };
+    setProject(clonedProjectData); // Should now match Project type if roles/deliverables types are correct
+    navigate('/projects/new'); // Navigate to new project form
+    toast.success('Project cloned. Save to create a new entry.');
+    setDatabaseRoleIds(new Set()); // Reset DB IDs for the clone
   };
 
   const deleteRole = async (roleId: string) => {
-    try {
-      // First verify the role exists
-      const { data: roleExists, error: checkError } = await supabase
-        .from('roles')
-        .select('id')
-        .eq('id', roleId)
-        .single();
+    if (!project) return;
 
-      if (checkError) {
-        console.error('Error checking role:', checkError);
-        throw new Error('Failed to verify role');
-      }
+    // Remove locally first for quick UI update
+    const updatedRoles = project.roles?.filter(role => role.id !== roleId) || [];
+    setProject(prev => prev ? { ...prev, roles: updatedRoles } : null);
 
-      if (!roleExists) {
-        throw new Error('Role not found');
-      }
+    // Then attempt DB deletion if it exists there
+    if (databaseRoleIds.has(roleId)) {
+      try {
+        const { error } = await supabase
+          .from('roles')
+          .delete()
+          .eq('id', roleId);
 
-      // Delete the role (cascade will handle deliverables)
-      const { error: deleteError } = await supabase
-        .from('roles')
-        .delete()
-        .eq('id', roleId);
+        if (error) throw error;
 
-      if (deleteError) {
-        console.error('Error deleting role:', deleteError);
-        throw deleteError;
-        
-      }
-
-      // Remove from our tracking set
-      const newDatabaseRoleIds = new Set(databaseRoleIds);
-      newDatabaseRoleIds.delete(roleId);
-      setDatabaseRoleIds(newDatabaseRoleIds);
-
-      // Update the local state
-      if (project) {
-        setProject({
-          ...project,
-          roles: project.roles.filter(role => role.id !== roleId)
+        // Remove from known DB IDs
+        setDatabaseRoleIds(prev => {
+            const updated = new Set(prev);
+            updated.delete(roleId);
+            return updated;
         });
+        toast.success('Role deleted successfully');
+      } catch (err) {
+        console.error('Error deleting role from DB:', err);
+        toast.error('Failed to delete role from database. Reverting local change.');
+        // Revert local change on DB error
+        fetchProject(project.id!);
       }
-
-      toast.success('Role deleted successfully');
-    } catch (error) {
-      console.error('Error deleting role:', error);
-      toast.error(`Failed to delete role: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } else {
+        toast.success('Role removed');
     }
   };
 
   const deleteDeliverable = async (deliverableId: string) => {
-    try {
-      // First verify the deliverable exists
-      const { data: deliverableExists, error: checkError } = await supabase
-        .from('deliverables')
-        .select('id')
-        .eq('id', deliverableId)
-        .single();
+    if (!project) return;
 
-      if (checkError) {
-        console.error('Error checking deliverable:', checkError);
-        throw new Error('Failed to verify deliverable');
-      }
+    let roleIdOfDeliverable: string | undefined;
 
-      if (!deliverableExists) {
-        throw new Error('Deliverable not found');
-      }
-
-      // Delete the deliverable
-      const { error: deleteError } = await supabase
-        .from('deliverables')
-        .delete()
-        .eq('id', deliverableId);
-
-      if (deleteError) {
-        console.error('Error deleting deliverable:', deleteError);
-        throw deleteError;
-      }
-
-      // Update the local state
-      if (project) {
-        setProject({
-          ...project,
-          roles: project.roles.map(role => {
-            if (!role.deliverables) return role;
-            
-            return {
-              ...role,
-              deliverables: role.deliverables.filter(d => d.id !== deliverableId)
-            };
-          })
-        });
-      }
-
-      toast.success('Deliverable deleted successfully');
-    } catch (error) {
-      console.error('Error deleting deliverable:', error);
-      toast.error(`Failed to delete deliverable: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Remove locally
+    const updatedRoles = project.roles?.map(role => {
+        const initialLength = role.deliverables?.length ?? 0;
+        const filteredDeliverables = role.deliverables?.filter((d: Deliverable) => d.id !== deliverableId);
+        if (filteredDeliverables && filteredDeliverables.length < initialLength) {
+            roleIdOfDeliverable = role.id;
+            return { ...role, deliverables: filteredDeliverables };
+        }
+        return role;
+    }) || [];
+    setProject(prev => prev ? { ...prev, roles: updatedRoles } : null);
+    
+    // Delete from DB if role and deliverable IDs exist
+    if (roleIdOfDeliverable && deliverableId && !deliverableId.startsWith('new-')) {
+         try {
+             const { error } = await supabase
+                 .from('deliverables')
+                 .delete()
+                 .eq('id', deliverableId);
+             if (error) throw error;
+             toast.success('Deliverable deleted');
+         } catch(err) {
+             console.error('Error deleting deliverable from DB:', err);
+             toast.error('Failed to delete deliverable. Reverting local change.');
+             fetchProject(project.id!);
+         }
+    } else {
+        toast.success('Deliverable removed');
     }
   };
 
-  // Memoize the context value to prevent unnecessary re-renders of consumers
+  // Task Generation Logic (moved from Sidebar)
+  const handleInitiateTaskGeneration = useCallback(async (chatMessages: ChatMessage[]): Promise<TreeTaskNode[] | null> => {
+    console.log("ProjectContext: Initiating task generation...");
+    setIsGeneratingTasks(true);
+    setTaskGenerationError(null);
+    setInitialTasksForDialog([]);
+    setIsCreateChartDialogOpen(false);
+
+    if (!project?.id) {
+      const errorMsg = "Project ID is missing, cannot generate tasks.";
+      console.error("ProjectContext Error:", errorMsg);
+      setTaskGenerationError(errorMsg);
+      setIsGeneratingTasks(false);
+      return null;
+    }
+
+    try {
+      const projectData = {
+        id: project.id,
+        projectName: project?.projectName || '',
+        description: project?.description || '',
+        roles: project?.roles || [],
+        charts: userCharts || []
+      };
+
+      const lastUserMessage = chatMessages.filter((m: ChatMessage) => m.role === 'user').pop();
+      const prompt = lastUserMessage?.content || "Generate project tasks based on the conversation.";
+
+      console.log("ProjectContext: Calling /api/create-tasks with prompt:", prompt.substring(0, 100) + "...");
+
+      const response = await fetch('/api/create-tasks', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+             prompt: prompt,
+             projectContext: projectData,
+             messages: chatMessages,
+             model: "gpt-4o"
+         }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+          console.error("ProjectContext: API error response:", responseData);
+          throw new Error(responseData.error || `Failed to create tasks (Status: ${response.status})`);
+      }
+
+      if (responseData.tasks && Array.isArray(responseData.tasks) && responseData.tasks.length > 0) {
+        console.log("ProjectContext: Received tasks, setting state for dialog.", responseData.tasks);
+        setInitialTasksForDialog(responseData.tasks);
+        setIsCreateChartDialogOpen(true);
+        setIsGeneratingTasks(false);
+        toast.success('Tasks generated successfully! Ready to create chart.');
+        return responseData.tasks;
+      } else {
+        console.warn("ProjectContext: Task generation succeeded but returned no tasks or invalid format.", responseData);
+        throw new Error(responseData.message || "Task generation succeeded but returned no tasks.");
+      }
+
+    } catch (error) {
+        console.error("ProjectContext: Error during task generation fetch/processing:", error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during task generation.';
+        setTaskGenerationError(errorMessage);
+        toast.error(`Task Generation Failed: ${errorMessage}`);
+        setIsGeneratingTasks(false);
+        setIsCreateChartDialogOpen(false);
+        setInitialTasksForDialog([]);
+        return null;
+    }
+  }, [project, userCharts]);
+
   const value = useMemo(() => ({
     project,
     isLoading,
     errorMessage,
     projectsList,
     userCharts,
+    isGeneratingTasks,
+    taskGenerationError,
+    initialTasksForDialog,
+    isCreateChartDialogOpen,
     setProject,
     fetchProject,
     fetchAllProjects,
@@ -516,27 +545,30 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     cloneProject,
     deleteRole,
     deleteDeliverable,
-    createNewProject
+    createNewProject,
+    handleInitiateTaskGeneration,
+    setIsCreateChartDialogOpen
   }), [
     project,
     isLoading,
     errorMessage,
     projectsList,
     userCharts,
-    // State setters like setProject are stable and don't need to be dependencies
-    fetchProject, // Already memoized with useCallback
-    fetchAllProjects, // Assuming this will also be memoized if it causes issues
-    fetchProjectCharts, // Already memoized with useCallback
-    saveProject, // Assuming this will also be memoized if it causes issues
-    cloneProject, // Assuming this will also be memoized if it causes issues
-    deleteRole, // Assuming this will also be memoized if it causes issues
-    deleteDeliverable, // Assuming this will also be memoized if it causes issues
-    createNewProject // Assuming this will also be memoized if it causes issues
+    isGeneratingTasks,
+    taskGenerationError,
+    initialTasksForDialog,
+    isCreateChartDialogOpen, 
+    fetchProject, 
+    fetchAllProjects, 
+    fetchProjectCharts, 
+    saveProject, 
+    cloneProject, 
+    deleteRole, 
+    deleteDeliverable, 
+    createNewProject, 
+    handleInitiateTaskGeneration, 
+    setIsCreateChartDialogOpen
   ]);
 
-  return (
-    <ProjectContext.Provider value={value}>
-      {children}
-    </ProjectContext.Provider>
-  );
+  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 };

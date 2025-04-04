@@ -32,7 +32,7 @@ export default function AttachmentList({ attachments, onDelete, onDownload }: At
             <button
               type="button"
               onClick={() => onDownload(attachment)}
-              className="rounded bg-white text-sm font-semibold text-blue-600 hover:text-blue-500"
+              className="rounded bg-white text-sm font-semibold text-neutral-700 hover:text-neutral-600"
             >
               Download
             </button>

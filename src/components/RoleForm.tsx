@@ -39,7 +39,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
           <input
             type="text"
             {...register('title', { required: 'Title is required' })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
           />
           {errors.title && (
             <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
@@ -53,7 +53,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
             </label>
             <select
               {...register('type')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             >
               <option value="Remote">Remote</option>
               <option value="On-site">On-site</option>
@@ -67,7 +67,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
             </label>
             <select
               {...register('level')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             >
               <option value="Junior">Junior</option>
               <option value="Mid-level">Mid-level</option>
@@ -85,7 +85,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
             <input
               type="text"
               {...register('country', { required: 'Country is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             />
           </div>
 
@@ -96,7 +96,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
             <input
               type="text"
               {...register('region', { required: 'Region is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             />
           </div>
 
@@ -107,7 +107,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
             <input
               type="text"
               {...register('town', { required: 'Town is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             />
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
           <input
             type="text"
             {...register('professions', { required: 'Professions is required' })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
           />
         </div>
 
@@ -131,7 +131,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
             <input
               type="date"
               {...register('startDate', { required: 'Start date is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             />
           </div>
 
@@ -142,7 +142,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
             <input
               type="date"
               {...register('endDate', { required: 'End date is required' })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             />
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
             </label>
             <select
               {...register('paymentBy')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             >
               <option value="Deliverable based">Deliverable based</option>
               <option value="Timesheet based">Timesheet based</option>
@@ -172,7 +172,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
                 required: 'Hourly rate is required',
                 min: { value: 0, message: 'Hourly rate must be positive' }
               })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
             />
           </div>
         </div>
@@ -184,7 +184,7 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
           <textarea
             {...register('description')}
             rows={4}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
           />
         </div>
 
@@ -192,13 +192,13 @@ export default function RoleForm({ role = defaultRole, onSave, onCancel }: RoleF
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-neutral-700 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500"
           >
             Save
           </button>

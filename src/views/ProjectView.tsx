@@ -1,13 +1,26 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { GanttChart } from '../components/chart/GanttChart';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useProject } from '../contexts/ProjectContext';
 import Sidebar from '../components/Sidebar';
 import ProjectForm from '../components/ProjectForm';
+import Canvas from '../components/Canvas.tsx';
+import { MessagesProvider } from '../contexts/MessagesContext';
+import { ProjectPlanProvider } from '../contexts/ProjectPlanContext';
+import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
 
 const ProjectView = () => {
   const { projectId, chartId } = useParams<{ projectId: string; chartId?: string }>();
-  const { project, isLoading, errorMessage, fetchProject } = useProject();
+  const { 
+    project, 
+    isLoading: isLoadingProject,
+    errorMessage,
+    fetchProject, 
+    handleInitiateTaskGeneration,
+    userCharts,
+    fetchProjectCharts
+  } = useProject();
+  const [activeSidebarSection, setActiveSidebarSection] = useState<string | null>(null);
 
   // Only handle project loading via useEffect
   useEffect(() => {
@@ -19,31 +32,64 @@ const ProjectView = () => {
     }
   }, [projectId, fetchProject, project?.id]);
 
-  if (isLoading) {
-    return <div className="p-8 text-center">Loading chart...</div>;
-  }
+  // Fetch charts when project is loaded or projectId changes
+  useEffect(() => {
+    if (projectId && projectId !== 'new') {
+      fetchProjectCharts(projectId);
+    }
+  }, [projectId, fetchProjectCharts]); // Added fetchProjectCharts dependency
 
-  if (errorMessage) {
-    return (
+  // Log when activeSidebarSection changes
+  useEffect(() => {
+    console.log(`[ProjectView] useEffect: activeSidebarSection updated to: ${activeSidebarSection}`);
+  }, [activeSidebarSection]);
+
+  console.log(`[ProjectView] Rendering: activeSidebarSection=${activeSidebarSection}, isLoadingProject=${isLoadingProject}, projectExists=${!!project}`);
+
+  // Always render the main layout structure
+  // Wrap the entire view content with MessagesProvider
+  return (
+    <ProjectPlanProvider
+      projectId={projectId??null}
+      project={project}
+      userCharts={userCharts}
+    >
+    <MessagesProvider
+      // Conditionally pass projectId only when it's valid and not 'new'
+      projectId={(projectId && projectId !== 'new') ? projectId : ''} 
+      // Pass project and userCharts, provider should handle null/empty initial state
+      project={project} 
+      userCharts={userCharts}
+      onInitiateTaskGeneration={handleInitiateTaskGeneration}
+    >
+
       <div className="h-full flex">
-        <Sidebar />
-        <div className="flex-1 p-8 text-center">
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md inline-block">
-            <p className="font-medium">Error loading project</p>
-            <p className="text-sm">{errorMessage}</p>
-          </div>
+        {/* Sidebar is now always inside the provider */} 
+        <Sidebar onActiveSectionChange={setActiveSidebarSection} />
+        
+        <div className="flex-1 overflow-auto">
+          {/* Conditional rendering of the main content area */}
+          {isLoadingProject ? (
+            <div className="p-8 text-center">Loading project...</div>
+          ) : errorMessage ? (
+            <div className="p-8 text-center">
+              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md inline-block">
+                <p className="font-medium">Error loading project</p>
+                <p className="text-sm">{errorMessage}</p>
+              </div>
+            </div>
+          ) : activeSidebarSection === 'create' ? (
+            <Canvas /> // Canvas reads from MessagesContext
+          ) : chartId ? (
+            <GanttChart />
+          ) : (
+            <ProjectForm />
+          )}
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex">
-      <Sidebar />
-      <div className="flex-1">
-        {chartId ? <GanttChart /> : <ProjectForm />}
-      </div>
-    </div>
+      <ProjectPlanTrigger />
+    </MessagesProvider>
+    </ProjectPlanProvider>
   );
 };
 

@@ -32,12 +32,13 @@ export interface Role {
 }
 
 export interface Project {
-  id?: string;
-  bannerImage: string;
+  id: string;
   projectName: string;
-  description: string;
-  attachments: Attachment[];
-  roles: Role[];
+  description?: string;
+  bannerImage?: string;
+  attachments?: any[]; // Define specific attachment type later
+  roles?: any[]; // Define specific role type later
+  charts?: Chart[];
 }
 
 // Gantt Chart Types
@@ -83,3 +84,39 @@ export interface GanttData {
   tasks: Task[];
   dependencies: Dependency[]; 
 }
+
+// Basic Chart Structure (expand as needed)
+export interface Chart {
+    id: string;
+    name: string;
+    description?: string;
+    projectId?: string;
+    start?: string;
+    end?: string;
+    tasks?: Task[]; // Define Task type if needed
+    dependencies?: any[]; // Define Dependency type if needed
+    milestones?: any[]; // Define Milestone type if needed
+}
+
+// Interface for chat messages
+export interface ChatMessage {
+    id?: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    requiresAction?: boolean;
+}
+
+// Interface for task data in the tree structure
+export interface TaskData {
+  name: string;
+  id: number | string;
+  parent?: number | string;
+  metadata?: { [key: string]: any };
+}
+
+// Interface for tree nodes with children property
+export interface TreeTaskNode extends TaskData {
+  children?: TreeTaskNode[];
+}
+
+// Add other shared types here as needed (e.g., Task, Dependency, Milestone)

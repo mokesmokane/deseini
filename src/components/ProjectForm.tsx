@@ -57,7 +57,7 @@ export default function ProjectForm() {
     handleProjectUpdate({
       ...project,
       roles: [
-        ...project.roles,
+        ...(project.roles ?? []),
         {
             ...newRole,
             id: `temp-${Date.now()}-${Math.random()}` 
@@ -67,7 +67,7 @@ export default function ProjectForm() {
   };
 
   const handleUpdateRole = (index: number, updatedRole: Role) => {
-    if (!project) return;
+    if (!project || !project.roles) return;
     const newRoles = [...project.roles];
     newRoles[index] = updatedRole;
     handleProjectUpdate({
@@ -77,13 +77,13 @@ export default function ProjectForm() {
   };
 
   const handleCloneRole = (index: number) => {
-    if (!project) return;
+    if (!project || !project.roles) return;
     const roleToClone = project.roles[index];
     const clonedRole = {
       ...roleToClone,
       id: `temp-clone-${Date.now()}-${Math.random()}`,
       title: `${roleToClone.title} (Copy)`,
-      deliverables: roleToClone.deliverables ? roleToClone.deliverables.map(deliverable => ({
+      deliverables: roleToClone.deliverables ? roleToClone.deliverables.map((deliverable: any) => ({
         ...deliverable,
         id: undefined
       })) : []
@@ -141,7 +141,7 @@ export default function ProjectForm() {
 
       handleProjectUpdate({
         ...project,
-        attachments: [...project.attachments, ...newAttachments]
+        attachments: project.attachments ? [...project.attachments, ...newAttachments] : newAttachments
       });
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -151,7 +151,7 @@ export default function ProjectForm() {
   const handleDeleteAttachment: AttachmentListProps['onDelete'] = async (attachmentId: string) => {
     if (!project) return;
     try {
-      const attachment = project.attachments.find(a => a.id === attachmentId);
+      const attachment = project.attachments ? project.attachments.find(a => a.id === attachmentId) : undefined;
       if (!attachment?.url) return;
 
       const { error: deleteStorageError } = await supabase.storage
@@ -171,7 +171,7 @@ export default function ProjectForm() {
 
       handleProjectUpdate({
         ...project,
-        attachments: project.attachments.filter(a => a.id !== attachmentId)
+        attachments: project.attachments ? project.attachments.filter(a => a.id !== attachmentId) : []
       });
     } catch (error) {
       console.error('Error deleting attachment:', error);
@@ -209,7 +209,7 @@ export default function ProjectForm() {
   }
   
   const handleDeleteRoleByIndex = (index: number) => {
-    if (!project) return;
+    if (!project || !project.roles) return;
     const roleToDelete = project.roles[index];
     if (roleToDelete.id && !roleToDelete.id.startsWith('temp')) {
       deleteRole(roleToDelete.id);
@@ -244,14 +244,14 @@ export default function ProjectForm() {
         <div className="flex space-x-2">
           <button
             onClick={handleSaveProject}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out text-sm font-medium"
+            className="px-4 py-2 bg-neutral-700 text-white rounded-md shadow-sm hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 transition duration-150 ease-in-out text-sm font-medium"
           >
             Save Project
           </button>
           {projectId !== 'new' && (
             <button
               onClick={handleCloneProject} 
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out"
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 transition duration-150 ease-in-out"
               title="Clone Project"
               disabled={!project.id} 
             >
@@ -282,7 +282,7 @@ export default function ProjectForm() {
             textareaRows={3} 
           />
           <RoleList
-          roles={project.roles}
+          roles={project.roles ?? []}
           onAddRole={handleAddRole}
           onUpdateRole={handleUpdateRole}
           onCloneRole={handleCloneRole}
@@ -302,7 +302,7 @@ export default function ProjectForm() {
             <p className="text-xs text-gray-500 mt-1">Save the project first to add attachments.</p>
           )}
           <AttachmentList 
-            attachments={project.attachments} 
+            attachments={project.attachments ?? []} 
             onDelete={handleDeleteAttachment} 
             onDownload={handleDownloadAttachment} 
           />
@@ -318,11 +318,11 @@ export default function ProjectForm() {
       </div> */}
 
       {/* Selected Role Detail View */}
-      {selectedRoleIndex !== null && project.roles[selectedRoleIndex] && (
+      {selectedRoleIndex !== null && (project.roles ?? [])[selectedRoleIndex] && (
         <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Role Details</h2>
           <RoleCard
-            role={project.roles[selectedRoleIndex]}
+            role={(project.roles ?? [])[selectedRoleIndex]}
             onDelete={() => handleDeleteRoleByIndex(selectedRoleIndex)}
             onUpdate={(updatedRole) => handleUpdateRole(selectedRoleIndex, updatedRole)}
             onClone={handleCloneRole ? () => handleCloneRole(selectedRoleIndex) : undefined}

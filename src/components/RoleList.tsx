@@ -168,7 +168,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
               )}
               <button
                 type="button"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-neutral-700 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 disabled:opacity-50"
                 onClick={processWithAI}
                 disabled={isProcessing || !pastedText.trim()}
               >
@@ -191,7 +191,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.title}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Role title"
               />
             </div>
@@ -206,7 +206,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.type}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Role type"
               />
             </div>
@@ -221,7 +221,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.country}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Country"
               />
             </div>
@@ -236,7 +236,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.region}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Region"
               />
             </div>
@@ -251,7 +251,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.town}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Town"
               />
             </div>
@@ -266,7 +266,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.level}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Level"
               />
             </div>
@@ -281,7 +281,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.professions}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Professions"
               />
             </div>
@@ -296,7 +296,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.startDate}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
               />
             </div>
             <div>
@@ -310,7 +310,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.endDate}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
               />
             </div>
             <div>
@@ -323,7 +323,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.paymentBy}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
               >
                 <option value="">Select payment method</option>
                 <option value="Timesheet Based">Timesheet Based</option>
@@ -343,7 +343,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 required
                 min="0"
                 step="0.01"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="0.00"
               />
             </div>
@@ -357,7 +357,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Role description"
               />
             </div>
@@ -366,13 +366,13 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+              className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+              className="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-neutral-700 text-base font-medium text-white hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:text-sm"
             >
               Add Role
             </button>
@@ -406,8 +406,8 @@ export default function RoleList({
         onClick={() => onSelectRole && onSelectRole(role, index)}
         className={`cursor-pointer p-3 rounded-lg shadow-sm border transition-all h-32 flex flex-col justify-between ${
           isSelected 
-            ? 'border-indigo-600 bg-indigo-50' 
-            : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+            ? 'border-neutral-600 bg-neutral-100' 
+            : 'border-gray-200 bg-white hover:border-neutral-400 hover:bg-neutral-50/50'
         }`}
       >
         <div className="w-full">
@@ -423,7 +423,7 @@ export default function RoleList({
         
         {deliverableCount > 0 && (
           <div className="self-end">
-            <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full h-6 w-6">
+            <span className="inline-flex items-center justify-center bg-neutral-200 text-neutral-800 text-xs font-medium rounded-full h-6 w-6">
               {deliverableCount}
             </span>
           </div>
@@ -452,9 +452,9 @@ export default function RoleList({
           {/* Add Role card with plus icon */}
           <div
             onClick={() => setIsDialogOpen(true)}
-            className="cursor-pointer p-5 rounded-lg shadow-sm border border-dashed border-gray-300 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 flex items-center justify-center h-32 transition-all"
+            className="cursor-pointer p-5 rounded-lg shadow-sm border border-dashed border-gray-300 bg-white hover:border-neutral-400 hover:bg-neutral-50/50 flex items-center justify-center h-32 transition-all"
           >
-            <PlusIcon className="h-8 w-8 text-gray-400 hover:text-indigo-600" aria-hidden="true" />
+            <PlusIcon className="h-8 w-8 text-gray-400 hover:text-neutral-600" aria-hidden="true" />
           </div>
         </div>
       ) : (
@@ -472,7 +472,7 @@ export default function RoleList({
           <button
             type="button"
             onClick={() => setIsDialogOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-neutral-700 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500"
           >
             <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
             Add Role

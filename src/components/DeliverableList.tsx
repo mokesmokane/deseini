@@ -67,7 +67,7 @@ function AddDeliverableDialog({ isOpen, onClose, onAddDeliverable }: AddDelivera
                 value={formData.deliverableName}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Deliverable name"
               />
             </div>
@@ -82,7 +82,7 @@ function AddDeliverableDialog({ isOpen, onClose, onAddDeliverable }: AddDelivera
                 value={formData.deadline}
                 onChange={handleChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
               />
             </div>
             <div>
@@ -97,7 +97,7 @@ function AddDeliverableDialog({ isOpen, onClose, onAddDeliverable }: AddDelivera
                 onChange={handleChange}
                 min="0"
                 step="0.01"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="0.00"
               />
             </div>
@@ -111,7 +111,7 @@ function AddDeliverableDialog({ isOpen, onClose, onAddDeliverable }: AddDelivera
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-neutral-500 focus:ring-neutral-500 sm:text-sm"
                 placeholder="Deliverable description"
               />
             </div>
@@ -120,13 +120,13 @@ function AddDeliverableDialog({ isOpen, onClose, onAddDeliverable }: AddDelivera
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+              className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+              className="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-neutral-700 text-base font-medium text-white hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500 sm:text-sm"
             >
               Add Deliverable
             </button>
@@ -160,9 +160,9 @@ export default function DeliverableList({
         <button
           type="button"
           onClick={() => setIsDialogOpen(true)}
-          className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-neutral-700 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500"
         >
-          <PlusIcon className="-ml-1 mr-1 h-4 w-4" aria-hidden="true" />
+          <PlusIcon className="-ml-0.5 mr-1 h-4 w-4" aria-hidden="true" />
           Add Deliverable
         </button>
       </div>
@@ -206,11 +206,10 @@ export default function DeliverableList({
             <div className="mt-3">
               <span className="text-sm text-gray-500 block">Description:</span>
               <EditableField
-                value={deliverable.description}
+                value={deliverable.description || ''}
                 type="textarea"
-                onSave={handleFieldUpdate(index, 'description')}
-                className="mt-1"
-                textClassName="cursor-pointer hover:bg-gray-50 p-1 rounded whitespace-pre-line"
+                onSave={(value) => handleFieldUpdate(index, 'description')(value as string)}
+                className="text-sm text-gray-500"
               />
             </div>
           </div>

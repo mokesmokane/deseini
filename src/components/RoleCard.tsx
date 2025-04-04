@@ -1,7 +1,7 @@
 import React from 'react';
 import { Role } from '../types';
 import DeliverableList from './DeliverableList';
-import { TrashIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, DocumentDuplicateIcon, PencilIcon } from '@heroicons/react/24/outline';
 import EditableField from './EditableField';
 
 interface RoleCardProps {
@@ -41,10 +41,10 @@ export default function RoleCard({ role, onDelete, onUpdate, onClone, onDeleteDe
             </button>
             <button
               onClick={onDelete}
-              className="inline-flex items-center p-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              className="px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               title="Delete role"
             >
-              <TrashIcon className="h-4 w-4" aria-hidden="true" />
+              <TrashIcon className="h-4 w-4" />
             </button>
           </div>
         </div>

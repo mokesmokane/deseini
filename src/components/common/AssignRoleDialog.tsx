@@ -2,10 +2,12 @@ import React, { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Task } from '../../types';
 
-interface Role {
+// Export the Role interface
+export interface Role {
   id: string;
   name: string;
   avatar: string;
+  type: 'creative' | 'ai_agent';
   isFavorite?: boolean;
 }
 
@@ -17,6 +19,9 @@ interface AssignRoleDialogProps {
   roles: Role[];
 }
 
+// Define the possible filter types
+type FilterType = 'all' | 'creative' | 'ai_agent';
+
 export const AssignRoleDialog: React.FC<AssignRoleDialogProps> = ({
   isOpen,
   onClose,
@@ -24,26 +29,24 @@ export const AssignRoleDialog: React.FC<AssignRoleDialogProps> = ({
   task,
   roles,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredRoles, setFilteredRoles] = useState<Role[]>([]);
-  
-  // Split roles into favorites and others
-  const favoriteRoles = filteredRoles.filter(role => role.isFavorite);
-  const otherRoles = filteredRoles.filter(role => !role.isFavorite);
+  // State only for filter type
+  const [filterType, setFilterType] = useState<FilterType>('all');
 
-  // Filter roles based on search query
-  useEffect(() => {
-    if (!searchQuery) {
-      setFilteredRoles(roles);
-    } else {
-      const lowerQuery = searchQuery.toLowerCase();
-      setFilteredRoles(
-        roles.filter(role => 
-          role.name.toLowerCase().includes(lowerQuery)
-        )
-      );
-    }
-  }, [searchQuery, roles]);
+  // Split roles based directly on props, favorite status, and filterType
+  // Filter favorites based on the selected type as well
+  const favoriteRoles = roles.filter(role => 
+    role.isFavorite && 
+    (filterType === 'all' || role.type === filterType)
+  );
+  const nonFavoriteRoles = roles.filter(role => !role.isFavorite);
+
+  const aiAgentRoles = (filterType === 'all' || filterType === 'ai_agent') 
+    ? nonFavoriteRoles.filter(role => role.type === 'ai_agent') 
+    : [];
+
+  const creativeRoles = (filterType === 'all' || filterType === 'creative') 
+    ? nonFavoriteRoles.filter(role => role.type === 'creative') 
+    : [];
 
   const handleAssign = (roleId: string) => {
     onAssign(roleId);
@@ -53,6 +56,7 @@ export const AssignRoleDialog: React.FC<AssignRoleDialogProps> = ({
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
+        {/* Background overlay */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -67,6 +71,7 @@ export const AssignRoleDialog: React.FC<AssignRoleDialogProps> = ({
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
+            {/* Dialog panel transition */}
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -76,34 +81,50 @@ export const AssignRoleDialog: React.FC<AssignRoleDialogProps> = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                {/* Updated Dialog Title */}
                 <Dialog.Title
                   as="h3"
                   className="text-lg font-medium leading-6 text-gray-900"
                 >
-                  Assign Role to Task
+                  Assign role to {task?.name || 'Task'}
                 </Dialog.Title>
-                {task && (
-                  <div className="mt-2 mb-4">
-                    <p className="text-sm text-gray-500">
-                      Select a role to assign to <span className="font-medium">{task.name}</span>
-                    </p>
-                  </div>
-                )}
 
-                {/* Search input */}
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Search roles..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+                {/* Filter Buttons */}
+                <div className="my-4 flex space-x-2">
+                  <button
+                    onClick={() => setFilterType('all')}
+                    className={`px-3 py-1 rounded-md text-sm font-medium 
+                      ${filterType === 'all' 
+                        ? 'bg-indigo-100 text-indigo-700' 
+                        : 'text-gray-500 hover:bg-gray-100'}`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setFilterType('creative')}
+                    className={`px-3 py-1 rounded-md text-sm font-medium 
+                      ${filterType === 'creative' 
+                        ? 'bg-indigo-100 text-indigo-700' 
+                        : 'text-gray-500 hover:bg-gray-100'}`}
+                  >
+                    Creatives
+                  </button>
+                  <button
+                    onClick={() => setFilterType('ai_agent')}
+                    className={`px-3 py-1 rounded-md text-sm font-medium 
+                      ${filterType === 'ai_agent' 
+                        ? 'bg-indigo-100 text-indigo-700' 
+                        : 'text-gray-500 hover:bg-gray-100'}`}
+                  >
+                    AI Agents
+                  </button>
                 </div>
 
-                {/* Role list container with scrolling */}
-                <div className="max-h-60 overflow-y-auto pr-2 -mr-2">
+                {/* Description and Search Bar Removed */} 
+
+                {/* Role list container with scrolling - Increase max height */}
+                <div className="max-h-96 overflow-y-auto pr-2 -mr-2 mt-4">
                   {/* Favorites section */}
                   {favoriteRoles.length > 0 && (
                     <div className="mb-4">
@@ -131,14 +152,14 @@ export const AssignRoleDialog: React.FC<AssignRoleDialogProps> = ({
                     </div>
                   )}
 
-                  {/* Other roles section */}
-                  {otherRoles.length > 0 && (
-                    <div>
+                  {/* AI Agents section */}
+                  {aiAgentRoles.length > 0 && (
+                    <div className="mb-4">
                       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                        All Roles
+                        AI Agents
                       </h4>
                       <div className="grid grid-cols-2 gap-2">
-                        {otherRoles.map(role => (
+                        {aiAgentRoles.map(role => (
                           <button
                             key={role.id}
                             className="flex items-center p-2 rounded-md hover:bg-gray-100 transition-colors"
@@ -158,14 +179,42 @@ export const AssignRoleDialog: React.FC<AssignRoleDialogProps> = ({
                     </div>
                   )}
 
-                  {/* No results state */}
-                  {filteredRoles.length === 0 && (
+                  {/* Creatives section */}
+                  {creativeRoles.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                        Creatives 
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {creativeRoles.map(role => (
+                          <button
+                            key={role.id}
+                            className="flex items-center p-2 rounded-md hover:bg-gray-100 transition-colors"
+                            onClick={() => handleAssign(role.id)}
+                          >
+                            <div className="w-10 h-10 rounded-full mr-2 overflow-hidden flex-shrink-0">
+                              <img 
+                                src={role.avatar} 
+                                alt={role.name} 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="text-sm font-medium truncate">{role.name}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Updated No results state */}
+                  {favoriteRoles.length === 0 && aiAgentRoles.length === 0 && creativeRoles.length === 0 && (
                     <div className="py-8 text-center text-gray-500">
-                      No roles found matching "{searchQuery}"
+                      {`No ${filterType !== 'all' ? filterType.replace('_', ' ') + 's' : 'roles'} available`}
                     </div>
                   )}
                 </div>
 
+                {/* Cancel Button */}
                 <div className="mt-4 flex justify-end">
                   <button
                     type="button"

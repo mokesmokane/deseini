@@ -9,9 +9,13 @@ import {
   BugAntIcon,
   ChartBarIcon,
   ChevronLeftIcon,
-  CodeBracketIcon
+  CodeBracketIcon,
+  XMarkIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { CreateChartDialog } from './dialogs/CreateChartDialog';
+import { ChartCreationChat } from './ChartCreationChat';
+// import { CreateChartDialog } from './dialogs/CreateChartDialog';
+import { ChatMessage, TreeTaskNode } from '../types';
 
 interface SidebarSection {
   id: string;
@@ -21,23 +25,38 @@ interface SidebarSection {
   onClick?: () => void;
 }
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  onActiveSectionChange?: (sectionId: string | null) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   const { currentChart, setCurrentChart, setHasUnsavedChanges, loadChartById } = useGantt();
   const { saveChart } = useChartsList();
-  const { userCharts, project } = useProject();
+  const { 
+    project, 
+    userCharts, 
+    isGeneratingTasks, 
+    taskGenerationError, 
+    initialTasksForDialog, 
+    isCreateChartDialogOpen, 
+    setIsCreateChartDialogOpen,
+    handleInitiateTaskGeneration
+  } = useProject();
   const { projectId } = useParams<{ projectId: string }>();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [projectJsonError, setProjectJsonError] = useState<string | null>(null);
-  const [isCreateChartDialogOpen, setIsCreateChartDialogOpen] = useState(false);
-  const navigate = useNavigate();
-
-  // State for JSON editing
   const [jsonContent, setJsonContent] = useState('');
   const [projectJsonContent, setProjectJsonContent] = useState('');
-  
-  // Debug actions
+  const [showChartCreationChat, setShowChartCreationChat] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    console.log(`[Sidebar] useEffect: activeSection changed to: ${activeSection}`);
+    onActiveSectionChange?.(activeSection);
+  }, [activeSection, onActiveSectionChange]);
+
   const logChartData = () => {
     console.log('Chart Data:', currentChart);
   };
@@ -52,14 +71,11 @@ const Sidebar: React.FC = () => {
     // Task date validation logic would go here
   };
 
-  // Format the JSON representation of the chart
   const getChartJsonRepresentation = () => {
     return JSON.stringify(currentChart, null, 2);
   };
 
-  // Format the JSON representation of the project
   const getProjectJsonRepresentation = () => {
-    // Create a complete project representation based on the Project interface
     const projectData = {
       id: projectId,
       projectName: project?.projectName || '',
@@ -73,43 +89,37 @@ const Sidebar: React.FC = () => {
     return JSON.stringify(projectData, null, 2);
   };
 
-  // Update the JSON content whenever the chart changes
   useEffect(() => {
     setJsonContent(getChartJsonRepresentation());
   }, [currentChart]);
 
-  // Update the project JSON content
   useEffect(() => {
     setProjectJsonContent(getProjectJsonRepresentation());
   }, [projectId, userCharts, project]);
 
-  // Handle JSON content change
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setJsonContent(e.target.value);
-    setJsonError(null); // Clear any previous errors
+    setJsonError(null);
   };
 
-  // Handle project JSON content change
   const handleProjectJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setProjectJsonContent(e.target.value);
-    setProjectJsonError(null); // Clear any previous errors
+    setProjectJsonError(null);
   };
 
-  // Apply edited JSON to the chart
   const saveJsonChanges = () => {
     try {
       const parsedJson = JSON.parse(jsonContent);
       setCurrentChart(parsedJson);
 
-      // Save to database as well
       if (currentChart?.id) {
         saveChart(parsedJson).then((success: boolean) => {
           if (success) {
             setJsonError(null);
-            setHasUnsavedChanges(false); // No unsaved changes since we just saved
+            setHasUnsavedChanges(false);
           } else {
             setJsonError('Failed to save to database. Changes applied to chart locally only.');
-            setHasUnsavedChanges(true); // Mark as having unsaved changes
+            setHasUnsavedChanges(true);
           }
         });
       } else {
@@ -136,6 +146,20 @@ const Sidebar: React.FC = () => {
     setIsExpanded(false);
   };
 
+  const handleStartChartCreationChat = () => {
+    setShowChartCreationChat(true);
+    if (activeSection !== 'create') {
+        setActiveSection('create');
+    }
+    if (!isExpanded) {
+        setIsExpanded(true);
+    }
+  };
+
+  const handleCancelChartCreationChat = () => {
+    setShowChartCreationChat(false);
+  };
+
   const sections: SidebarSection[] = [
     {
       id: 'project',
@@ -148,51 +172,71 @@ const Sidebar: React.FC = () => {
       name: 'Plans',
       icon: <ChartBarIcon className="h-6 w-6" />,
       content: (
-        <div className="p-4">
-          <h3 className="font-bold text-lg mb-4">Project Charts</h3>
-          {userCharts && userCharts.length > 0 ? (
-            <div className="space-y-3">
-              {userCharts.map((chart: { id: string; name: string; description?: string }) => (
-                <div
-                  key={chart.id}
-                  className={`p-3 rounded-md border cursor-pointer transition-all hover:bg-gray-100 ${currentChart?.id === chart.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                  onClick={() => handleChartSelect(chart.id)}
-                >
-                  <div className="font-medium">{chart.name}</div>
-                  {chart.description && (
-                    <div className="text-sm text-gray-600 mt-1 line-clamp-2">{chart.description}</div>
-                  )}
+        <div className="p-4 h-full flex flex-col">
+          <h3 className="font-bold text-lg mb-4 flex-shrink-0">Project Charts</h3>
+          
+          <div className="flex-grow overflow-y-auto">
+            {userCharts && userCharts.length > 0 ? (
+              <div className="space-y-3 pb-4">
+                {userCharts.map((chart: { id: string; name: string; description?: string }) => (
+                  <div
+                    key={chart.id}
+                    className={`p-3 rounded-md border cursor-pointer transition-all hover:bg-gray-100 ${currentChart?.id === chart.id ? 'border-neutral-400 bg-neutral-100' : 'border-gray-200'
+                      }`}
+                    onClick={() => handleChartSelect(chart.id)}
+                  >
+                    <div className="font-medium">{chart.name}</div>
+                    {chart.description && (
+                      <div className="text-sm text-gray-600 mt-1 line-clamp-2">{chart.description}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-gray-500">No charts found for this project.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'create',
+      name: 'Create via Chat',
+      icon: <SparklesIcon className="h-6 w-6" />,
+      content: (
+        <div className="p-4 h-full flex flex-col">
+          <div className="flex-grow overflow-y-auto relative">
+            <div className="absolute inset-0 overflow-y-auto">
+              {showChartCreationChat ? (
+                <ChartCreationChat
+                  onCancel={handleCancelChartCreationChat}
+                  className="h-full"
+                />
+              ) : (
+                <div className="text-center py-10">
+                  <button
+                    onClick={handleStartChartCreationChat}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center mx-auto"
+                  >
+                    <SparklesIcon className="h-5 w-5 mr-2" />
+                    Create New Plan
+                  </button>
                 </div>
-              ))}
-              <button
-                onClick={() => setIsCreateChartDialogOpen(true)}
-                className="flex items-center justify-center w-full p-2 mt-4 border border-dashed border-gray-300 rounded-md text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-all"
-              >
-                <ChartBarIcon className="h-5 w-5 mr-2" />
-                <span>Create New Chart</span>
-              </button>
-              <CreateChartDialog 
-                isOpen={isCreateChartDialogOpen} 
-                onClose={() => setIsCreateChartDialogOpen(false)} 
-              />
+              )}
             </div>
-          ) : (
-            <div className="text-center py-6 space-y-4">
-              <p className="text-gray-500">No charts found for this project</p>
-              <button
-                onClick={() => setIsCreateChartDialogOpen(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <ChartBarIcon className="h-5 w-5 mr-2" />
-                Create First Chart
-              </button>
-              <CreateChartDialog 
-                isOpen={isCreateChartDialogOpen} 
-                onClose={() => setIsCreateChartDialogOpen(false)} 
-              />
-            </div>
-          )}
+            {isGeneratingTasks && (
+              <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 rounded-md">
+                <p className="text-neutral-600 font-medium animate-pulse">Generating tasks...</p>
+              </div>
+            )}
+            {taskGenerationError && !isGeneratingTasks && (
+              <div className="absolute bottom-4 left-4 right-4 p-2 bg-red-100 text-red-700 text-xs z-10 rounded-md shadow text-center">
+                Error: {taskGenerationError}
+              </div>
+            )}
+          </div>
         </div>
       )
     },
@@ -267,7 +311,7 @@ const Sidebar: React.FC = () => {
             )}
             <button 
               onClick={saveJsonChanges}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium w-full"
+              className="bg-neutral-700 hover:bg-neutral-800 text-white px-3 py-2 rounded-md text-sm font-medium w-full"
             >
               Save JSON Changes
             </button>
@@ -326,18 +370,29 @@ const Sidebar: React.FC = () => {
     }
   };
 
+  const handleCollapseSidebar = () => {
+    setIsExpanded(false);
+  };
+
+  // Log current state on every render
+  console.log(`[Sidebar] Rendering: isExpanded=${isExpanded}, activeSection=${activeSection}, showChartCreationChat=${showChartCreationChat}`);
+
   return (
     <div
-      className={`flex h-full bg-white border-r border-gray-200 transition-all duration-300 ${isExpanded ? 'w-80' : 'w-14'}`}
+      className={`flex h-full bg-white border-r border-gray-200 transition-all duration-300 ${
+        isExpanded 
+          ? activeSection === 'create' ? 'w-[40rem]' : 'w-80'
+          : 'w-14'
+      }`}
     >
       <div className="w-14 h-full border-r border-gray-200 flex flex-col items-center py-4">
         <div className="flex flex-col space-y-4 mt-4 items-center flex-grow">
-          {sections.slice(0, 2).map((section) => (
+          {sections.slice(0, 3).map((section) => (
             <button
               key={section.id}
               onClick={() => section.onClick ? section.onClick() : toggleSection(section.id)}
               className={`p-2 rounded-full transition ${activeSection === section.id
-                  ? 'bg-blue-100 text-blue-600'
+                  ? 'bg-neutral-200 text-neutral-800'
                   : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
                 }`}
               title={section.name}
@@ -347,12 +402,12 @@ const Sidebar: React.FC = () => {
           ))}
         </div>
         <div className="mt-auto flex flex-col space-y-4 mb-4 items-center">
-          {sections.slice(2).map((section) => (
+          {sections.slice(3).map((section) => (
             <button
               key={section.id}
               onClick={() => section.onClick ? section.onClick() : toggleSection(section.id)}
-              className={`p-2 rounded-full transition ${activeSection === section.id
-                  ? 'bg-blue-100 text-blue-600'
+              className={`relative p-2 rounded-full transition ${activeSection === section.id
+                  ? 'bg-neutral-200 text-neutral-800'
                   : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
                 }`}
               title={`${section.name}${section.id === 'json' ? ' - Click to view project JSON data' : ''}`}
@@ -360,7 +415,7 @@ const Sidebar: React.FC = () => {
             >
               {section.icon}
               {section.id === 'json' && activeSection !== 'json' && (
-                <span className="absolute -right-1 -top-1 h-3 w-3 bg-blue-500 rounded-full animate-pulse"></span>
+                <span className="absolute -right-1 -top-1 h-3 w-3 bg-neutral-500 rounded-full animate-pulse"></span>
               )}
             </button>
           ))}
@@ -371,15 +426,16 @@ const Sidebar: React.FC = () => {
       >
         {isExpanded && (
           <button
-            onClick={() => setIsExpanded(false)}
-            className="absolute top-4 right-4 p-2 rounded-md hover:bg-gray-100 text-gray-500"
+            onClick={handleCollapseSidebar}
+            className="absolute top-4 right-4 p-2 rounded-md hover:bg-gray-100 text-gray-500 z-20"
             title="Collapse sidebar"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
         )}
-        {activeSection && sections.find(s => s.id === activeSection && s.id !== 'project')?.content}
+        {isExpanded && activeSection && sections.find(s => s.id === activeSection && s.id !== 'project')?.content}
       </div>
+
     </div>
   );
 };

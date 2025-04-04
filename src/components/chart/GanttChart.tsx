@@ -39,6 +39,7 @@ import 'reactflow/dist/style.css';
 import { useChartsList } from '../../contexts/ChartsListContext';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { AssignRoleDialog } from '../common/AssignRoleDialog';
+import { Role } from '../common/AssignRoleDialog';
 // Shared constants that are exported to be used by node components
 export const NODE_HEIGHT = 60;
 export const TIMELINE_HEIGHT = 100;
@@ -65,27 +66,38 @@ const edgeTypes = {
   default: CustomEdge,
 };
 
-const roles = [
-  { id: '1', name: 'Jessica', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Jessica', isFavorite: true },
-  { id: '2', name: 'Maria', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Maria', isFavorite: false },
-  { id: '3', name: 'Sophia', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Sophia', isFavorite: false },
-  { id: '4', name: 'Caleb', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Caleb', isFavorite: false },
-  { id: '5', name: 'Aiden', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Aiden', isFavorite: false },
-  { id: '6', name: 'Liliana', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Liliana', isFavorite: false },
-  { id: '7', name: 'George', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=George', isFavorite: false },
-  { id: '8', name: 'Eden', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Eden', isFavorite: false },
-  { id: '9', name: 'Ryan', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Ryan', isFavorite: false },
-  { id: '10', name: 'Wyatt', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Wyatt', isFavorite: false },
-  { id: '11', name: 'Leo', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Leo', isFavorite: false },
-  { id: '12', name: 'Valentina', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Valentina', isFavorite: false },
-  { id: '13', name: 'Oliver', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Oliver', isFavorite: false },
-  { id: '14', name: 'Eliza', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Eliza', isFavorite: false },
-  { id: '15', name: 'Jack', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Jack', isFavorite: false },
-  { id: '16', name: 'Jocelyn', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Jocelyn', isFavorite: false },
-  { id: '17', name: 'Ryker', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Ryker', isFavorite: false },
-  { id: '18', name: 'Sawyer', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Sawyer', isFavorite: true },
-  { id: '19', name: 'Kimberly', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Kimberly', isFavorite: true },
-  { id: '20', name: 'Alexander', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=Alexander', isFavorite: true }
+const roles: Role[] = [
+  // Creatives (People) - Using local images 1.jpg - 9.jpg cyclically
+  { id: '1', name: 'Jessica: Project Manager', avatar: '/images/1.jpg', type: 'creative', isFavorite: true },
+  { id: '2', name: 'Maria: Brand Specialist', avatar: '/images/2.jpg', type: 'creative', isFavorite: false },
+  { id: '3', name: 'Sophia: Designer', avatar: '/images/3.jpg', type: 'creative', isFavorite: false },
+  { id: '4', name: 'Caleb: Engineer', avatar: '/images/4.jpg', type: 'creative', isFavorite: false },
+  { id: '5', name: 'Aiden: Brand Specialist', avatar: '/images/5.jpg', type: 'creative', isFavorite: false },
+  { id: '6', name: 'Liliana: Project Manager', avatar: '/images/6.jpg', type: 'creative', isFavorite: false },
+  { id: '7', name: 'George: Senior Designer', avatar: '/images/7.jpg', type: 'creative', isFavorite: false },
+  { id: '8', name: 'Eden: Engineer', avatar: '/images/8.jpg', type: 'creative', isFavorite: false },
+  { id: '9', name: 'Ryan: Developer', avatar: '/images/9.jpg', type: 'creative', isFavorite: false },
+  { id: '10', name: 'Wyatt: Brand Specialist', avatar: '/images/1.jpg', type: 'creative', isFavorite: false },
+  { id: '11', name: 'Leo: Senior Engineer', avatar: '/images/2.jpg', type: 'creative', isFavorite: false },
+  { id: '12', name: 'Valentina: Senior Designer', avatar: '/images/3.jpg', type: 'creative', isFavorite: false },
+  { id: '13', name: 'Oliver: Senior Engineer', avatar: '/images/4.jpg', type: 'creative', isFavorite: false },
+  { id: '14', name: 'Eliza: Analyst', avatar: '/images/5.jpg', type: 'creative', isFavorite: false },
+  { id: '15', name: 'Jack: Designer', avatar: '/images/6.jpg', type: 'creative', isFavorite: false },
+  { id: '16', name: 'Jocelyn: Engineer', avatar: '/images/7.jpg', type: 'creative', isFavorite: false },
+  { id: '17', name: 'Ryker: QA Tester', avatar: '/images/8.jpg', type: 'creative', isFavorite: false },
+  { id: '18', name: 'Sawyer: Team Lead', avatar: '/images/9.jpg', type: 'creative', isFavorite: true },
+  { id: '19', name: 'Kimberly: Manager', avatar: '/images/1.jpg', type: 'creative', isFavorite: true },
+  { id: '20', name: 'Alexander: Architect', avatar: '/images/2.jpg', type: 'creative', isFavorite: true },
+
+  // AI Agents - Updated to use lorelei avatars
+  { id: 'ai-1', name: 'Brand Researcher', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=BrandResearcher', type: 'ai_agent', isFavorite: true },
+  { id: 'ai-2', name: 'Drawing Checker', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=DrawingChecker', type: 'ai_agent', isFavorite: false },
+  { id: 'ai-3', name: 'FEA Analyst', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=FEAAnalyst', type: 'ai_agent', isFavorite: true },
+  { id: 'ai-4', name: 'Project Controller', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=ProjectController', type: 'ai_agent', isFavorite: false },
+  { id: 'ai-6', name: 'Requirements Analyst', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=RequirementsAnalyst', type: 'ai_agent', isFavorite: false },
+  { id: 'ai-7', name: 'Risk Assessor', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=RiskAssessor', type: 'ai_agent', isFavorite: false },
+  { id: 'ai-8', name: 'Compliance Checker', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=ComplianceChecker', type: 'ai_agent', isFavorite: false },
+  { id: 'ai-9', name: 'Resource Allocator', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=ResourceAllocator', type: 'ai_agent', isFavorite: false }
 ];
 
 export const GanttChart: React.FC<GanttChartProps> = () => {
