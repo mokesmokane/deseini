@@ -43,5 +43,20 @@ export function createApiRouter(apiKey: string): express.Router {
     taskController.generateProjectPlan(req, res);
   });
   
+  // Convert project plan to draft tasks endpoint
+  router.post('/convert-plan-to-tasks', (req: express.Request, res: express.Response) => {
+    taskController.convertPlanToTasks(req, res);
+  });
+  
+  // Generate final project plan endpoint
+  router.post('/generate-final-plan', (req: express.Request, res: express.Response) => {
+    taskController.generateFinalPlan(req, res);
+  });
+  
+  // Get project context endpoint
+  router.get('/get-project-context', (req: express.Request, res: express.Response) => {
+    taskController.getProjectContext(req, res);
+  });
+  
   return router;
 }

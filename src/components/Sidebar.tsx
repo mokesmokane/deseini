@@ -10,12 +10,10 @@ import {
   ChartBarIcon,
   ChevronLeftIcon,
   CodeBracketIcon,
-  XMarkIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { ChartCreationChat } from './ChartCreationChat';
-// import { CreateChartDialog } from './dialogs/CreateChartDialog';
-import { ChatMessage, TreeTaskNode } from '../types';
+import { ChatMessage } from '../types';
+import { useProjectPlan } from '../contexts/ProjectPlanContext';
 
 interface SidebarSection {
   id: string;
@@ -42,6 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
     setIsCreateChartDialogOpen,
     handleInitiateTaskGeneration
   } = useProject();
+  const { generateProjectPlan } = useProjectPlan();
   const { projectId } = useParams<{ projectId: string }>();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -49,27 +48,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   const [projectJsonError, setProjectJsonError] = useState<string | null>(null);
   const [jsonContent, setJsonContent] = useState('');
   const [projectJsonContent, setProjectJsonContent] = useState('');
-  const [showChartCreationChat, setShowChartCreationChat] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     console.log(`[Sidebar] useEffect: activeSection changed to: ${activeSection}`);
     onActiveSectionChange?.(activeSection);
   }, [activeSection, onActiveSectionChange]);
-
-  const logChartData = () => {
-    console.log('Chart Data:', currentChart);
-  };
-
-  const validateDependencies = () => {
-    console.log(`Validating ${currentChart?.dependencies?.length || 0} dependencies...`);
-    // Additional validation logic would go here
-  };
-
-  const checkTaskDateConstraints = () => {
-    console.log(`Checking date constraints for ${currentChart?.tasks?.length || 0} tasks...`);
-    // Task date validation logic would go here
-  };
 
   const getChartJsonRepresentation = () => {
     return JSON.stringify(currentChart, null, 2);
@@ -146,18 +130,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
     setIsExpanded(false);
   };
 
-  const handleStartChartCreationChat = () => {
-    setShowChartCreationChat(true);
-    if (activeSection !== 'create') {
-        setActiveSection('create');
+  const handleStartProjectPlanGeneration = () => {
+    
+    console.log('[Sidebar] Triggering project plan generation with empty message');
+    generateProjectPlan([]);
+    
+    // Navigate to the Canvas view
+    if (projectId) {
+      navigate(`/projects/${projectId}/canvas`);
     }
-    if (!isExpanded) {
-        setIsExpanded(true);
-    }
-  };
-
-  const handleCancelChartCreationChat = () => {
-    setShowChartCreationChat(false);
   };
 
   const sections: SidebarSection[] = [
@@ -173,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
       icon: <ChartBarIcon className="h-6 w-6" />,
       content: (
         <div className="p-4 h-full flex flex-col">
-          <h3 className="font-bold text-lg mb-4 flex-shrink-0">Project Charts</h3>
+          <h3 className="font-bold text-lg mb-4">Project Charts</h3>
           
           <div className="flex-grow overflow-y-auto">
             {userCharts && userCharts.length > 0 ? (
@@ -206,38 +187,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
       name: 'Create via Chat',
       icon: <SparklesIcon className="h-6 w-6" />,
       content: (
-        <div className="p-4 h-full flex flex-col">
-          <div className="flex-grow overflow-y-auto relative">
-            <div className="absolute inset-0 overflow-y-auto">
-              {showChartCreationChat ? (
-                <ChartCreationChat
-                  onCancel={handleCancelChartCreationChat}
-                  className="h-full"
-                />
-              ) : (
-                <div className="text-center py-10">
-                  <button
-                    onClick={handleStartChartCreationChat}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center mx-auto"
-                  >
-                    <SparklesIcon className="h-5 w-5 mr-2" />
-                    Create New Plan
-                  </button>
-                </div>
-              )}
-            </div>
-            {isGeneratingTasks && (
-              <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 rounded-md">
-                <p className="text-neutral-600 font-medium animate-pulse">Generating tasks...</p>
-              </div>
-            )}
-            {taskGenerationError && !isGeneratingTasks && (
-              <div className="absolute bottom-4 left-4 right-4 p-2 bg-red-100 text-red-700 text-xs z-10 rounded-md shadow text-center">
-                Error: {taskGenerationError}
-              </div>
-            )}
-          </div>
-        </div>
+        <div className="p-0 h-full flex flex-col"></div>
       )
     },
     {
@@ -277,22 +227,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
           <h3 className="font-bold text-lg mb-4">Debug Tools</h3>
           <div className="space-y-4 mb-4">
             <button
-              onClick={logChartData}
+              onClick={saveJsonChanges}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-md text-sm font-medium w-full"
             >
-              Log Chart Data
-            </button>
-            <button
-              onClick={validateDependencies}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-md text-sm font-medium w-full"
-            >
-              Validate Dependencies
-            </button>
-            <button
-              onClick={checkTaskDateConstraints}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-md text-sm font-medium w-full"
-            >
-              Check Task Date Constraints
+              Save JSON Changes
             </button>
           </div>
           
@@ -309,12 +247,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
                 {jsonError}
               </div>
             )}
-            <button 
-              onClick={saveJsonChanges}
-              className="bg-neutral-700 hover:bg-neutral-800 text-white px-3 py-2 rounded-md text-sm font-medium w-full"
-            >
-              Save JSON Changes
-            </button>
           </div>
         </div>
       )
@@ -363,7 +295,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   const toggleSection = (id: string) => {
     const newActiveSection = activeSection === id ? null : id;
     setActiveSection(newActiveSection);
-    if (newActiveSection && newActiveSection !== 'project') {
+    if (newActiveSection && newActiveSection !== 'project' && newActiveSection !== 'create') {
       setIsExpanded(true);
     } else {
       setIsExpanded(false);
@@ -375,7 +307,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   };
 
   // Log current state on every render
-  console.log(`[Sidebar] Rendering: isExpanded=${isExpanded}, activeSection=${activeSection}, showChartCreationChat=${showChartCreationChat}`);
+  console.log(`[Sidebar] Rendering: isExpanded=${isExpanded}, activeSection=${activeSection}`);
 
   return (
     <div

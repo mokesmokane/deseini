@@ -20,10 +20,12 @@ interface ProjectPlanContextProps {
   previousText: string | null;
   setCurrentText: (text: string | null) => void;
   isStreaming: boolean;
+  
   setIsStreaming: (streaming: boolean) => void;
   currentLineNumber: number;
   setCurrentLineNumber: (lineNumber: number) => void;
   generateProjectPlan: (messages: ChatMessage[]) => Promise<void>;
+  confirmChanges: (confirm: boolean) => Promise<void>;
   reset: () => void;
 }
 
@@ -165,17 +167,29 @@ export function ProjectPlanProvider({
     };
   };
 
+  const confirmChanges = async (confirm: boolean) => {
+    if (confirm) {
+      // Apply changes
+      setPreviousText(currentText);
+      previousPlanRef.current = currentText;
+    } else {
+      // Revert changes
+      setCurrentText(previousText);
+    }
+  };
+
   const generateProjectPlan = async (currentMessages: ChatMessage[]) => {
     console.log('[ProjectPlanContext] generateProjectPlan: START');
-    if (currentMessages.length === 0 || isStreaming) {
-      console.log('[ProjectPlanContext] generateProjectPlan: Skipping (no messages or already streaming)');
+    if (isStreaming) {
+      console.log('[ProjectPlanContext] generateProjectPlan: Skipping (already streaming)');
       return;
     }
-
-    const lastMessage = currentMessages[currentMessages.length - 1];
-    if (!lastMessage || lastMessage.role !== 'user') {
-      console.log('[ProjectPlanContext] generateProjectPlan: Skipping (last message not from user)');
-      return;
+    if(currentMessages.length >0 ){
+      const lastMessage = currentMessages[currentMessages.length - 1];
+      if (!lastMessage || lastMessage.role !== 'user') {
+        console.log('[ProjectPlanContext] generateProjectPlan: Skipping (last message not from user)');
+        return;
+      }
     }
     
     console.log("[ProjectPlanContext] generateProjectPlan: Initiating plan stream...");
@@ -225,7 +239,7 @@ export function ProjectPlanProvider({
       }
 
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-      streamLines(currentText || '', reader, (lineNumber: number, updatedText: string) => {
+      await streamLines(currentText || '', reader, (lineNumber: number, updatedText: string) => {
         setCurrentLineNumber(lineNumber);
         setCurrentText(updatedText);
       });      
@@ -258,6 +272,7 @@ export function ProjectPlanProvider({
         setIsStreaming,
         currentLineNumber,
         setCurrentLineNumber,
+        confirmChanges,
         generateProjectPlan,
         reset
       }}

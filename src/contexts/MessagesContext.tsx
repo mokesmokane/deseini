@@ -220,11 +220,6 @@ export function MessagesProvider({
       console.log("Skipping suggestions: A request is already in progress.");
       return;
     }
-    
-    if (lastSuggestionsMessageCountRef.current === currentMessages.length) {
-      console.log("Skipping suggestions: Already fetched for this message count.");
-      return;
-    }
 
     const lastMessage = currentMessages[currentMessages.length - 1];
     if (!lastMessage || lastMessage.role !== 'assistant' || !lastMessage.content.trim() || lastMessage.requiresAction) {
@@ -271,6 +266,7 @@ export function MessagesProvider({
   };
 
   const handleRefreshSuggestions = () => {
+    console.log("Refreshing suggestions...");
     fetchSuggestions(messages);
   };
 

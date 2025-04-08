@@ -8,6 +8,7 @@ import Canvas from '../components/Canvas.tsx';
 import { MessagesProvider } from '../contexts/MessagesContext';
 import { ProjectPlanProvider } from '../contexts/ProjectPlanContext';
 import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
+import { DraftPlanProvider } from '../contexts/DraftPlanContext';
 
 const ProjectView = () => {
   const { projectId, chartId } = useParams<{ projectId: string; chartId?: string }>();
@@ -54,6 +55,8 @@ const ProjectView = () => {
       project={project}
       userCharts={userCharts}
     >
+      <DraftPlanProvider>
+      
     <MessagesProvider
       // Conditionally pass projectId only when it's valid and not 'new'
       projectId={(projectId && projectId !== 'new') ? projectId : ''} 
@@ -87,8 +90,9 @@ const ProjectView = () => {
           )}
         </div>
       </div>
-      <ProjectPlanTrigger />
+      
     </MessagesProvider>
+    </DraftPlanProvider>
     </ProjectPlanProvider>
   );
 };

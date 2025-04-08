@@ -10,17 +10,26 @@ import { useProjectPlan } from '../contexts/ProjectPlanContext';
  * Handles race conditions by tracking the last processed user message
  * and ensuring all unprocessed user messages are handled.
  * Prevents triggering during message streaming by monitoring loading state.
+ * Also triggers plan generation on initial render before any messages exist.
  */
 const ProjectPlanTrigger: React.FC = () => {
   const { messages, loading } = useMessages();
   const { generateProjectPlan } = useProjectPlan();
   const lastProcessedUserMessageIndexRef = useRef(-1);
   const previousLoadingStateRef = useRef(false);
+  const initialTriggerRef = useRef(false);
+  
+  // Trigger plan generation on initial mount, before any messages exist
+  useEffect(() => {
+    if (!initialTriggerRef.current) {
+      console.log('[ProjectPlanTrigger] Initial trigger - generating plan with empty message list');
+      generateProjectPlan([]);
+      initialTriggerRef.current = true;
+    }
+  }, [generateProjectPlan]);
   
   // Trigger plan generation when messages change or loading state changes
   useEffect(() => {
-    if (messages.length === 0) return;
-    
     // Only process messages when:
     // 1. Loading has just finished (loading was true, now it's false) OR
     // 2. We're not currently loading and have unprocessed user messages

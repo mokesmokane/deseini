@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectPlan } from '../contexts/ProjectPlanContext';
-import { StreamingDiff } from './StreamingDiff';
+import { StreamingDiff } from './StreamingDiff';  
+import DraftPlan from './draft_plan/DraftPlan';
+import { ChartCreationChat } from './ChartCreationChat';
+import { useNavigate, useParams } from 'react-router-dom';
+import ProjectPlanTrigger from './ProjectPlanTrigger';
+import ViewSelector, { ViewMode } from './ViewSelector';
+import MarkdownView from './MarkdownView';
+import GridView from './GridView';
 
 const Canvas: React.FC = () => {
   // Use the streaming context from ProjectPlanContext
@@ -10,6 +17,10 @@ const Canvas: React.FC = () => {
   } = useProjectPlan();
   
   const [showPlanPane, setShowPlanPane] = useState(false);
+  const [isDraftCollapsed, setIsDraftCollapsed] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('diff'); // Default to diff view
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
 
   useEffect(() => {
     // Show the plan pane once the first plan is generated
@@ -17,6 +28,61 @@ const Canvas: React.FC = () => {
       setShowPlanPane(true);
     }
   }, [currentText, showPlanPane]);
+
+  const handleChatCancel = () => {
+    // Navigate back to the project detail page
+    if (projectId) {
+      navigate(`/projects/${projectId}`);
+    }
+  };
+
+  const toggleDraftCollapse = () => {
+    setIsDraftCollapsed(!isDraftCollapsed);
+  };
+
+  // Handle switching between different view modes
+  const handleViewChange = (newViewMode: ViewMode) => {
+    setViewMode(newViewMode);
+  };
+
+  // Render the appropriate view based on the current view mode
+  const renderCurrentView = () => {
+    if (!currentText) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">
+            {isStreaming ? "Generating plan..." : "Waiting for plan generation to start..."}
+          </p>
+        </div>
+      );
+    }
+
+    switch (viewMode) {
+      case 'diff':
+        return (
+          <div className="flex notepad-container">
+            <div className="prose prose-slate max-w-none pt-1 flex-grow notepad-content" style={{ 
+              border: 'none', 
+              paddingLeft: '0.5rem',
+              overflowX: 'auto',
+              minWidth: '100%'
+            }}>
+              <StreamingDiff 
+                onComplete={() => {
+                  // Any future post-completion actions can be added here if needed
+                }}
+              />
+            </div>
+          </div>
+        );
+      case 'markdown':
+        return <MarkdownView content={currentText} />;
+      case 'grid':
+        return <GridView content={currentText} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="flex h-full overflow-hidden bg-gray-100">
@@ -64,7 +130,7 @@ const Canvas: React.FC = () => {
           
           .markdown-body blockquote {
             padding-left: 1rem !important;
-            border-left: 4px solid #93c5fd !important;
+            border-left: 4px solid #e5e7eb !important;
           }
           
           /* Ensure line heights are consistent */
@@ -119,7 +185,7 @@ const Canvas: React.FC = () => {
           
           .line-number.active {
             background-color: #fef3c7;
-            color: #92400e;
+            color: #000;
             font-weight: bold;
           }
           
@@ -145,84 +211,125 @@ const Canvas: React.FC = () => {
             transition: height 1s, margin 1s, padding 1s;
             overflow: hidden;
           }
-          
-          .expand-button {
-            margin-top: 16px;
-            padding: 8px 16px;
-            background-color: #3b82f6;
-            color: white;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+
+          /* Grid view styles */
+          .grid-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
           }
           
-          .expand-button:disabled {
-            background-color: #9ca3af;
-            cursor: not-allowed;
+          .grid-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
           }
         `
       }} />
 
-      {/* Left Pane: Project Notes */}
-      <div 
-        className={`
-          transition-all duration-500 ease-in-out 
-          h-full overflow-y-auto bg-white border-r border-gray-200
-          ${showPlanPane ? 'w-1/2 p-0 opacity-100' : 'w-0 p-0 opacity-0'}
-        `}
-        style={{ willChange: 'width, opacity' }}
-      >
-        <div className="sticky top-0 bg-white p-6 pb-2 z-10 font-balsamiq" style={{ border: 'none' }}>
-          <h2 className="text-xl font-semibold text-gray-800">Project Consultation Notes</h2>
-          <p className="text-sm text-gray-500 mt-1 mb-2">Information gathered during consultation</p>
-        </div>
-        
-        {currentText ? (
-          <div className="flex notepad-container" style={{ padding: '1.5rem 1.5rem 0 1.5rem', border: 'none' }}>
-            {/* Thin separator line instead of border */}
-            <div className="h-full" style={{ width: '1px', backgroundColor: '#e5e7eb', margin: '0 8px 0 0' }}></div>
-            
-            {/* StreamingDiff content instead of Markdown */}
-            <div className="prose prose-slate max-w-none pt-1 flex-grow notepad-content" style={{ 
-              border: 'none', 
-              paddingLeft: '0.5rem',
-              overflowX: 'auto',
-              minWidth: '100%'
-            }}>
-              <StreamingDiff 
-                onComplete={() => {
-                  // Any future post-completion actions can be added here if needed
-                }}
-              />
-              
-              {/* Hint about structured notes */}
-              {!currentText.includes('# Timescales') && !currentText.includes('# Scope') && (
-                <div className="mt-6 py-4 px-5 bg-blue-50 text-blue-700 rounded-lg text-sm font-balsamiq" style={{ border: 'none' }}>
-                  <p className="font-medium" style={{ height: 'auto', lineHeight: 'normal', border: 'none' }}>Consultant's Note</p>
-                  <p className="mt-1" style={{ height: 'auto', lineHeight: 'normal', border: 'none' }}>These notes will be structured around key project areas: Timescales, Scope, Roles, Dependencies, and Deliverables.</p>
-                  <p className="mt-1" style={{ height: 'auto', lineHeight: 'normal', border: 'none' }}>Continue the consultation to gather more information.</p>
+      {/* Main content wrapper using flex with clearly defined sections */}
+      <div className="flex flex-col h-full border-right border-gray-200" style={{ width: 'calc(100% - 46rem)' }}>
+        {/* Top section with header and content */}
+        <div 
+          className="flex flex-col border-b border-gray-300"
+          style={{ 
+            height: isDraftCollapsed ? 'calc(100% - 3rem)' : 'calc(100% - 500px)',
+            minHeight: '250px' 
+          }}
+        >
+          {/* Fixed header */}
+          <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm z-10">
+            <div className="p-3 pb-2 font-balsamiq">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">Project Plan</h2>
+                  <p className="text-sm text-gray-500 mt-1">Auto-generated plan based on your requirements</p>
                 </div>
-              )}
+                
+                {/* View Selector - Only show when there is content */}
+                {currentText && (
+                  <ViewSelector 
+                    currentView={viewMode}
+                    onViewChange={handleViewChange}
+                  />
+                )}
+              </div>
             </div>
           </div>
-        ) : (
-          !isStreaming && (
-              <div className="text-center text-gray-400 italic mt-10 p-6 font-balsamiq">
-              <p>Notes will appear here as the consultation progresses.</p>
-              <p className="text-sm mt-2">Begin your conversation to start collecting project information.</p>
+          
+          {/* Content pane with its own scroll area */}
+          <div className="flex-grow overflow-auto bg-white">
+            <div className="p-4">
+              {renderCurrentView()}
             </div>
-          )
-        )}
-      </div>
+          </div>
+        </div>
 
-      {/* Right Pane: Placeholder */}
-      <div className="flex-1 flex items-center justify-center h-full p-6">
-        <div className="text-center text-gray-400 font-balsamiq">
-          <p className="text-lg">Placeholder Area</p>
-          <p className="text-sm">This area will display other content in the future.</p>
+        {/* Bottom section for Gantt chart - clearly separated with strong visual cues */}
+        <div 
+          className={`
+            flex-shrink-0 bg-white border-t border-gray-300
+            flex flex-col transition-all duration-300 ease-in-out
+            ${isDraftCollapsed ? 'h-12' : 'h-[500px]'}
+          `}
+          style={{ 
+            maxHeight: isDraftCollapsed ? '3rem' : '500px',
+            boxShadow: 'inset 0 4px 6px -4px rgba(0, 0, 0, 0.1)'
+          }}
+        >
+          {/* Fixed header for draft plan with clear visual separation */}
+          <div className="flex-shrink-0 bg-white border-b border-gray-200">
+            <div className="flex items-center justify-between p-2">
+              <div className="flex items-center text-gray-700 pl-2">
+                {/* Ultra minimal Gantt chart icon */}
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-7 w-7" 
+                  viewBox="0 0 24 24" 
+                  fill="none"
+                  stroke="currentColor" 
+                  strokeWidth="1.5"
+                >
+                  {/* Simple timeline container */}
+                  <rect x="3" y="3" width="18" height="18" rx="1" />
+                  
+                  {/* Simplified Gantt bars - just 3 bars of different lengths */}
+                  <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
+                  <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
+                  <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
+                </svg>
+              </div>
+              <button 
+                onClick={toggleDraftCollapse}
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 focus:outline-none transition-colors"
+                aria-label={isDraftCollapsed ? "Expand sketch" : "Collapse sketch"}
+              >
+                {isDraftCollapsed ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+          
+          {/* Separately scrollable content area for draft plan */}
+          {!isDraftCollapsed && (
+            <div className="flex-grow overflow-auto">
+              <DraftPlan />
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ChartCreationChat (Right Sidebar) - Fixed width, completely independent */}
+      <div className="w-[46rem] border-l border-gray-200 bg-white overflow-hidden">
+        <ChartCreationChat onCancel={handleChatCancel} />
+      </div>
+
+      {/* Floating Action Button for triggering new plan generation */}
+      <ProjectPlanTrigger />
     </div>
   );
 };

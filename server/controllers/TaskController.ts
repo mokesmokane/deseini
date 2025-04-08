@@ -1,6 +1,6 @@
 import express from 'express';
 import { OpenAIService } from '../services/OpenAIService.ts';
-import type { ConversationResponse, GenerateTasksResponse, StreamedPlanResponse, ChatCompletionChunk } from '../services/OpenAIService.ts'; // Import necessary types
+import type { ConversationResponse, GenerateTasksResponse, StreamedPlanResponse, ChatCompletionChunk, DraftPlanData } from '../services/OpenAIService.ts'; // Import necessary types
 
 // Controller class following Single Responsibility Principle
 export class TaskController {
@@ -245,12 +245,6 @@ export class TaskController {
   async generateProjectPlan(req: express.Request, res: express.Response): Promise<void> {
     try {
       const { messages, projectContext, currentPlan } = req.body;
-
-      // Basic validation
-      if (!messages || !Array.isArray(messages) || messages.length === 0) {
-        res.status(400).json({ error: 'Conversation history (messages) is required to generate a plan.' });
-        return;
-      }
       
       console.log('Generate project plan request:', {
           messageCount: messages.length,
@@ -314,6 +308,117 @@ export class TaskController {
                res.end(); // Force end if write fails
            }
       }
+    }
+  }
+
+  // Converts project plan markdown to structured task data for draft plan
+  async convertPlanToTasks(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { markdownPlan } = req.body;
+      
+      // Validate the markdown plan exists
+      if (!markdownPlan || typeof markdownPlan !== 'string' || markdownPlan.trim() === '') {
+        res.status(400).json({ error: 'Project plan markdown is required' });
+        return;
+      }
+      
+      console.log('Converting project plan markdown to task structure...');
+      const draftPlanData: DraftPlanData = await this.aiService.parsePlanToTasks(markdownPlan);
+      
+      if (draftPlanData.error) {
+        console.error('Plan conversion error:', draftPlanData.error);
+        res.status(400).json({ error: draftPlanData.error });
+        return;
+      }
+      
+      res.status(200).json(draftPlanData);
+    } catch (error) {
+      console.error('API Controller Error (convertPlanToTasks):', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+        });
+      }
+    }
+  }
+
+  // Generates a final project plan in JSON format for the Gantt chart
+  async generateFinalPlan(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { projectContext, messages, draftPlanMarkdown, tasks } = req.body;
+      
+      // Validate required inputs
+      if (!projectContext) {
+        res.status(400).json({ error: 'Project context is required' });
+        return;
+      }
+      
+      if (!messages || !Array.isArray(messages)) {
+        res.status(400).json({ error: 'Conversation history is required' });
+        return;
+      }
+      
+      if (!draftPlanMarkdown || typeof draftPlanMarkdown !== 'string' || draftPlanMarkdown.trim() === '') {
+        res.status(400).json({ error: 'Draft plan markdown is required' });
+        return;
+      }
+      
+      if (!tasks || !Array.isArray(tasks)) {
+        res.status(400).json({ error: 'Tasks array is required' });
+        return;
+      }
+      
+      console.log('Generating final project plan...');
+      const finalPlanResult = await this.aiService.generateFinalPlan(
+        projectContext,
+        messages,
+        draftPlanMarkdown,
+        tasks
+      );
+      
+      if (finalPlanResult.error) {
+        console.error('Final plan generation error:', finalPlanResult.error);
+        res.status(400).json({ error: finalPlanResult.error });
+        return;
+      }
+      
+      res.status(200).json(finalPlanResult.plan);
+
+    } catch (error) {
+      console.error('API Controller Error (generateFinalPlan):', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+        });
+      }
+    }
+  }
+
+  // Gets the current project context
+  async getProjectContext(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      // In a real implementation, this would fetch the actual project data from a session or database
+      // For now, we'll send a placeholder response with sample project data
+      // This would typically come from the authenticated user's session
+      
+      const projectContext = {
+        id: req.query.projectId || 'project-1',
+        projectName: 'Sample Project',
+        description: 'A sample project for testing the final plan generation',
+        roles: [
+          { id: 'role-1', name: 'Developer', description: 'Software developer' },
+          { id: 'role-2', name: 'Designer', description: 'UI/UX designer' },
+          { id: 'role-3', name: 'Project Manager', description: 'Manages the project' }
+        ],
+        charts: []
+      };
+      
+      res.status(200).json(projectContext);
+    } catch (error) {
+      console.error('API Controller Error (getProjectContext):', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+      });
     }
   }
 }

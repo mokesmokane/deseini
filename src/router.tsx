@@ -3,6 +3,7 @@ import App from './App';
 import ProjectView from './views/ProjectView';
 import ChartView from './views/ChartView';
 import LandingPage from './components/LandingPage';
+import Canvas from './components/Canvas';
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
       {
         path: 'projects/:projectId/charts/new',
         element: <ChartView />
+      },
+      {
+        path: 'projects/:projectId/canvas',
+        element: <Canvas />
       }
     ]
   }

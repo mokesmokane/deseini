@@ -148,6 +148,9 @@ export const supabaseDbService = {
         ...chart,
         id: uuidId
       };
+
+      console.log('Saving chart with UUID:', uuidId);
+      console.log('Record to save:', record);
       
       // Check if chart exists already
       const { data: existingChart } = await supabase
