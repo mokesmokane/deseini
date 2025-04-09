@@ -58,5 +58,10 @@ export function createApiRouter(apiKey: string): express.Router {
     taskController.getProjectContext(req, res);
   });
   
+  // Edit markdown section endpoint
+  router.post('/edit-markdown-section', (req: express.Request, res: express.Response) => {
+    taskController.editMarkdownSection(req, res);
+  });
+  
   return router;
 }

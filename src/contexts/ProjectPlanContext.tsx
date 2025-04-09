@@ -27,6 +27,7 @@ interface ProjectPlanContextProps {
   generateProjectPlan: (messages: ChatMessage[]) => Promise<void>;
   confirmChanges: (confirm: boolean) => Promise<void>;
   reset: () => void;
+  editMarkdownSection: (sectionRange: {start: number, end: number}, instruction: string) => Promise<boolean>;
 }
 
 interface ProjectPlanProviderProps {
@@ -135,6 +136,7 @@ export function ProjectPlanProvider({
   const [previousText, setPreviousText] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentLineNumber, setCurrentLineNumber] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
 
   const projectIdRef = useRef(projectId);
   const projectRef = useRef(project);
@@ -262,6 +264,80 @@ export function ProjectPlanProvider({
     previousPlanRef.current = null;
   };
 
+  // Function to edit a specific section of the markdown
+  const editMarkdownSection = async (
+    sectionRange: {start: number, end: number},
+    instruction: string
+  ): Promise<boolean> => {
+    if (!currentText) {
+      console.error('[ProjectPlanContext] editMarkdownSection: No current text to edit');
+      toast.error('No content to edit');
+      return false;
+    }
+
+    if (isStreaming || isEditing) {
+      console.log('[ProjectPlanContext] editMarkdownSection: Operation in progress, skipping');
+      toast.error('Another operation is in progress');
+      return false;
+    }
+
+    setIsEditing(true);
+    setPreviousText(currentText);
+
+    try {
+      console.log('[ProjectPlanContext] editMarkdownSection: Editing section', sectionRange);
+      
+      // Get current project context for better AI response
+      const projectContextData = {
+        id: projectId,
+        projectName: project?.projectName,
+        description: project?.description,
+        roles: project?.roles || [],
+        charts: userCharts || []
+      };
+      
+      const response = await fetch('/api/edit-markdown-section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullMarkdown: currentText,
+          sectionRange,
+          instruction,
+          projectContext: projectContextData
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Failed to edit section (Status: ${response.status})`;
+        try { 
+          const errorData = JSON.parse(errorText); 
+          errorMessage = errorData.error || errorMessage; 
+        } catch(e) {}
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      
+      if (data.editedMarkdown) {
+        setCurrentText(data.editedMarkdown);
+        toast.success('Section updated successfully');
+        return true;
+      } else {
+        throw new Error('No edited content returned');
+      }
+    } catch (err) {
+      console.error('[ProjectPlanContext] editMarkdownSection: Error editing section:', err);
+      const message = err instanceof Error ? err.message : 'Failed to edit section.';
+      toast.error(message);
+      // Revert to previous text on error
+      setCurrentText(previousText);
+      return false;
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
   return (
     <ProjectPlanContext.Provider
       value={{
@@ -274,7 +350,8 @@ export function ProjectPlanProvider({
         setCurrentLineNumber,
         confirmChanges,
         generateProjectPlan,
-        reset
+        reset,
+        editMarkdownSection
       }}
     >
       {children}

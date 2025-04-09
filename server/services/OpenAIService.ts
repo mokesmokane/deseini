@@ -79,7 +79,10 @@ export type StreamedPlanResponse =
   | { stream: any; error?: undefined; } // Successful stream
   | { error: string; stream?: undefined; }; // Error case
 
-// Types for document editing operations
+// These operation interfaces were defined for future expansion of editing capabilities
+// and will be used in upcoming implementations of the granular editing features.
+// For now, we're commenting them out to avoid lint warnings.
+/*
 interface ReplaceOperation {
   type: 'replace';
   startLine: number;
@@ -89,24 +92,17 @@ interface ReplaceOperation {
 
 interface InsertAfterOperation {
   type: 'insertAfter';
-  lineNumber: number;
+  line: number;
   content: string;
 }
 
 interface DeleteLinesOperation {
   type: 'deleteLines';
-  lineNumbers: number[];
+  startLine: number;
+  endLine: number;
 }
-
-type EditOperation = ReplaceOperation | InsertAfterOperation | DeleteLinesOperation;
-
-interface EditProjectPlanResponse {
-  content?: string;
-  operations?: EditOperation[];
-  error?: string;
-  isComplete?: boolean;
-  completionSummary?: string;
-}
+*/
+// type EditOperation = ReplaceOperation | InsertAfterOperation | DeleteLinesOperation;
 
 // Define interfaces for the Draft Plan structure
 export interface DraftTask {
@@ -184,6 +180,7 @@ export interface AIService {
   generateProjectPlan(messages: ChatMessage[], projectContext?: ProjectContext | null, currentPlan?: string | null): Promise<StreamedPlanResponse>;
   parsePlanToTasks(markdownPlan: string): Promise<DraftPlanData>;
   generateFinalPlan(projectContext: ProjectContext, conversationHistory: ChatMessage[], draftPlanMarkdown: string, tasks: ProjectTask[]): Promise<GenerateFinalPlanResponse>;
+  editMarkdownSection(fullMarkdown: string, sectionRange: {start: number, end: number}, instruction: string, projectContext?: ProjectContext | null): Promise<{editedMarkdown: string, error?: string}>;
 }
 
 // Helper function to parse markdown list into ProjectTask tree
@@ -1427,6 +1424,125 @@ Your response should be ONLY the valid JSON object, nothing else.`
       console.error('OpenAI API error in generateFinalPlan:', error);
       return {
         error: error instanceof Error ? error.message : "An unknown error occurred during final plan generation"
+      };
+    }
+  }
+
+  // Edit a specific section of markdown based on an instruction
+  async editMarkdownSection(
+    fullMarkdown: string, 
+    sectionRange: {start: number, end: number}, 
+    instruction: string,
+    projectContext?: ProjectContext | null
+  ): Promise<{editedMarkdown: string, error?: string}> {
+    try {
+      if (!fullMarkdown || typeof fullMarkdown !== 'string') {
+        return { editedMarkdown: '', error: 'Full markdown content is required' };
+      }
+
+      if (!sectionRange || typeof sectionRange.start !== 'number' || typeof sectionRange.end !== 'number') {
+        return { editedMarkdown: '', error: 'Valid section range is required' };
+      }
+
+      if (!instruction || typeof instruction !== 'string') {
+        return { editedMarkdown: '', error: 'Instruction is required' };
+      }
+
+      // Extract the section to be edited
+      const lines = fullMarkdown.split('\n');
+      if (sectionRange.start < 0 || sectionRange.end >= lines.length || sectionRange.start > sectionRange.end) {
+        return { editedMarkdown: '', error: 'Invalid section range' };
+      }
+
+      const sectionToEdit = lines.slice(sectionRange.start, sectionRange.end + 1).join('\n');
+      
+      // Construct prompt for OpenAI with clear instructions
+      let systemContent = `You are an AI assistant specializing in editing and improving project plan markdown content. 
+Your task is to edit ONLY the specific section provided based on the user's instruction.
+IMPORTANT: Return ONLY the edited section. Do not include any introductory text, explanations, or markdown formatting indicators.
+Your response should be a direct replacement for the original section.`;
+
+      // Add project context if available - this is vital for contextually relevant edits
+      if (projectContext) {
+        const contextDetails: string[] = [];
+        
+        if (projectContext.projectName) {
+          contextDetails.push(`Project Name: ${projectContext.projectName}`);
+        }
+        if (projectContext.description) {
+          contextDetails.push(`Project Description: ${projectContext.description}`);
+        }
+        if (projectContext.roles && projectContext.roles.length > 0) {
+          contextDetails.push(`Roles: ${projectContext.roles.map(r => r.role).join(', ')}`);
+          
+          // Include important role details for context
+          projectContext.roles.forEach(role => {
+            if (role.description || role.responsibilities) {
+              contextDetails.push(`${role.role}:${role.description ? ` ${role.description}` : ''}${
+                role.responsibilities ? ` Responsibilities: ${role.responsibilities.join(', ')}` : ''
+              }`);
+            }
+          });
+        }
+        
+        // Include charts information if available
+        if (projectContext.charts && projectContext.charts.length > 0) {
+          contextDetails.push(`Project has ${projectContext.charts.length} defined charts`);
+        }
+        
+        if (contextDetails.length > 0) {
+          systemContent += `\n\nProject Context (use this to make your edits more relevant and accurate):\n${contextDetails.join('\n')}`;
+        }
+      }
+
+      // Include full document context to help the AI understand how the section fits into the whole
+      systemContent += `\n\nThis section is part of a larger project plan document. While you should only edit and return the specific section provided, consider the following context about where this section appears in the document:
+- The document is line ${sectionRange.start + 1} to ${sectionRange.end + 1} of a ${lines.length} line document
+- The section appears ${sectionRange.start === 0 ? 'at the beginning of the document' : `after line ${sectionRange.start} of the document`}`;
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content: systemContent
+        },
+        {
+          role: 'user',
+          content: `I need you to edit this section from my project plan based on this instruction: "${instruction}".
+Here is the section to edit:
+
+${sectionToEdit}`
+        }
+      ];
+
+      // Log API call
+      this.logApiCall('editMarkdownSection', messages);
+
+      // Call OpenAI API
+      const completion = await this.client.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      // Extract edited content
+      const editedSection = completion.choices[0]?.message?.content?.trim() || '';
+      
+      if (!editedSection) {
+        return { editedMarkdown: '', error: 'Failed to generate edited content' };
+      }
+
+      // Replace the original section with the edited section
+      const resultLines = [...lines];
+      const editedLines = editedSection.split('\n');
+      resultLines.splice(sectionRange.start, sectionRange.end - sectionRange.start + 1, ...editedLines);
+      
+      return { editedMarkdown: resultLines.join('\n') };
+    } catch (error) {
+      console.error('Error editing markdown section:', error);
+      return { 
+        editedMarkdown: '', 
+        error: error instanceof Error ? error.message : 'Unknown error occurred during section editing' 
       };
     }
   }

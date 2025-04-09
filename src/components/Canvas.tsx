@@ -6,7 +6,7 @@ import { ChartCreationChat } from './ChartCreationChat';
 import { useNavigate, useParams } from 'react-router-dom';
 import ProjectPlanTrigger from './ProjectPlanTrigger';
 import ViewSelector, { ViewMode } from './ViewSelector';
-import MarkdownView from './MarkdownView';
+import { MarkdownViewer } from './markdown/MarkdownViewer';
 import GridView from './GridView';
 
 const Canvas: React.FC = () => {
@@ -76,7 +76,7 @@ const Canvas: React.FC = () => {
           </div>
         );
       case 'markdown':
-        return <MarkdownView content={currentText} />;
+        return <MarkdownViewer initialMarkdown={currentText} />;
       case 'grid':
         return <GridView content={currentText} />;
       default:

@@ -1,6 +1,6 @@
 import express from 'express';
 import { OpenAIService } from '../services/OpenAIService.ts';
-import type { ConversationResponse, GenerateTasksResponse, StreamedPlanResponse, ChatCompletionChunk, DraftPlanData } from '../services/OpenAIService.ts'; // Import necessary types
+import type { ConversationResponse, GenerateTasksResponse, StreamedPlanResponse, DraftPlanData } from '../services/OpenAIService.ts'; // Import necessary types
 
 // Controller class following Single Responsibility Principle
 export class TaskController {
@@ -419,6 +419,57 @@ export class TaskController {
       res.status(500).json({
         error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
       });
+    }
+  }
+
+  // Edits a specific section of markdown based on an instruction
+  async editMarkdownSection(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { fullMarkdown, sectionRange, instruction, projectContext } = req.body;
+      
+      // Validate required inputs
+      if (!fullMarkdown || typeof fullMarkdown !== 'string') {
+        res.status(400).json({ error: 'Full markdown content is required' });
+        return;
+      }
+      
+      if (!sectionRange || typeof sectionRange.start !== 'number' || typeof sectionRange.end !== 'number') {
+        res.status(400).json({ error: 'Valid section range with start and end line numbers is required' });
+        return;
+      }
+      
+      if (!instruction || typeof instruction !== 'string') {
+        res.status(400).json({ error: 'Instruction for editing is required' });
+        return;
+      }
+      
+      console.log('Editing markdown section:', {
+        sectionRange: `${sectionRange.start}-${sectionRange.end}`,
+        instruction: instruction.substring(0, 50) + (instruction.length > 50 ? '...' : ''),
+        hasProjectContext: !!projectContext
+      });
+      
+      const result = await this.aiService.editMarkdownSection(
+        fullMarkdown, 
+        sectionRange, 
+        instruction,
+        projectContext || null
+      );
+      
+      if (result.error) {
+        console.error('Markdown section editing error:', result.error);
+        res.status(400).json({ error: result.error });
+        return;
+      }
+      
+      res.status(200).json({ editedMarkdown: result.editedMarkdown });
+    } catch (error) {
+      console.error('API Controller Error (editMarkdownSection):', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+        });
+      }
     }
   }
 }
