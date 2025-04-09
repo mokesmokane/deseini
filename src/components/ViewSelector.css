@@ -1,0 +1,51 @@
+.view-selector-container {
+  display: inline-flex;
+  background-color: #f3f4f6;
+  border-radius: 10px;
+  padding: 4px;
+  user-select: none;
+}
+
+.view-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  margin: 0 2px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.view-button:hover {
+  color: #111827;
+}
+
+.view-button.active {
+  background-color: white;
+  color: black;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.view-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 2px;
+  background-color: #111827;
+  border-radius: 1px;
+}
+
+/* Add tactile press effect */
+.view-button:active {
+  transform: scale(0.95);
+}

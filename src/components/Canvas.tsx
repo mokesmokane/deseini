@@ -8,6 +8,8 @@ import ProjectPlanTrigger from './ProjectPlanTrigger';
 import ViewSelector, { ViewMode } from './ViewSelector';
 import { MarkdownViewer } from './markdown/MarkdownViewer';
 import GridView from './GridView';
+import { useDraftPlanContext } from '../contexts/DraftPlanContext';
+import { toast } from 'react-hot-toast';
 
 const Canvas: React.FC = () => {
   // Use the streaming context from ProjectPlanContext
@@ -18,9 +20,12 @@ const Canvas: React.FC = () => {
   
   const [showPlanPane, setShowPlanPane] = useState(false);
   const [isDraftCollapsed, setIsDraftCollapsed] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('diff'); // Default to diff view
+  const [viewMode, setViewMode] = useState<ViewMode>('markdown'); // Default to markdown view
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
+
+  // Get createPlanFromMarkdown from DraftPlanContext
+  const { createPlanFromMarkdown } = useDraftPlanContext();
 
   useEffect(() => {
     // Show the plan pane once the first plan is generated
@@ -38,6 +43,27 @@ const Canvas: React.FC = () => {
 
   const toggleDraftCollapse = () => {
     setIsDraftCollapsed(!isDraftCollapsed);
+  };
+
+  // Handle creating a draft plan from the current project plan markdown
+  const handleCreatePlan = async () => {
+    if (!currentText) {
+      toast.error('No project plan available to convert');
+      return;
+    }
+
+    try {
+      toast.promise(
+        createPlanFromMarkdown(currentText),
+        {
+          loading: 'Creating draft plan...',
+          success: 'Draft plan created successfully!',
+          error: (err) => `Failed to create draft plan: ${err.message}`
+        }
+      );
+    } catch (error) {
+      console.error('Error creating draft plan:', error);
+    }
   };
 
   // Handle switching between different view modes
@@ -60,18 +86,24 @@ const Canvas: React.FC = () => {
     switch (viewMode) {
       case 'diff':
         return (
-          <div className="flex notepad-container">
-            <div className="prose prose-slate max-w-none pt-1 flex-grow notepad-content" style={{ 
-              border: 'none', 
-              paddingLeft: '0.5rem',
-              overflowX: 'auto',
-              minWidth: '100%'
-            }}>
-              <StreamingDiff 
-                onComplete={() => {
-                  // Any future post-completion actions can be added here if needed
-                }}
-              />
+          <div className="flex flex-col notepad-container w-full h-full">
+            <div className="markdown-viewer-container">
+              <div className="markdown-container">
+                <div 
+                  className="prose prose-slate max-w-none pt-1 notepad-content" 
+                  style={{ 
+                    color: '#1f2937',
+                    overflowX: 'auto',
+                    minWidth: '100%'
+                  }}
+                >
+                  <StreamingDiff 
+                    onComplete={() => {
+                      // Any future post-completion actions can be added here if needed
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -221,21 +253,39 @@ const Canvas: React.FC = () => {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
           }
+          
+          /* Hide scrollbars while maintaining scroll functionality */
+          ::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
+            background: transparent;
+          }
+          
+          * {
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+          }
+          
+          /* Ensure elements with overflow still scroll but without visible scrollbars */
+          .overflow-auto, .overflow-x-auto, .overflow-y-auto {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
         `
       }} />
 
       {/* Main content wrapper using flex with clearly defined sections */}
-      <div className="flex flex-col h-full border-right border-gray-200" style={{ width: 'calc(100% - 46rem)' }}>
+      <div className="flex flex-col h-full" style={{ width: 'calc(100% - 46rem)' }}>
         {/* Top section with header and content */}
         <div 
-          className="flex flex-col border-b border-gray-300"
+          className="flex flex-col"
           style={{ 
             height: isDraftCollapsed ? 'calc(100% - 3rem)' : 'calc(100% - 500px)',
             minHeight: '250px' 
           }}
         >
           {/* Fixed header */}
-          <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm z-10">
+          <div className="flex-shrink-0 bg-white">
             <div className="p-3 pb-2 font-balsamiq">
               <div className="flex justify-between items-center">
                 <div>
@@ -265,51 +315,53 @@ const Canvas: React.FC = () => {
         {/* Bottom section for Gantt chart - clearly separated with strong visual cues */}
         <div 
           className={`
-            flex-shrink-0 bg-white border-t border-gray-300
+            flex-shrink-0 bg-white
             flex flex-col transition-all duration-300 ease-in-out
             ${isDraftCollapsed ? 'h-12' : 'h-[500px]'}
           `}
           style={{ 
             maxHeight: isDraftCollapsed ? '3rem' : '500px',
-            boxShadow: 'inset 0 4px 6px -4px rgba(0, 0, 0, 0.1)'
           }}
         >
-          {/* Fixed header for draft plan with clear visual separation */}
-          <div className="flex-shrink-0 bg-white border-b border-gray-200">
+          {/* Fixed header for draft plan with simplified visual styling */}
+          <div className="flex-shrink-0 bg-white border-t border-b border-gray-200">
             <div className="flex items-center justify-between p-2">
-              <div className="flex items-center text-gray-700 pl-2">
-                {/* Ultra minimal Gantt chart icon */}
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-7 w-7" 
-                  viewBox="0 0 24 24" 
-                  fill="none"
-                  stroke="currentColor" 
-                  strokeWidth="1.5"
-                >
-                  {/* Simple timeline container */}
-                  <rect x="3" y="3" width="18" height="18" rx="1" />
-                  
-                  {/* Simplified Gantt bars - just 3 bars of different lengths */}
-                  <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
-                  <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
-                  <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
-                </svg>
-              </div>
-              <button 
+              <div 
+                className="flex items-center cursor-pointer hover:bg-gray-50 transition-colors px-2 py-1 rounded"
                 onClick={toggleDraftCollapse}
-                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 focus:outline-none transition-colors"
-                aria-label={isDraftCollapsed ? "Expand sketch" : "Collapse sketch"}
+                aria-label={isDraftCollapsed ? "Expand Gantt chart" : "Collapse Gantt chart"}
               >
-                {isDraftCollapsed ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                <div className="flex items-center text-gray-700">
+                  {/* Ultra minimal Gantt chart icon */}
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-6 w-6" 
+                    viewBox="0 0 24 24" 
+                    fill="none"
+                    stroke="currentColor" 
+                    strokeWidth="1.5"
+                  >
+                    {/* Simple timeline container */}
+                    <rect x="3" y="3" width="18" height="18" rx="1" />
+                    
+                    {/* Simplified Gantt bars - just 3 bars of different lengths */}
+                    <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
+                    <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
+                    <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
                   </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                )}
+                  
+                </div>
+              </div>
+              
+              <button
+                onClick={handleCreatePlan}
+                className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded px-2 py-1 transition-colors"
+                aria-label="Refresh draft plan"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+                <span className="ml-1">Refresh</span>
               </button>
             </div>
           </div>
@@ -324,7 +376,7 @@ const Canvas: React.FC = () => {
       </div>
 
       {/* ChartCreationChat (Right Sidebar) - Fixed width, completely independent */}
-      <div className="w-[46rem] border-l border-gray-200 bg-white overflow-hidden">
+      <div className="w-[46rem] bg-white overflow-hidden border-l border-gray-200">
         <ChartCreationChat onCancel={handleChatCancel} />
       </div>
 

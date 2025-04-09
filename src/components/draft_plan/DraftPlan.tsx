@@ -6,7 +6,7 @@ import ReactFlow, {
   MiniMap,
   ReactFlowInstance,
 } from 'reactflow';
-import DatePicker from 'react-datepicker';
+// import DatePicker from 'react-datepicker'; // Commented out since not in use
 import "react-datepicker/dist/react-datepicker.css";
 import 'reactflow/dist/style.css';
 import TaskNode from './TaskNode';
@@ -18,6 +18,15 @@ import { useMessages } from '../../contexts/MessagesContext';
 import { getDbService, DbServiceType } from '../../services/dbServiceProvider';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { useProject } from '../../contexts/ProjectContext';
+import { v4 as uuidv4 } from 'uuid';
+
+// Helper to validate UUID format
+const isValidUUID = (id: string | null): boolean => {
+  if (!id) return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
 
 const nodeTypes = {
   task: TaskNode,
@@ -58,6 +67,7 @@ const ANIMATION_DELAY = 500;
 // Dialog component for displaying JSON
 const JsonDialog = ({ isOpen, onClose, data }: { isOpen: boolean; onClose: () => void; data: any }) => {
   const { messages } = useMessages();
+  const { project } = useProject(); // Get the real project from context
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const dbService = getDbService(DbServiceType.SUPABASE);
@@ -69,19 +79,12 @@ const JsonDialog = ({ isOpen, onClose, data }: { isOpen: boolean; onClose: () =>
       setIsGenerating(true);
       setProgress('Generating final project plan...');
 
-      // Get project context
-      const projectResponse = await fetch('/api/get-project-context', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      // Use the project from context instead of making an API call
+      const projectContext = project;
       
-      if (!projectResponse.ok) {
-        throw new Error('Failed to fetch project context');
+      if (!projectContext) {
+        throw new Error('No project context available');
       }
-      
-      const projectContext = await projectResponse.json();
       
       // Convert tasks to markdown format
       const draftPlanMarkdown = data.tasks.map((task: any) => {
@@ -116,6 +119,11 @@ const JsonDialog = ({ isOpen, onClose, data }: { isOpen: boolean; onClose: () =>
       
       const finalPlan = await response.json();
       
+      // Replace AI-generated ID with proper UUID
+      const originalId = finalPlan.id;
+      finalPlan.id = uuidv4();
+      console.log(`Replaced AI-generated ID "${originalId}" with UUID "${finalPlan.id}"`);
+      
       setProgress('Saving final plan to database...');
       // Save the final plan to Supabase
             // Get current user
@@ -126,6 +134,41 @@ const JsonDialog = ({ isOpen, onClose, data }: { isOpen: boolean; onClose: () =>
       
       if (!saveResult) {
         throw new Error('Failed to save final plan to database');
+      }
+      
+      // No need to get project ID from URL when we have it directly from context
+      const projectId = projectContext?.id;
+      console.log('Project ID from context:', projectId);
+      
+      // Only save project-chart relationship if we have a project ID and it's a valid UUID
+      if (projectId && finalPlan.id) {
+        setProgress('Linking chart to project...');
+        
+        // Check if project ID is a valid UUID
+        if (!isValidUUID(projectId)) {
+          console.warn(`Project ID "${projectId}" is not in UUID format - this is unexpected for a real project`);
+          // No need to try to look up by name since we got this directly from the context
+        }
+        
+        // Only proceed if we have a valid UUID
+        if (isValidUUID(projectId)) {
+          // Insert into project_charts table to link the chart to the project
+          const { error } = await supabase
+            .from('project_charts')
+            .insert({
+              project_id: projectId,
+              chart_id: finalPlan.id
+            });
+              
+          if (error) {
+            console.error('Error linking chart to project:', error);
+            // Don't throw error here, just log it - we still want the chart creation to be considered successful
+          } else {
+            console.log('Successfully linked chart to project');
+          }
+        } else {
+          console.error('Could not link chart to project: Invalid project ID format');
+        }
       }
       
       toast.success('Final project plan generated and saved successfully!');
@@ -312,7 +355,9 @@ const ErrorFallback = (error: Error, errorInfo: React.ErrorInfo, errorData: any)
 };
 
 function DraftPlan() {
-  const { tasks, timeline, updateTask, updateTimeline } = useDraftPlanContext();
+  const { tasks, timeline } = useDraftPlanContext();
+  // We still need selectedNodeId for the ReactFlow onNodeClick handler
+  // even though we're not using the sidebar controls right now
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [visibleTasks, setVisibleTasks] = useState<string[]>([]);
   const [tasksWithDates, setTasksWithDates] = useState<string[]>([]);
@@ -344,33 +389,48 @@ function DraftPlan() {
 
     // Start task animations after timeline is set
     setTimeout(() => {
-      // Animate tasks appearing one by one
+      // Animate tasks one at a time, completing each task's full animation before moving to the next
       tasks.forEach((task, index) => {
+        // Base delay for this task's animation sequence
+        const baseDelay = index * ANIMATION_DELAY * 3;
+        
+        // Step 1: Task appears
         setTimeout(() => {
           setVisibleTasks(prev => [...prev, task.id]);
-        }, index * ANIMATION_DELAY);
+        }, baseDelay);
 
-        // Animate dates appearing
+        // Step 2: Task moves to its start date
         setTimeout(() => {
           setTasksWithDates(prev => [...prev, task.id]);
-        }, (tasks.length + index) * ANIMATION_DELAY);
+        }, baseDelay + ANIMATION_DELAY);
 
-        // Animate durations appearing (only for tasks, not milestones)
+        // Step 3: Task extends to its duration (only for tasks, not milestones)
         if (task.type === 'task') {
           setTimeout(() => {
             setTasksWithDurations(prev => [...prev, task.id]);
-          }, (2 * tasks.length + index) * ANIMATION_DELAY);
+          }, baseDelay + ANIMATION_DELAY * 2);
         }
       });
     }, ANIMATION_DELAY * 3);
   }, [tasks, timeline]);
 
-  // Set initial zoom level
   useEffect(() => {
     if (reactFlowInstance) {
-      reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 0.25 });
+      // Define consistent insets for the viewport
+      const INSET_LEFT = 50;  // Left inset in pixels
+      const INSET_TOP = 30;   // Top inset in pixels
+      
+      // Calculate viewport position to place timeline start at top-left with insets
+      reactFlowInstance.setViewport({
+        x: INSET_LEFT,
+        y: INSET_TOP,
+        zoom: 0.7  // Set a fixed initial zoom level that works well for most screens
+      });
+      
+      // Disable the fitView as we're handling positioning manually
+      // and it can override our custom positioning
     }
-  }, [reactFlowInstance]);
+  }, [reactFlowInstance, timelineVisible]);
 
   const nodes: Node[] = useMemo(() => {
     const timelineNode: Node = {
@@ -383,7 +443,7 @@ function DraftPlan() {
         width: timelineWidth,
         isVisible: timelineVisible,
       },
-      position: { x: 0, y: 0 },
+      position: { x: 10, y: 10 },  // Position timeline with slight padding
       style: { 
         opacity: timelineVisible ? 1 : 0,
         transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -408,12 +468,13 @@ function DraftPlan() {
           hasDuration,
         },
         position: { 
-          x: hasDate ? getXPositionFromDate(positionDate, timeline.startDate) : 0,
-          y: (index + 1) * ROW_HEIGHT
+          x: hasDate ? getXPositionFromDate(positionDate, timeline.startDate) + 10 : 10,  // Align with timeline x position
+          y: (index + 1) * ROW_HEIGHT + 10  // Offset by the same amount as timeline + ROW_HEIGHT
         },
         style: { 
           opacity: isVisible ? 1 : 0,
           transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+          width: '100%',
         },
       };
     });
@@ -421,33 +482,24 @@ function DraftPlan() {
     return [timelineNode, ...taskNodes];
   }, [tasks, timeline, visibleTasks, tasksWithDates, tasksWithDurations, timelineVisible, timelineWidth]);
 
-  const selectedTask = tasks.find(task => task.id === selectedNodeId);
-
-  const updateNodeDateAndDuration = (startDate: Date | null, duration: number) => {
-    if (!selectedNodeId || !startDate) return;
-    
-    updateTask(selectedNodeId, {
-      startDate,
-      duration,
-    });
-  };
-
   // Prepare the JSON data for display
   const jsonData = useMemo(() => {
     return {
       timeline,
       tasks: tasks.map(task => ({
         ...task,
+        // Add selected state to JSON data
+        selected: task.id === selectedNodeId,
         // Convert dates to strings for better readability in JSON
         startDate: task.startDate && task.startDate instanceof Date ? task.startDate.toISOString() : undefined,
         date: task.date && task.date instanceof Date ? task.date.toISOString() : undefined
       }))
     };
-  }, [tasks, timeline]);
+  }, [tasks, timeline, selectedNodeId]);
 
   return (
     <ErrorBoundary fallback={ErrorFallback} errorData={jsonData}>
-      <div style={{ width: '100vw', height: '100vh', display: 'flex' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex' }}>
         <div style={{ flex: 1, position: 'relative' }}>
           <ReactFlow
             nodes={nodes}
@@ -455,10 +507,18 @@ function DraftPlan() {
             nodeTypes={nodeTypes}
             onNodeClick={(_, node) => setSelectedNodeId(node.id)}
             onInit={setReactFlowInstance}
-            defaultViewport={{ x: 0, y: 0, zoom: 0.25 }}
-            minZoom={0.1}
-            maxZoom={1}
-            fitView
+            defaultViewport={{ x: 50, y: 30, zoom: 0.7 }}  // Match the insets in the useEffect
+            minZoom={0.2}
+            maxZoom={2}
+            fitView={false}  // Disable fitView to use our custom positioning
+            panOnDrag={true}  // Enable panning on drag
+            panOnScroll={false}  // Disable panning on scroll to avoid accidental panning
+            selectionOnDrag={false}  // Disable selection on drag
+            selectNodesOnDrag={false}  // Prevent node selection from interfering with panning
+            zoomOnScroll={true}  // Keep zoom on scroll enabled
+            nodesDraggable={false}  // Make nodes not draggable to prioritize canvas panning
+            elementsSelectable={true}  // Keep elements selectable for interaction
+            preventScrolling={true}  // Prevent browser scrolling during interactions
           >
             <Background />
             <Controls />
@@ -474,73 +534,6 @@ function DraftPlan() {
             onClose={() => setIsJsonDialogOpen(false)}
             data={jsonData}
           />
-        </div>
-        
-        <div style={{
-          width: '250px',
-          padding: '20px',
-          background: '#f8f8f8',
-          borderLeft: '1px solid #ddd',
-        }}>
-          <h3 style={{ margin: '0 0 15px 0', fontFamily: 'Comic Sans MS' }}>Timeline Controls</h3>
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Comic Sans MS' }}>
-                Timeline Start
-              </label>
-              <DatePicker
-                selected={timeline.startDate}
-                onChange={(date) => date && updateTimeline({ startDate: date })}
-                dateFormat="MM/dd/yyyy"
-                className="date-picker"
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Comic Sans MS' }}>
-                Timeline End
-              </label>
-              <DatePicker
-                selected={timeline.endDate}
-                onChange={(date) => date && updateTimeline({ endDate: date })}
-                dateFormat="MM/dd/yyyy"
-                className="date-picker"
-              />
-            </div>
-          </div>
-
-          <h3 style={{ margin: '0 0 15px 0', fontFamily: 'Comic Sans MS' }}>Task Controls</h3>
-          {selectedTask?.type === 'task' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Comic Sans MS' }}>
-                  Start Date
-                </label>
-                <DatePicker
-                  selected={selectedTask.startDate}
-                  onChange={(date) => updateNodeDateAndDuration(date, selectedTask.duration || 30)}
-                  dateFormat="MM/dd/yyyy"
-                  className="date-picker"
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Comic Sans MS' }}>
-                  Duration (days)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={selectedTask.duration}
-                  onChange={(e) => {
-                    const newDuration = parseInt(e.target.value) || 1;
-                    updateNodeDateAndDuration(selectedTask.startDate, newDuration);
-                  }}
-                  className="date-picker"
-                />
-              </div>
-            </div>
-          ) : (
-            <p style={{ color: '#666', fontFamily: 'Comic Sans MS' }}>Select a task to modify its dates</p>
-          )}
         </div>
       </div>
     </ErrorBoundary>

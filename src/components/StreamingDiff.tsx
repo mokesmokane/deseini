@@ -3,6 +3,7 @@ import { diffLines } from 'diff';
 import { useProjectPlan } from '../contexts/ProjectPlanContext';
 import { useDraftPlanContext } from '../contexts/DraftPlanContext';
 import { toast } from 'react-hot-toast';
+import './StreamingDiff.css';
 
 // Add SVG icon for the FAB button
 const CreatePlanIcon = () => (
@@ -56,18 +57,28 @@ export const StreamingDiff: React.FC<StreamingDiffProps> = ({
 
     const lineNumberClass = lineNumber === currentLineNumber ? 'line-number active' : 'line-number';
     let lineClass = 'line';
-    let textClass = '';
-
+    let textClass = 'diff-span'; // Always use diff-span class to maintain font consistency
+    
     if (isRemoved) {
       lineClass += ' diff-line-removed bg-red-100';
-      textClass = 'diff-span text-red-500';
+      textClass += ' text-red-500';
     } else if (isAdded) {
       lineClass += ' diff-line-added bg-green-100';
-      textClass = 'diff-span text-green-500';
+      textClass += ' text-green-500';
     }
 
+    // Preserve whitespace by replacing spaces with non-breaking spaces
+    // or adding a white-space CSS property via a style attribute
+    const formattedLine = line.replace(/^(\s*)(.*)$/g, (_, indentation, content) => {
+      // Keep the indentation as a separate span with preserved whitespace
+      if (indentation.length > 0) {
+        return `<span style="white-space: pre;">${indentation}</span>${content}`;
+      }
+      return content;
+    });
+
     // Apply the background color to the entire line div, not just the text span
-    return `<div class="${lineClass}"><span class="${lineNumberClass}">${lineNumber + 1}</span><span class="${textClass}">${line}</span></div>`;
+    return `<div class="${lineClass}"><span class="${lineNumberClass}">${lineNumber + 1}</span><span class="${textClass}">${formattedLine}</span></div>`;
   };
 
   const render = async (text: string) => {
@@ -349,54 +360,22 @@ export const StreamingDiff: React.FC<StreamingDiffProps> = ({
   }, [isStreaming, currentText, previousText, animationsRun, showConfirmButton]);
 
   return (
-    <div className="container relative">
-      <div ref={containerRef} className="diff-container" style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }} />
+    <div className="streaming-diff-container">
+      <div ref={containerRef} className="diff-content"></div>
 
       {/* Confirmation button - made more visible */}
       {showConfirmButton && (
-        <div className="mt-4 text-center" style={{ marginTop: '20px', padding: '10px', border: '1px solid #ccc', borderRadius: '5px', backgroundColor: '#f8f9fa' }}>
-          <p style={{ marginBottom: '10px', fontWeight: 'bold' }}>Ready to apply changes?</p>
+        <div className="mt-4 text-center">
           <button
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            className="confirm-changes-button"
             onClick={handleConfirmChanges}
-            style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
           >
             Confirm Changes
           </button>
         </div>
       )}
 
-      {/* Create Plan button - positioned inside the component flow instead of fixed */}
-      {!isStreaming && currentText && (
-        <div className="mt-6 mb-4 flex justify-center">
-          <button
-            onClick={handleCreatePlan}
-            disabled={isLoading}
-            className="py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md flex items-center justify-center gap-2 transition-all transform hover:scale-105"
-            title="Create Draft Plan from Project Notes"
-            aria-label="Create Draft Plan"
-            style={{
-              opacity: isLoading ? 0.7 : 1,
-              cursor: isLoading ? 'wait' : 'pointer'
-            }}
-          >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin h-5 w-5 text-white mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Creating Plan...</span>
-              </>
-            ) : (
-              <>
-                <CreatePlanIcon />
-                <span>Create Draft Plan</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
+     
     </div>
   );
 };

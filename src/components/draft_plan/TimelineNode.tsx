@@ -1,7 +1,3 @@
-import React from 'react';
-import { NodeResizeControl } from '@reactflow/node-resizer';
-import '@reactflow/node-resizer/dist/style.css';
-
 interface TimelineData {
   label: string;
   startDate: Date;
@@ -48,14 +44,14 @@ const TimelineNode = ({ data }: { data: TimelineData }) => {
       }} />
       <div style={{
         position: 'absolute',
-        right: '-10px',
+        left: '50%',
         top: '50%',
         width: '0',
         height: '0',
         borderTop: '6px solid transparent',
         borderBottom: '6px solid transparent',
         borderLeft: '10px solid black',
-        transform: 'translateY(-50%)'
+        transform: 'translate(-50%, -50%)'
       }} />
       <div style={{
         position: 'absolute',

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { marked } from 'marked';
-import { MarkdownSectionAnalyzer } from './MarkdwonSections';
+import { MarkdownSectionAnalyzer } from './MarkdownSections';
 import './MarkdownViewer.css';
 import { TrashIcon, ChatBubbleLeftIcon, SparklesIcon, LockClosedIcon, LockOpenIcon } from '@heroicons/react/24/outline';
 import { createPortal } from 'react-dom';
@@ -40,50 +40,86 @@ const CustomDropdownMenu = ({
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
+  const initialPositionRef = useRef<{top: number, left: number} | null>(null);
   const [customInstruction, setCustomInstruction] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
   
-  // Flag for special line 0 handling
-  const isLineZero = lineNumber === 0;
+  // Function to reset the auto-close timer
+  const resetCloseTimer = useCallback(() => {
+    // Clear any existing timeout
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    
+    if (isUserInteracting) return;
+    
+    // Set a new timeout
+    closeTimeoutRef.current = setTimeout(() => {
+      onClose();
+    }, 1000); // 1 second debounce
+  }, [onClose, isUserInteracting]);
   
   useEffect(() => {
-    // Calculate position based on the button's position
+    // Initial position setting
     if (buttonRef.current && isOpen) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setPosition({ 
+      const newPosition = { 
         top: rect.bottom + window.scrollY, 
         left: rect.left + window.scrollX - 150 + rect.width / 2 // Center the dropdown
-      });
+      };
+      
+      // Only set initial position once when opening
+      if (!initialPositionRef.current) {
+        initialPositionRef.current = newPosition;
+      }
+      
+      // Always use the stored initial position
+      setPosition(initialPositionRef.current);
       
       setHasInitialized(true);
+      resetCloseTimer();
     }
     
-    // For line 0, use a much simpler approach without relying on click handlers
-    if (isLineZero) {
-      return; // Skip the regular click handlers for line 0
-    }
-    
-    // Only add click handlers after initialization 
-    if (isOpen && hasInitialized) {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (menuRef.current && !menuRef.current.contains(event.target as Node) &&
-            !(buttonRef.current && buttonRef.current.contains(event.target as Node))) {
-          onClose();
+    // For line 0, use a simpler approach without relying on click handlers
+    if (!isOpen || !hasInitialized) {
+      return () => {
+        if (closeTimeoutRef.current) {
+          clearTimeout(closeTimeoutRef.current);
         }
       };
-      
-      // Add with a delay to prevent immediate triggering
-      const timerId = setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 300);
-      
-      return () => {
-        clearTimeout(timerId);
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
     }
-  }, [isOpen, onClose, buttonRef, hasInitialized, isLineZero]);
+    
+    // Setup click outside handler
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node) &&
+          !(buttonRef.current && buttonRef.current.contains(event.target as Node))) {
+        onClose();
+      }
+    };
+    
+    // Add with a delay to prevent immediate triggering
+    const timerId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 300);
+    
+    return () => {
+      clearTimeout(timerId);
+      document.removeEventListener('mousedown', handleClickOutside);
+      
+      // Clear the auto-close timer when component unmounts
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+      
+      // Reset initial position when closed
+      if (!isOpen) {
+        initialPositionRef.current = null;
+      }
+    };
+  }, [isOpen, onClose, buttonRef, hasInitialized, resetCloseTimer]);
   
   if (!isOpen) return null;
   
@@ -92,10 +128,7 @@ const CustomDropdownMenu = ({
       setIsLoading(true);
       onOptionSelect('custom', lineNumber, customInstruction);
       
-      // For line 0, don't auto-close
-      if (!isLineZero) {
-        onClose();
-      }
+      onClose();
     }
   };
   
@@ -106,10 +139,7 @@ const CustomDropdownMenu = ({
         if (!isLoading) {
           console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'break-down'`);
           onOptionSelect('break-down', lineNumber);
-          // For line 0, don't auto-close
-          if (!isLineZero) {
-            onClose();
-          }
+          onClose();
         }
       }
     },
@@ -119,10 +149,7 @@ const CustomDropdownMenu = ({
         if (!isLoading) {
           console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'more-detail'`);
           onOptionSelect('more-detail', lineNumber);
-          // For line 0, don't auto-close
-          if (!isLineZero) {
-            onClose();
-          }
+          onClose();
         }
       }
     },
@@ -132,10 +159,7 @@ const CustomDropdownMenu = ({
         if (!isLoading) {
           console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'consolidate'`);
           onOptionSelect('consolidate', lineNumber);
-          // For line 0, don't auto-close
-          if (!isLineZero) {
-            onClose();
-          }
+          onClose();
         }
       }
     },
@@ -145,10 +169,7 @@ const CustomDropdownMenu = ({
         if (!isLoading) {
           console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'test-delay'`);
           onOptionSelect('test-delay', lineNumber);
-          // For line 0, don't auto-close
-          if (!isLineZero) {
-            onClose();
-          }
+          onClose();
         }
       }
     },
@@ -166,6 +187,24 @@ const CustomDropdownMenu = ({
         left: `${position.left}px`,
         zIndex: 1000
       }}
+      onMouseEnter={() => {
+        setIsUserInteracting(true);
+        clearTimeout(closeTimeoutRef.current || undefined);
+      }}
+      onMouseLeave={() => {
+        // Don't close immediately to allow for interaction with elements inside
+        // Instead, start a short timer to determine if user is still interacting
+        setTimeout(() => {
+          if (!menuRef.current?.contains(document.activeElement)) {
+            setIsUserInteracting(false);
+            onClose();
+          }
+        }, 50);
+      }}
+      onMouseMove={() => resetCloseTimer()}
+      onKeyDown={() => resetCloseTimer()}
+      // Stop propagation to prevent click outside handler from firing
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="dropdown-content">
         {options.map((option, index) => (
@@ -174,10 +213,13 @@ const CustomDropdownMenu = ({
             className="dropdown-item"
             role="menuitem"
             onClick={() => {
+              resetCloseTimer();
               option.action();
               // Don't close automatically on selection as we'll show loading state
             }}
             disabled={isLoading}
+            onMouseEnter={() => setIsUserInteracting(true)}
+            onFocus={() => setIsUserInteracting(true)}
           >
             {isLoading ? 'Processing...' : option.label}
           </button>
@@ -187,13 +229,28 @@ const CustomDropdownMenu = ({
             className="custom-instruction-input"
             placeholder="Type custom instructions..."
             value={customInstruction}
-            onChange={(e) => setCustomInstruction(e.target.value)}
+            onChange={(e) => {
+              setIsUserInteracting(true);
+              resetCloseTimer();
+              setCustomInstruction(e.target.value);
+            }}
+            onFocus={() => setIsUserInteracting(true)}
+            onMouseDown={(e) => {
+              // Prevent propagation to keep dropdown open
+              e.stopPropagation(); 
+              setIsUserInteracting(true);
+            }}
             disabled={isLoading}
           />
           <button 
             className="custom-instruction-submit"
-            onClick={handleInstructionSubmit}
+            onClick={() => {
+              resetCloseTimer();
+              handleInstructionSubmit();
+            }}
             disabled={!customInstruction.trim() || isLoading}
+            onMouseEnter={() => setIsUserInteracting(true)}
+            onFocus={() => setIsUserInteracting(true)}
           >
             {isLoading ? 'Processing...' : 'Apply'}
           </button>
@@ -604,15 +661,15 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
             
             if (!isLocked) {
               // Special handling for line 0
-              if (lineNumber === 0) {
-                console.log('Line 0 sparkles button clicked');
-                handleLineHover(lineNumber);
-                setOpenDropdownLine(lineNumber);
+              // if (lineNumber === 0) {
+              //   console.log('Line 0 sparkles button clicked');
+              //   handleLineHover(lineNumber);
+              //   setOpenDropdownLine(lineNumber);
                 
-                // For line 0, we'll add a special "must-click" mechanic
-                // that prevents closing except through explicit menu item clicks
-                return;
-              }
+              //   // For line 0, we'll add a special "must-click" mechanic
+              //   // that prevents closing except through explicit menu item clicks
+              //   return;
+              // }
               
               // Normal handling for other lines
               setOpenDropdownLine(prevLine => prevLine === lineNumber ? null : lineNumber);
@@ -625,11 +682,6 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
             <CustomDropdownMenu 
               isOpen={true} 
               onClose={() => {
-                // Special handling for line 0 - prevent auto-closing
-                if (lineNumber === 0) {
-                  console.log("Line 0 dropdown - ignoring auto-close");
-                  return;
-                }
                 
                 // For all other lines, normal closing behavior
                 setOpenDropdownLine(null);

@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai';
+import { v4 as uuidv4 } from 'uuid';
 import type { ChatCompletionMessageParam, ChatCompletionChunk } from 'openai/resources';
 export type { ChatCompletionChunk };
 
@@ -698,7 +699,6 @@ export class OpenAIService implements AIService {
 
         if (projectDetails.length > 0) {
           systemMessage += `\n\nRelevant Project Context (use this to make suggestions more specific):\n${projectDetails.join('\n')}`;
-          systemMessage += `\nBase your suggestions on the last assistant message and this project context.`;
         }
       }
 
@@ -850,12 +850,12 @@ ONLY REPLY WITH THE GENERATED NOTES.
         
         if (projectContext.roles && projectContext.roles.length > 0) {
           projectDetails.push(`Project Roles: ${projectContext.roles.length} roles defined`);
-          const roleDetails = projectContext.roles.map(role => 
-            `- ${role.title || 'Untitled Role'}${role.description ? `: ${role.description.substring(0, 100)}${role.description.length > 100 ? '...' : ''}` : ''}`
-          );
-          projectDetails.push(roleDetails.join('\n'));
         }
         
+        if (projectContext.charts && projectContext.charts.length > 0) {
+          projectDetails.push(`Existing Charts: ${projectContext.charts.length} charts`);
+        }
+
         if (projectDetails.length > 0) {
           systemMessage += `\n\nProject Context:\n${projectDetails.join('\n')}`;
         }
@@ -880,7 +880,7 @@ ONLY REPLY WITH THE GENERATED NOTES.
           
           formattedMessages.push({ 
             role: 'user',
-            content: `Here is the conversation so far:\n\n<conversation>\n${conversationSoFar}\n</conversation>`
+            content: `Here is the conversation so far:\n\n${conversationSoFar}`
           });
         }
         
@@ -936,7 +936,7 @@ Extract tasks and milestones from the project plan, including:
 5. Determine the overall timeline (earliest start date and latest end date)
 
 Output should be a single valid JSON object with:
-- tasks: An array of task objects (each with id, type, label, startDate, and either duration for tasks or date for milestones)
+- tasks: An array of task objects (each with label, startDate, and either duration for tasks or date for milestones)
 - timeline: An object with startDate and endDate properties
 
 For dates, use ISO format (YYYY-MM-DD). If exact dates aren't specified, make reasonable estimates based on context.
@@ -1264,7 +1264,7 @@ Generate unique IDs for each task/milestone.
 
 Your task is to create a well-structured plan with proper dependencies, task hierarchy, timelines, and assignments. 
 The final JSON structure must include:
-- Project information (id, name, description, start/end dates)
+- Project information (name, description, start/end dates)
 - Tasks with hierarchy (main tasks and subtasks)
 - Milestone information
 - Dependencies between tasks
@@ -1301,7 +1301,6 @@ Create professional-looking task names and descriptions as needed.
       // Add the expected output format template to the system message
       systemMessage += `\n\nYour output must be in this exact JSON format:
 {
-  "id": "unique-project-id",
   "name": "Project Name",
   "start": "YYYY-MM-DD",
   "end": "YYYY-MM-DD",
@@ -1338,8 +1337,9 @@ Create professional-looking task names and descriptions as needed.
       "targetId": "target-task-id"
     }
   ]
-}`;
+}
 
+NOTE: Do NOT include any project id fields in your response. The system will generate a proper UUID for the project.`;
       // Format messages
       const formattedMessages: ChatCompletionMessageParam[] = [
         { role: "system", content: dateTimePrefix + systemMessage }
@@ -1410,9 +1410,12 @@ Your response should be ONLY the valid JSON object, nothing else.`
         const finalPlan = JSON.parse(content) as FinalProjectPlan;
         
         // Validate required fields
-        if (!finalPlan.id || !finalPlan.name || !finalPlan.start || !finalPlan.end || !Array.isArray(finalPlan.tasks)) {
+        if (!finalPlan.name || !finalPlan.start || !finalPlan.end || !Array.isArray(finalPlan.tasks)) {
           throw new Error("Invalid plan format: missing required fields");
         }
+        
+        // Add proper UUIDs to all objects in the plan
+        finalPlan.id = uuidv4();
         
         // Return the final plan
         return { plan: finalPlan };
@@ -1508,9 +1511,15 @@ Your response should be a direct replacement for the original section.`;
         {
           role: 'user',
           content: `I need you to edit this section from my project plan based on this instruction: "${instruction}".
-Here is the section to edit:
+Here is the full document for context:
 
-${sectionToEdit}`
+${fullMarkdown}
+
+The specific section to edit is from line ${sectionRange.start + 1} to line ${sectionRange.end + 1}:
+
+${sectionToEdit}
+
+Please ONLY return the edited version of this specific section, not the entire document.`
         }
       ];
 
