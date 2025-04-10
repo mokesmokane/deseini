@@ -181,7 +181,7 @@ export interface AIService {
   generateProjectPlan(messages: ChatMessage[], projectContext?: ProjectContext | null, currentPlan?: string | null): Promise<StreamedPlanResponse>;
   parsePlanToTasks(markdownPlan: string): Promise<DraftPlanData>;
   generateFinalPlan(projectContext: ProjectContext, conversationHistory: ChatMessage[], draftPlanMarkdown: string, tasks: ProjectTask[]): Promise<GenerateFinalPlanResponse>;
-  editMarkdownSection(fullMarkdown: string, sectionRange: {start: number, end: number}, instruction: string, projectContext?: ProjectContext | null): Promise<{editedMarkdown: string, error?: string}>;
+  editMarkdownSection(fullMarkdown: string, sectionRange: {start: number, end: number}, instruction: string, projectContext?: ProjectContext | null): Promise<{editedMarkdown: string, error?: string, stream?: any}>;
 }
 
 // Helper function to parse markdown list into ProjectTask tree
@@ -1437,7 +1437,7 @@ Your response should be ONLY the valid JSON object, nothing else.`
     sectionRange: {start: number, end: number}, 
     instruction: string,
     projectContext?: ProjectContext | null
-  ): Promise<{editedMarkdown: string, error?: string}> {
+  ): Promise<{editedMarkdown: string, error?: string, stream?: any}> {
     try {
       if (!fullMarkdown || typeof fullMarkdown !== 'string') {
         return { editedMarkdown: '', error: 'Full markdown content is required' };
@@ -1523,35 +1523,25 @@ Please ONLY return the edited version of this specific section, not the entire d
         }
       ];
 
-      // Log API call
-      this.logApiCall('editMarkdownSection', messages);
+      // Log API call with stream flag
+      this.logApiCall('editMarkdownSection', messages, { model: "gpt-4o", stream: true });
 
-      // Call OpenAI API
-      const completion = await this.client.chat.completions.create({
+      // Call OpenAI API with streaming enabled
+      const stream = await this.client.chat.completions.create({
         model: 'gpt-4o',
         messages,
         temperature: 0.7,
         max_tokens: 2000,
+        stream: true,
       });
 
-      // Extract edited content
-      const editedSection = completion.choices[0]?.message?.content?.trim() || '';
-      
-      if (!editedSection) {
-        return { editedMarkdown: '', error: 'Failed to generate edited content' };
-      }
-
-      // Replace the original section with the edited section
-      const resultLines = [...lines];
-      const editedLines = editedSection.split('\n');
-      resultLines.splice(sectionRange.start, sectionRange.end - sectionRange.start + 1, ...editedLines);
-      
-      return { editedMarkdown: resultLines.join('\n') };
+      // Return the stream for processing by the controller
+      return { editedMarkdown: '', stream };
     } catch (error) {
-      console.error('Error editing markdown section:', error);
+      console.error('OpenAI API error in editMarkdownSection:', error);
       return { 
         editedMarkdown: '', 
-        error: error instanceof Error ? error.message : 'Unknown error occurred during section editing' 
+        error: error instanceof Error ? error.message : 'Unknown error occurred during markdown editing' 
       };
     }
   }

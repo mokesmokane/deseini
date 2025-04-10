@@ -6,7 +6,6 @@ import ReactFlow, {
   MiniMap,
   ReactFlowInstance,
 } from 'reactflow';
-// import DatePicker from 'react-datepicker'; // Commented out since not in use
 import "react-datepicker/dist/react-datepicker.css";
 import 'reactflow/dist/style.css';
 import TaskNode from './TaskNode';
@@ -14,25 +13,6 @@ import MilestoneNode from './MilestoneNode';
 import TimelineNode from './TimelineNode';
 import { useDraftPlanContext } from '../../contexts/DraftPlanContext';
 import ErrorBoundary from '../ErrorBoundary';
-import { useMessages } from '../../contexts/MessagesContext';
-import { getDbService, DbServiceType } from '../../services/dbServiceProvider';
-import toast from 'react-hot-toast';
-import { supabase } from '../../lib/supabase';
-import { useProject } from '../../contexts/ProjectContext';
-import { v4 as uuidv4 } from 'uuid';
-
-// Helper to validate UUID format
-const isValidUUID = (id: string | null): boolean => {
-  if (!id) return false;
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-};
-
-const nodeTypes = {
-  task: TaskNode,
-  milestone: MilestoneNode,
-  timeline: TimelineNode,
-};
 
 // Helper to ensure we're working with Date objects
 const ensureDate = (date: Date | string | undefined): Date => {
@@ -64,258 +44,10 @@ const getWidthBetweenDates = (startDate: Date | string, endDate: Date | string, 
 const ROW_HEIGHT = 80; // Reduced from 150 to accommodate uniform task height
 const ANIMATION_DELAY = 500;
 
-// Dialog component for displaying JSON
-const JsonDialog = ({ isOpen, onClose, data }: { isOpen: boolean; onClose: () => void; data: any }) => {
-  const { messages } = useMessages();
-  const { project } = useProject(); // Get the real project from context
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState('');
-  const dbService = getDbService(DbServiceType.SUPABASE);
-
-  if (!isOpen) return null;
-
-  const handleGenerateFinalPlan = async () => {
-    try {
-      setIsGenerating(true);
-      setProgress('Generating final project plan...');
-
-      // Use the project from context instead of making an API call
-      const projectContext = project;
-      
-      if (!projectContext) {
-        throw new Error('No project context available');
-      }
-      
-      // Convert tasks to markdown format
-      const draftPlanMarkdown = data.tasks.map((task: any) => {
-        if (task.type === 'milestone') {
-          return `## 🏁 ${task.label} - ${new Date(task.date || task.startDate).toLocaleDateString()}`;
-        } else {
-          const startDate = new Date(task.startDate).toLocaleDateString();
-          const durationText = task.duration ? ` (${task.duration} days)` : '';
-          return `- ${task.label} - ${startDate}${durationText}`;
-        }
-      }).join('\n');
-      
-      setProgress('Calling API to generate final plan...');
-      // Call the API to generate the final plan
-      const response = await fetch('/api/generate-final-plan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          projectContext,
-          messages,
-          draftPlanMarkdown,
-          tasks: data.tasks
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate final plan');
-      }
-      
-      const finalPlan = await response.json();
-      
-      // Replace AI-generated ID with proper UUID
-      const originalId = finalPlan.id;
-      finalPlan.id = uuidv4();
-      console.log(`Replaced AI-generated ID "${originalId}" with UUID "${finalPlan.id}"`);
-      
-      setProgress('Saving final plan to database...');
-      // Save the final plan to Supabase
-            // Get current user
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user?.id;
-      finalPlan.user_id = userId;
-      const saveResult = await dbService.saveChart(finalPlan);
-      
-      if (!saveResult) {
-        throw new Error('Failed to save final plan to database');
-      }
-      
-      // No need to get project ID from URL when we have it directly from context
-      const projectId = projectContext?.id;
-      console.log('Project ID from context:', projectId);
-      
-      // Only save project-chart relationship if we have a project ID and it's a valid UUID
-      if (projectId && finalPlan.id) {
-        setProgress('Linking chart to project...');
-        
-        // Check if project ID is a valid UUID
-        if (!isValidUUID(projectId)) {
-          console.warn(`Project ID "${projectId}" is not in UUID format - this is unexpected for a real project`);
-          // No need to try to look up by name since we got this directly from the context
-        }
-        
-        // Only proceed if we have a valid UUID
-        if (isValidUUID(projectId)) {
-          // Insert into project_charts table to link the chart to the project
-          const { error } = await supabase
-            .from('project_charts')
-            .insert({
-              project_id: projectId,
-              chart_id: finalPlan.id
-            });
-              
-          if (error) {
-            console.error('Error linking chart to project:', error);
-            // Don't throw error here, just log it - we still want the chart creation to be considered successful
-          } else {
-            console.log('Successfully linked chart to project');
-          }
-        } else {
-          console.error('Could not link chart to project: Invalid project ID format');
-        }
-      }
-      
-      toast.success('Final project plan generated and saved successfully!');
-      onClose();
-    } catch (error) {
-      console.error('Error generating final plan:', error);
-      toast.error(error instanceof Error ? error.message : 'Unknown error occurred');
-    } finally {
-      setIsGenerating(false);
-      setProgress('');
-    }
-  };
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 9999,
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: '20px',
-        maxWidth: '90%',
-        maxHeight: '90%',
-        overflow: 'auto',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-        position: 'relative',
-      }}>
-        <button 
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: 'none',
-            border: 'none',
-            fontSize: '20px',
-            cursor: 'pointer',
-          }}
-        >
-          ✕
-        </button>
-        <h2 style={{ marginTop: 0, fontFamily: 'Comic Sans MS' }}>Draft Plan JSON</h2>
-        <pre style={{
-          backgroundColor: '#f5f5f5',
-          padding: '15px',
-          borderRadius: '4px',
-          overflowX: 'auto',
-          fontSize: '14px',
-          lineHeight: 1.5,
-        }}>
-          {JSON.stringify(data, null, 2)}
-        </pre>
-        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
-          {isGenerating ? (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '10px',
-              color: '#3b82f6' 
-            }}>
-              <div className="spinner" style={{
-                width: '20px',
-                height: '20px',
-                border: '3px solid rgba(59, 130, 246, 0.2)',
-                borderRadius: '50%',
-                borderTop: '3px solid #3b82f6',
-                animation: 'spin 1s linear infinite',
-              }}></div>
-              <span>{progress}</span>
-            </div>
-          ) : (
-            <button 
-              onClick={handleGenerateFinalPlan}
-              style={{
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                padding: '10px 15px',
-                borderRadius: '4px',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-              Generate Final Plan
-            </button>
-          )}
-        </div>
-      </div>
-      <style>
-        {`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}
-      </style>
-    </div>
-  );
-};
-
-const FloatingActionButton = ({ onClick }: { onClick: () => void }) => {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        position: 'fixed',
-        bottom: '30px',
-        right: '30px',
-        width: '60px',
-        height: '60px',
-        borderRadius: '50%',
-        backgroundColor: '#3b82f6',
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '24px',
-        zIndex: 999,
-      }}
-      title="View Draft Plan JSON"
-    >
-      {/* Code icon */}
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="16 18 22 12 16 6"></polyline>
-        <polyline points="8 6 2 12 8 18"></polyline>
-      </svg>
-    </button>
-  );
+const nodeTypes = {
+  task: TaskNode,
+  milestone: MilestoneNode,
+  timeline: TimelineNode,
 };
 
 // Create a custom error fallback component
@@ -366,9 +98,6 @@ function DraftPlan() {
   const [timelineVisible, setTimelineVisible] = useState(false);
   const [timelineWidth, setTimelineWidth] = useState(200);
   
-  // State for the JSON dialog
-  const [isJsonDialogOpen, setIsJsonDialogOpen] = useState(false);
-
   // Animation sequence
   useEffect(() => {
     // Reset all states
@@ -521,19 +250,10 @@ function DraftPlan() {
             preventScrolling={true}  // Prevent browser scrolling during interactions
           >
             <Background />
-            <Controls />
-            <MiniMap />
+            <MiniMap
+              position="bottom-left"
+            />
           </ReactFlow>
-          
-          {/* Add the FAB */}
-          <FloatingActionButton onClick={() => setIsJsonDialogOpen(true)} />
-          
-          {/* Add the JSON dialog */}
-          <JsonDialog
-            isOpen={isJsonDialogOpen}
-            onClose={() => setIsJsonDialogOpen(false)}
-            data={jsonData}
-          />
         </div>
       </div>
     </ErrorBoundary>

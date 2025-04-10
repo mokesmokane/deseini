@@ -1,302 +1,67 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { marked } from 'marked';
-import { MarkdownSectionAnalyzer } from './MarkdownSections';
 import './MarkdownViewer.css';
-import { TrashIcon, ChatBubbleLeftIcon, SparklesIcon, LockClosedIcon, LockOpenIcon } from '@heroicons/react/24/outline';
-import { createPortal } from 'react-dom';
 import { useProjectPlan } from '../../contexts/ProjectPlanContext';
-
-interface Section {
-  id: string;
-  level: number;
-  start: number;
-  end: number;
-  contentStart: number;
-  contentEnd: number;
-  content: string[];
-  children: Section[];
-  parent: Section | null;
-  type: 'section' | 'list';
-  indentLevel?: number;
-}
+import { useMessages } from '../../contexts/MessagesContext';
+import { MarkdownLineRenderer } from './renderer/MarkdownLineRenderer';
+import { getSectionRange } from './utils/markdownHelpers';
 
 interface Props {
   initialMarkdown: string;
+  onShowChat?: () => void;
+  onShowSectionDiff?: (range: {start: number, end: number}, instruction: string) => void;
 }
 
-// Custom dropdown menu component with modern black and white styling
-const CustomDropdownMenu = ({ 
-  isOpen, 
-  onClose,
-  lineNumber,
-  buttonRef,
-  onOptionSelect
-}: { 
-  isOpen: boolean; 
-  onClose: () => void;
-  lineNumber: number;
-  buttonRef: React.RefObject<HTMLButtonElement>;
-  onOptionSelect: (option: string, lineNumber: number, customInstruction?: string) => void;
-}) => {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-  const initialPositionRef = useRef<{top: number, left: number} | null>(null);
-  const [customInstruction, setCustomInstruction] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [isUserInteracting, setIsUserInteracting] = useState(false);
+export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, onShowSectionDiff }) => {
+  const { 
+    currentText, 
+    isStreaming, 
+    setCurrentText, 
+    isLineLocked, 
+    toggleLock, 
+    unlockSection, 
+    getLineInfo, 
+    findListItemRange, 
+    getAllLines, 
+    editMarkdownSection 
+  } = useProjectPlan();
+  const { handleSendMessage } = useMessages();
   
-  // Function to reset the auto-close timer
-  const resetCloseTimer = useCallback(() => {
-    // Clear any existing timeout
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-    }
-    
-    if (isUserInteracting) return;
-    
-    // Set a new timeout
-    closeTimeoutRef.current = setTimeout(() => {
-      onClose();
-    }, 1000); // 1 second debounce
-  }, [onClose, isUserInteracting]);
-  
-  useEffect(() => {
-    // Initial position setting
-    if (buttonRef.current && isOpen) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const newPosition = { 
-        top: rect.bottom + window.scrollY, 
-        left: rect.left + window.scrollX - 150 + rect.width / 2 // Center the dropdown
-      };
-      
-      // Only set initial position once when opening
-      if (!initialPositionRef.current) {
-        initialPositionRef.current = newPosition;
-      }
-      
-      // Always use the stored initial position
-      setPosition(initialPositionRef.current);
-      
-      setHasInitialized(true);
-      resetCloseTimer();
-    }
-    
-    // For line 0, use a simpler approach without relying on click handlers
-    if (!isOpen || !hasInitialized) {
-      return () => {
-        if (closeTimeoutRef.current) {
-          clearTimeout(closeTimeoutRef.current);
-        }
-      };
-    }
-    
-    // Setup click outside handler
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) &&
-          !(buttonRef.current && buttonRef.current.contains(event.target as Node))) {
-        onClose();
-      }
-    };
-    
-    // Add with a delay to prevent immediate triggering
-    const timerId = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
-    }, 300);
-    
-    return () => {
-      clearTimeout(timerId);
-      document.removeEventListener('mousedown', handleClickOutside);
-      
-      // Clear the auto-close timer when component unmounts
-      if (closeTimeoutRef.current) {
-        clearTimeout(closeTimeoutRef.current);
-      }
-      
-      // Reset initial position when closed
-      if (!isOpen) {
-        initialPositionRef.current = null;
-      }
-    };
-  }, [isOpen, onClose, buttonRef, hasInitialized, resetCloseTimer]);
-  
-  if (!isOpen) return null;
-  
-  const handleInstructionSubmit = () => {
-    if (customInstruction.trim() && !isLoading) {
-      setIsLoading(true);
-      onOptionSelect('custom', lineNumber, customInstruction);
-      
-      onClose();
-    }
-  };
-  
-  const options = [
-    { 
-      label: 'Break Down', 
-      action: () => {
-        if (!isLoading) {
-          console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'break-down'`);
-          onOptionSelect('break-down', lineNumber);
-          onClose();
-        }
-      }
-    },
-    { 
-      label: 'More Detail', 
-      action: () => {
-        if (!isLoading) {
-          console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'more-detail'`);
-          onOptionSelect('more-detail', lineNumber);
-          onClose();
-        }
-      }
-    },
-    { 
-      label: 'Consolidate', 
-      action: () => {
-        if (!isLoading) {
-          console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'consolidate'`);
-          onOptionSelect('consolidate', lineNumber);
-          onClose();
-        }
-      }
-    },
-    { 
-      label: 'Test (5s Delay)', 
-      action: () => {
-        if (!isLoading) {
-          console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'test-delay'`);
-          onOptionSelect('test-delay', lineNumber);
-          onClose();
-        }
-      }
-    },
-  ];
-  
-  return createPortal(
-    <div 
-      ref={menuRef}
-      className="dropdown-menu"
-      role="menu"
-      aria-orientation="vertical"
-      style={{ 
-        position: 'absolute',
-        top: `${position.top}px`,
-        left: `${position.left}px`,
-        zIndex: 1000
-      }}
-      onMouseEnter={() => {
-        setIsUserInteracting(true);
-        clearTimeout(closeTimeoutRef.current || undefined);
-      }}
-      onMouseLeave={() => {
-        // Don't close immediately to allow for interaction with elements inside
-        // Instead, start a short timer to determine if user is still interacting
-        setTimeout(() => {
-          if (!menuRef.current?.contains(document.activeElement)) {
-            setIsUserInteracting(false);
-            onClose();
-          }
-        }, 50);
-      }}
-      onMouseMove={() => resetCloseTimer()}
-      onKeyDown={() => resetCloseTimer()}
-      // Stop propagation to prevent click outside handler from firing
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="dropdown-content">
-        {options.map((option, index) => (
-          <button 
-            key={index}
-            className="dropdown-item"
-            role="menuitem"
-            onClick={() => {
-              resetCloseTimer();
-              option.action();
-              // Don't close automatically on selection as we'll show loading state
-            }}
-            disabled={isLoading}
-            onMouseEnter={() => setIsUserInteracting(true)}
-            onFocus={() => setIsUserInteracting(true)}
-          >
-            {isLoading ? 'Processing...' : option.label}
-          </button>
-        ))}
-        <div className="dropdown-custom-instruction">
-          <textarea
-            className="custom-instruction-input"
-            placeholder="Type custom instructions..."
-            value={customInstruction}
-            onChange={(e) => {
-              setIsUserInteracting(true);
-              resetCloseTimer();
-              setCustomInstruction(e.target.value);
-            }}
-            onFocus={() => setIsUserInteracting(true)}
-            onMouseDown={(e) => {
-              // Prevent propagation to keep dropdown open
-              e.stopPropagation(); 
-              setIsUserInteracting(true);
-            }}
-            disabled={isLoading}
-          />
-          <button 
-            className="custom-instruction-submit"
-            onClick={() => {
-              resetCloseTimer();
-              handleInstructionSubmit();
-            }}
-            disabled={!customInstruction.trim() || isLoading}
-            onMouseEnter={() => setIsUserInteracting(true)}
-            onFocus={() => setIsUserInteracting(true)}
-          >
-            {isLoading ? 'Processing...' : 'Apply'}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-};
-
-export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
-  const projectPlan = useProjectPlan();
   const [activeLines, setActiveLines] = useState<Set<number>>(new Set());
-  const [lockedSections, setLockedSections] = useState<Set<string>>(new Set());
   const [openDropdownLine, setOpenDropdownLine] = useState<number | null>(null);
+  const [openChatDropdownLine, setOpenChatDropdownLine] = useState<number | null>(null);
   const [lineHovered, setLineHovered] = useState<number | null>(null);
   const [editingSection, setEditingSection] = useState<{start: number, end: number} | null>(null);
+  
   const buttonRefs = useRef<Map<number, React.RefObject<HTMLButtonElement>>>(new Map());
-  const analyzer = useRef(new MarkdownSectionAnalyzer(initialMarkdown));
+  const chatButtonRefs = useRef<Map<number, React.RefObject<HTMLButtonElement>>>(new Map());
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Initialize markdown text
   useEffect(() => {
-    if (projectPlan.currentText) {
-      analyzer.current = new MarkdownSectionAnalyzer(projectPlan.currentText);
-    } else if (initialMarkdown) {
-      analyzer.current = new MarkdownSectionAnalyzer(initialMarkdown);
-      if (!projectPlan.isStreaming && !projectPlan.currentText) {
-        projectPlan.setCurrentText(initialMarkdown);
+    if (currentText) {
+      if (!isStreaming && !currentText) {
+        setCurrentText(initialMarkdown);
       }
     }
-  }, [projectPlan.currentText, initialMarkdown, projectPlan]);
+  }, [currentText, initialMarkdown, isStreaming, setCurrentText]);
 
+  // Handle clicks outside of dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (openDropdownLine !== null) {
+      if ((openDropdownLine !== null) || (openChatDropdownLine !== null)) {
         const targetElem = event.target as HTMLElement;
         
         // Check if the click is on the dropdown or its button
         const isOnDropdown = dropdownRef.current && dropdownRef.current.contains(targetElem);
         const isOnDropdownButton = targetElem.closest('.sparkles-button') !== null;
+        const isOnChatButton = targetElem.closest('.icon-button') !== null;
         const isOnDropdownMenu = targetElem.closest('.dropdown-menu') !== null; 
         
         // Only close if click is outside dropdown, its button, and any dropdown menu
-        if (!isOnDropdown && !isOnDropdownButton && !isOnDropdownMenu) {
+        if (!isOnDropdown && !isOnDropdownButton && !isOnChatButton && !isOnDropdownMenu) {
           console.log('Clicked outside dropdown, closing it');
           setOpenDropdownLine(null);
+          setOpenChatDropdownLine(null);
         }
       }
     };
@@ -310,8 +75,9 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
       clearTimeout(timerId);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [openDropdownLine]);
+  }, [openDropdownLine, openChatDropdownLine]);
 
+  // Log dropdown state changes
   useEffect(() => {
     if (openDropdownLine !== null) {
       console.log('Dropdown opened for line:', openDropdownLine);
@@ -320,35 +86,14 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
     }
   }, [openDropdownLine]);
 
-  const findListItemRange = useCallback((startLine: number): { start: number; end: number } | null => {
-    const lines = analyzer.current.getAllLines();
-    const startInfo = analyzer.current.getLineInfo(startLine);
-    if (!startInfo.isList) return null;
-
-    const startLevel = startInfo.listLevel || 0;
-    let end = startLine;
-
-    for (let i = startLine + 1; i < lines.length; i++) {
-      const info = analyzer.current.getLineInfo(i);
-      
-      if (!info.isList || 
-          info.listLevel! <= startLevel ||
-          lines[i].trim() === '') {
-        break;
-      }
-      end = i;
-    }
-
-    return { start: startLine, end };
-  }, []);
-
+  // Handle line hover states
   const handleLineHover = useCallback((lineNumber: number | null) => {
     if (lineNumber === null) {
       setLineHovered(null);
       return;
     }
     
-    const info = analyzer.current.getLineInfo(lineNumber);
+    const info = getLineInfo(lineNumber);
     
     if (info.isList) {
       const range = findListItemRange(lineNumber);
@@ -387,7 +132,7 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
       setActiveLines(new Set([lineNumber]));
       setLineHovered(lineNumber);
     }
-  }, [findListItemRange]);
+  }, [getLineInfo, findListItemRange]);
 
   const handleLineLeave = useCallback(() => {
     setActiveLines(new Set());
@@ -395,42 +140,18 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
   }, []);
 
   const getSectionId = useCallback((lineNumber: number) => {
-    const info = analyzer.current.getLineInfo(lineNumber);
+    const info = getLineInfo(lineNumber);
     return info.sections.length > 0 
       ? info.sections[info.sections.length - 1].id 
       : `line-${lineNumber}`;
-  }, []);
+  }, [getLineInfo]);
 
-  const isLineLocked = useCallback((lineNumber: number) => {
-    const info = analyzer.current.getLineInfo(lineNumber);
-    
-    for (const section of info.sections) {
-      if (lockedSections.has(section.id)) {
-        return true;
-      }
-    }
-    
-    return lockedSections.has(`line-${lineNumber}`);
-  }, [lockedSections]);
-
-  const toggleLock = useCallback((lineNumber: number) => {
-    const sectionId = getSectionId(lineNumber);
-    const newLockedSections = new Set(lockedSections);
-    
-    if (lockedSections.has(sectionId)) {
-      newLockedSections.delete(sectionId);
-    } else {
-      newLockedSections.add(sectionId);
-    }
-    
-    setLockedSections(newLockedSections);
-  }, [lockedSections, getSectionId]);
-
+  // Delete section function
   const deleteSection = useCallback((lineNumber: number) => {
-    const info = analyzer.current.getLineInfo(lineNumber);
+    const info = getLineInfo(lineNumber);
     let linesToDelete: number[] = [];
 
-    const sectionId = getSectionId(lineNumber);
+    const sectionIdToDelete = getSectionId(lineNumber);
     
     if (info.isList) {
       const range = findListItemRange(lineNumber);
@@ -442,157 +163,147 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
         linesToDelete.push(lineNumber);
       }
     } else if (info.sections.length > 0) {
-      const section = info.sections[info.sections.length - 1];
-      for (let i = section.start; i <= section.end; i++) {
+      const deepestSection = info.sections[info.sections.length - 1];
+      for (let i = deepestSection.start; i <= deepestSection.end; i++) {
         linesToDelete.push(i);
       }
     } else {
       linesToDelete.push(lineNumber);
     }
 
-    const lines = analyzer.current.getAllLines();
+    const lines = getAllLines();
     const updatedLines = lines.filter((_, index) => !linesToDelete.includes(index));
-    projectPlan.setCurrentText(updatedLines.join('\n'));
+    setCurrentText(updatedLines.join('\n'));
     
     setActiveLines(new Set());
     setLineHovered(null);
     
-    const newLockedSections = new Set(lockedSections);
-    newLockedSections.delete(sectionId);
-    setLockedSections(newLockedSections);
+    // Unlock the section we're deleting
+    unlockSection(sectionIdToDelete);
     
-  }, [findListItemRange, lockedSections, getSectionId]);
+  }, [setCurrentText, unlockSection, getSectionId, findListItemRange, getAllLines, getLineInfo]);
 
-  const handleOptionSelect = useCallback(async (option: string, lineNumber: number, customInstruction?: string) => {
-    // Get the currently hovered line or the currently open dropdown line as fallback
-    const targetLine = lineNumber;
-    
-    if (targetLine === null) {
-      console.error('No target line found for option select');
-      return;
-    }
-    
-    const info = analyzer.current.getLineInfo(targetLine);
-    let sectionRange: { start: number; end: number } | null = null;
-    
-    console.log('Line info for clicked line:', targetLine, info);
-    
-    if (info.isList) {
-      sectionRange = findListItemRange(targetLine);
-    } else if (info.sections.length > 0) {
-      const deepestSection = info.sections[info.sections.length - 1];
-      console.log('Deepest section:', deepestSection);
-      
-      if (info.isContent) {
-        sectionRange = {
-          start: deepestSection.contentStart,
-          end: deepestSection.contentEnd
-        };
-      } else if (info.isHeader) {
-        sectionRange = {
-          start: deepestSection.start,
-          end: deepestSection.end
-        };
-        
-        // For h1 headers, find the entire section until the next h1
-        if (info.headerLevel === 1) {
-          const lines = analyzer.current.getAllLines();
-          let endLine = lines.length - 1;
-          
-          for (let i = targetLine + 1; i < lines.length; i++) {
-            const nextInfo = analyzer.current.getLineInfo(i);
-            if (nextInfo.isHeader && nextInfo.headerLevel === 1) {
-              endLine = i - 1;
-              break;
-            }
-          }
-          
-          sectionRange = {
-            start: targetLine,
-            end: endLine
-          };
-          
-          console.log('H1 section range:', sectionRange);
-        }
-      }
-    } 
-    
-    // If no section was identified or the line isn't part of a section,
-    // find the appropriate range for this line consistent with how other functionality works
-    if (!sectionRange) {
-      // Get all lines to determine appropriate section boundaries
-      const lines = analyzer.current.getAllLines();
-      
-      // For any line not in a recognized section, treat it as if it extends
-      // until the next header or the end of the document
-      let endLine = targetLine;
-      
-      for (let i = targetLine + 1; i < lines.length; i++) {
-        const nextInfo = analyzer.current.getLineInfo(i);
-        if (nextInfo.isHeader) {
-          endLine = i - 1;
-          break;
-        }
-        endLine = i;
-      }
-      
-      sectionRange = {
-        start: targetLine,
-        end: endLine
-      };
-      
-      console.log('Default section range for line without section:', sectionRange);
-    }
-    
-    let instruction = '';
-    switch (option) {
-      case 'break-down':
-        instruction = 'Break down this section into more detailed subtasks or bullet points';
-        break;
-      case 'more-detail':
-        instruction = 'Expand this section with additional details and context';
-        break;
-      case 'consolidate':
-        instruction = 'Consolidate and streamline this section while maintaining all important information';
-        break;
-      case 'test-delay':
-        instruction = 'Test delay';
-        break;
-      case 'custom':
-        instruction = customInstruction || '';
-        break;
-      default:
-        instruction = customInstruction || '';
-    }
+  // Handle dropdown option selection
+  const handleOptionSelect = useCallback(async (
+    option: string, 
+    lineNumber: number, 
+    customInstruction?: string
+  ) => {
+    const instruction = customInstruction 
+      ? customInstruction 
+      : option === 'break-down' 
+        ? 'Break this section down into more detailed steps.'
+        : option === 'more-detail'
+          ? 'Expand this section with more detailed information.'
+          : option === 'consolidate'
+            ? 'Consolidate this section to make it more concise.'
+            : option === 'test-delay'
+              ? 'This is a test with a simulated 5-second delay.'
+              : '';
     
     if (!instruction) return;
     
-    console.log(`Applying "${option}" to lines ${sectionRange.start}-${sectionRange.end}`);
+    // Get the section range for the clicked line
+    const lineInfo = getLineInfo(lineNumber);
+    const sectionRange = getSectionRange(lineNumber, lineInfo, findListItemRange);
     
-    const hoveredLine = targetLine;
-    
+    console.log('Editing section:', sectionRange, 'with instruction:', instruction);
     setEditingSection(sectionRange);
-    setOpenDropdownLine(null);
     
+    if (option === 'test-delay') {
+      // Simulate a delay
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      setEditingSection(null);
+      return;
+    }
+    
+    // If onShowSectionDiff is provided, use it to show section diff panel
+    if (onShowSectionDiff) {
+      onShowSectionDiff(sectionRange, instruction);
+      setEditingSection(null);
+      // Close any open dropdown
+      setOpenDropdownLine(null);
+      return;
+    }
+    
+    // Fallback to direct editing if onShowSectionDiff is not provided
     try {
-      handleLineHover(hoveredLine);
-      
-      if (option === 'test-delay') {
-        await new Promise(resolve => setTimeout(resolve, 5000));
+      const success = await editMarkdownSection(sectionRange, instruction);
+      if (!success) {
+        console.error('Failed to edit section');
       }
-      
-      await projectPlan.editMarkdownSection(sectionRange, instruction);
     } catch (error) {
-      console.error("Error editing section:", error);
+      console.error('Error editing section:', error);
     } finally {
       setEditingSection(null);
-      
-      setTimeout(() => {
-        handleLineLeave();
-      }, 1000); 
     }
-  }, [findListItemRange, lineHovered, projectPlan, handleLineHover, handleLineLeave]);
+  }, [editMarkdownSection, getLineInfo, findListItemRange, onShowSectionDiff]);
 
+  // Handle chat dropdown options
+  const handleChatOptionSelect = useCallback((
+    option: string,
+    lineNumber: number,
+    customMessage?: string
+  ) => {
+    // Get section information
+    const info = getLineInfo(lineNumber);
+    let content = '';
+    
+    if (info.sections.length > 0) {
+      const deepestSection = info.sections[info.sections.length - 1];
+      
+      // Get the content of the section
+      const lines = getAllLines();
+      content = lines.slice(deepestSection.start, deepestSection.end + 1).join('\n');
+    } else if (info.isList) {
+      const range = findListItemRange(lineNumber);
+      if (range) {
+        const lines = getAllLines();
+        content = lines.slice(range.start, range.end + 1).join('\n');
+      } else {
+        const lines = getAllLines();
+        content = lines[lineNumber];
+      }
+    } else {
+      const lines = getAllLines();
+      content = lines[lineNumber];
+    }
+    
+    // Prepare message for the chat
+    let message = '';
+    
+    switch (option) {
+      case 'analyze':
+        message = `Can you analyze this section from my project plan and ask me clarifying questions about it?\n\n${content}`;
+        break;
+      case 'improve':
+        message = `Can you suggest improvements for this section of my project plan?\n\n${content}`;
+        break;
+      case 'custom':
+        message = customMessage || '';
+        break;
+      default:
+        message = `I'd like to discuss this section of my project plan:\n\n${content}`;
+    }
+    
+    if (message) {
+      // If onShowChat callback is provided, call it to show chat component
+      if (onShowChat) {
+        onShowChat();
+      }
+      
+      // Send the message to the chat
+      setTimeout(() => {
+        handleSendMessage(null, message);
+      }, 100);
+    }
+    
+    // Close any open dropdown
+    setOpenChatDropdownLine(null);
+    
+  }, [getLineInfo, getAllLines, findListItemRange, handleSendMessage, onShowChat]);
+
+  // Line editing status checks
   const isLineEditing = useCallback((lineNumber: number) => {
     if (!editingSection) return false;
     return lineNumber >= editingSection.start && lineNumber <= editingSection.end;
@@ -603,198 +314,66 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
     return lineNumber === editingSection.start;
   }, [editingSection]);
 
-  const renderSpinner = () => (
-    <div className="editing-spinner">
-      <div className="editing-spinner-circle"></div>
-      <span className="editing-label">Editing...</span>
-    </div>
-  );
-
-  const renderButtons = useCallback((lineNumber: number) => {
-    const isLocked = isLineLocked(lineNumber);
-    const isDropdownOpen = openDropdownLine === lineNumber;
-    
+  // Initialize button refs
+  const getButtonRef = useCallback((lineNumber: number) => {
     if (!buttonRefs.current.has(lineNumber)) {
       buttonRefs.current.set(lineNumber, React.createRef<HTMLButtonElement>());
     }
-    
-    if (isLineEditing(lineNumber)) {
-      return (
-        <div className={`section-buttons ${isLocked ? 'locked-buttons' : ''}`}>
-          {renderSpinner()}
-        </div>
-      );
+    return buttonRefs.current.get(lineNumber)!;
+  }, []);
+  
+  const getChatButtonRef = useCallback((lineNumber: number) => {
+    if (!chatButtonRefs.current.has(lineNumber)) {
+      chatButtonRefs.current.set(lineNumber, React.createRef<HTMLButtonElement>());
     }
+    return chatButtonRefs.current.get(lineNumber)!;
+  }, []);
 
-    return (
-      <div className={`section-buttons ${isLocked ? 'locked-buttons' : ''}`}>
-        <button 
-          className={`icon-button ${isLocked ? 'disabled' : ''}`} 
-          title="Delete" 
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!isLocked) deleteSection(lineNumber);
-          }}
-          disabled={isLocked}
-        >
-          <TrashIcon className="icon" />
-        </button>
-        <button 
-          className={`icon-button ${isLocked ? 'disabled' : ''}`}
-          title="Chat" 
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!isLocked) console.log('Chat:', lineNumber);
-          }}
-          disabled={isLocked}
-        >
-          <ChatBubbleLeftIcon className="icon" />
-        </button>
-        <button 
-          className={`icon-button sparkles-button ${isLocked ? 'disabled' : ''} ${isDropdownOpen ? 'active' : ''}`}
-          title="Add details" 
-          data-line={lineNumber}
-          ref={buttonRefs.current.get(lineNumber)}
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault(); // Prevent any default actions
-            
-            if (!isLocked) {
-              // Special handling for line 0
-              // if (lineNumber === 0) {
-              //   console.log('Line 0 sparkles button clicked');
-              //   handleLineHover(lineNumber);
-              //   setOpenDropdownLine(lineNumber);
-                
-              //   // For line 0, we'll add a special "must-click" mechanic
-              //   // that prevents closing except through explicit menu item clicks
-              //   return;
-              // }
-              
-              // Normal handling for other lines
-              setOpenDropdownLine(prevLine => prevLine === lineNumber ? null : lineNumber);
-              handleLineHover(lineNumber);
-            }
-          }}
-        >
-          <SparklesIcon className="icon" />
-          {isDropdownOpen && (
-            <CustomDropdownMenu 
-              isOpen={true} 
-              onClose={() => {
-                
-                // For all other lines, normal closing behavior
-                setOpenDropdownLine(null);
-              }}
-              lineNumber={lineNumber}
-              buttonRef={buttonRefs.current.get(lineNumber) as React.RefObject<HTMLButtonElement>}
-              onOptionSelect={(option, lineNumber, customInstruction) => handleOptionSelect(option, lineNumber, customInstruction)}
-            />
-          )}
-        </button>
-        <button 
-          className="icon-button lock-button"
-          title={isLocked ? "Unlock" : "Lock"} 
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log(`${isLocked ? 'Unlock' : 'Lock'}:`, lineNumber);
-            toggleLock(lineNumber);
-          }}
-        >
-          {isLocked ? <LockClosedIcon className="icon" /> : <LockOpenIcon className="icon" />}
-        </button>
-      </div>
-    );
-  }, [isLineLocked, toggleLock, deleteSection, openDropdownLine, handleLineHover, setOpenDropdownLine, handleOptionSelect, isLineEditing, renderSpinner]);
-
-  const renderLockButton = useCallback((lineNumber: number) => {
-    const isLocked = isLineLocked(lineNumber);
-    
-    return (
-      <div className="section-buttons lock-only-buttons">
-        <button 
-          className="icon-button lock-button"
-          title={isLocked ? "Unlock" : "Lock"} 
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log(`${isLocked ? 'Unlock' : 'Lock'}:`, lineNumber);
-            toggleLock(lineNumber);
-          }}
-        >
-          {isLocked ? <LockClosedIcon className="icon" /> : <LockOpenIcon className="icon" />}
-        </button>
-      </div>
-    );
-  }, [isLineLocked, toggleLock]);
-
+  // Render markdown content
   const renderMarkdown = useCallback(() => {
-    const content = projectPlan.currentText || initialMarkdown || '';
-    analyzer.current = new MarkdownSectionAnalyzer(content);
-    const lines = analyzer.current.getAllLines();
+    if (!currentText) {
+      return <div className="markdown-empty">No content to display</div>;
+    }
+    
+    const lines = getAllLines();
     
     return (
       <pre>
         <code className="markdown-raw">
           {lines.map((line, index) => {
-            const info = analyzer.current.getLineInfo(index);
-            const classes = ['line'];
+            const info = getLineInfo(index);
             const isLocked = isLineLocked(index);
             const isDropdownOpen = openDropdownLine === index;
-            const isEditing = isLineEditing(index);
-            
-            if (info.isHeader) {
-              classes.push('header');
-              classes.push(`h${info.headerLevel}`);
-            }
-            
-            if (info.isList) {
-              classes.push('list-item');
-              if (info.listLevel) {
-                classes.push(`list-level-${info.listLevel}`);
-              }
-            }
-            
-            if (activeLines.has(index)) {
-              classes.push('highlight');
-            }
-            
-            if (lineHovered === index) {
-              classes.push('hover');
-            }
-            
-            if (isEditing) {
-              classes.push('editing-line');
-              classes.push('highlight');
-            }
-            
-            if (isLocked) {
-              classes.push('locked');
-            }
+            const isChatDropdownOpen = openChatDropdownLine === index;
             
             return (
-              <div 
+              <MarkdownLineRenderer
                 key={index}
-                className={classes.join(' ')}
-                onMouseEnter={() => handleLineHover(index)}
-                onMouseLeave={handleLineLeave}
-                onClick={() => {
-                  handleLineHover(index);
-                  console.log('Line clicked:', index, line);
-                }}
-                data-line={index}
-              >
-                {line}
-                
-                {isTopLineEditing(index) && renderButtons(index)}
-                
-                {!isEditing && (
-                  ((activeLines.has(index) && lineHovered === index) || isDropdownOpen) ? 
-                  renderButtons(index) : 
-                  (isLocked && info.isHeader) ? 
-                  renderLockButton(index) : 
-                  null
-                )}
-              </div>
+                line={line}
+                lineNumber={index}
+                isHeader={info.isHeader}
+                headerLevel={info.headerLevel}
+                isList={info.isList}
+                listLevel={info.listLevel}
+                isActive={activeLines.has(index)}
+                isHovered={lineHovered === index}
+                isEditing={isLineEditing(index)}
+                isTopLineEditing={isTopLineEditing(index)}
+                isLocked={isLocked}
+                isDropdownOpen={isDropdownOpen}
+                isChatDropdownOpen={isChatDropdownOpen}
+                buttonRef={getButtonRef(index)}
+                chatButtonRef={getChatButtonRef(index)}
+                handleLineHover={handleLineHover}
+                handleLineLeave={handleLineLeave}
+                handleOptionSelect={handleOptionSelect}
+                handleChatOptionSelect={handleChatOptionSelect}
+                setOpenDropdownLine={setOpenDropdownLine}
+                setOpenChatDropdownLine={setOpenChatDropdownLine}
+                toggleLock={toggleLock}
+                deleteSection={deleteSection}
+                isLineEditing={isLineEditing}
+              />
             );
           })}
         </code>
@@ -807,12 +386,18 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown }) => {
     isLineLocked, 
     lineHovered, 
     openDropdownLine, 
-    projectPlan.currentText, 
-    renderButtons, 
-    renderLockButton, 
-    initialMarkdown, 
+    openChatDropdownLine, 
+    currentText, 
+    getAllLines, 
+    getLineInfo,
+    toggleLock, 
+    deleteSection,
     isLineEditing, 
-    isTopLineEditing
+    isTopLineEditing,
+    handleOptionSelect,
+    handleChatOptionSelect,
+    getButtonRef,
+    getChatButtonRef
   ]);
 
   return (

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useRef, ReactNode, useCallback } from 'react';
 import { ChatMessage, Project, Chart } from '../types';
 import { toast } from 'react-hot-toast';
+import { MarkdownSectionAnalyzer } from '../components/markdown/MarkdownSections';
 
 // Define the steps in the generation process
 export type PlanGenerationStep = 'idle' | 'generating' | 'reviewing' | 'finalizing';
@@ -28,6 +29,26 @@ interface ProjectPlanContextProps {
   confirmChanges: (confirm: boolean) => Promise<void>;
   reset: () => void;
   editMarkdownSection: (sectionRange: {start: number, end: number}, instruction: string) => Promise<boolean>;
+  
+  // MarkdownSectionAnalyzer methods
+  getLineInfo: (lineNumber: number) => { 
+    sections: any[],
+    isHeader: boolean,
+    headerLevel?: number,
+    isContent: boolean,
+    isList: boolean,
+    listLevel?: number
+  };
+  getAllLines: () => string[];
+  getSectionById: (id: string) => any | undefined;
+  getSectionContent: (section: any) => string[];
+  findListItemRange: (startLine: number) => { start: number; end: number } | null;
+  
+  // Locking functionality
+  lockedSections: Set<string>;
+  isLineLocked: (lineNumber: number) => boolean;
+  toggleLock: (lineNumber: number) => void;
+  unlockSection: (sectionId: string) => void;
 }
 
 interface ProjectPlanProviderProps {
@@ -61,6 +82,7 @@ const streamLines = async (
       
       for (const line of lines) {
         if (line.startsWith('data: ')) {
+          console.log('[ProjectPlanContext] Processing line:', line);
           const dataContent = line.substring(6);
           try {
             const jsonData = JSON.parse(dataContent);
@@ -137,11 +159,13 @@ export function ProjectPlanProvider({
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentLineNumber, setCurrentLineNumber] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
+  const [lockedSections, setLockedSections] = useState<Set<string>>(new Set());
 
   const projectIdRef = useRef(projectId);
   const projectRef = useRef(project);
   const userChartsRef = useRef(userCharts);
   const previousPlanRef = useRef<string | null>(null); // Store previous plan for diffing
+  const analyzerRef = useRef<MarkdownSectionAnalyzer | null>(null);
 
   // Update refs when props change
   React.useEffect(() => {
@@ -156,6 +180,15 @@ export function ProjectPlanProvider({
       previousPlanRef.current = currentText;
     }
   }, [currentText, isStreaming]);
+
+  // Update analyzer when text changes
+  React.useEffect(() => {
+    if (currentText) {
+      analyzerRef.current = new MarkdownSectionAnalyzer(currentText);
+    } else {
+      analyzerRef.current = null;
+    }
+  }, [currentText]);
 
   const getProjectJsonRepresentation = () => {
     const currentProject = projectRef.current;
@@ -338,6 +371,110 @@ export function ProjectPlanProvider({
     }
   };
 
+  // MarkdownSectionAnalyzer methods
+  const getLineInfo = (lineNumber: number) => {
+    if (!analyzerRef.current) {
+      return { 
+        sections: [],
+        isHeader: false,
+        isContent: false,
+        isList: false
+      };
+    }
+    return analyzerRef.current.getLineInfo(lineNumber);
+  };
+
+  const getAllLines = () => {
+    if (!analyzerRef.current) {
+      return [];
+    }
+    return analyzerRef.current.getAllLines();
+  };
+
+  const getSectionContent = (section: any) => {
+    if (!analyzerRef.current) {
+      return [];
+    }
+    return analyzerRef.current.getSectionContent(section);
+  };
+
+  const getSectionFromId = (id: string) => {
+    if (!analyzerRef.current) {
+      return undefined;
+    }
+    return analyzerRef.current.getSectionById(id);
+  };
+
+  const getSectionIdForLine = useCallback((lineNumber: number) => {
+    const info = getLineInfo(lineNumber);
+    return info.sections.length > 0 
+      ? info.sections[info.sections.length - 1].id 
+      : null;
+  }, []);
+
+  const findListItemRange = (startLine: number) => {
+    if (!analyzerRef.current) {
+      return null;
+    }
+    
+    const lines = getAllLines();
+    const startInfo = getLineInfo(startLine);
+    if (!startInfo.isList) return null;
+
+    const startLevel = startInfo.listLevel || 0;
+    let end = startLine;
+
+    for (let i = startLine + 1; i < lines.length; i++) {
+      const info = getLineInfo(i);
+      
+      if (!info.isList || 
+          info.listLevel! <= startLevel ||
+          lines[i].trim() === '') {
+        break;
+      }
+      end = i;
+    }
+
+    return { start: startLine, end };
+  };
+
+  // Locking functionality
+  const isLineLocked = useCallback((lineNumber: number) => {
+    if (!analyzerRef.current) return false;
+    
+    const info = getLineInfo(lineNumber);
+    
+    for (const section of info.sections) {
+      if (lockedSections.has(section.id)) {
+        return true;
+      }
+    }
+    
+    return lockedSections.has(`line-${lineNumber}`);
+  }, [lockedSections]);
+
+  const toggleLock = useCallback((lineNumber: number) => {
+    const sectionId = getSectionIdForLine(lineNumber) || `line-${lineNumber}`;
+    
+    const newLockedSections = new Set(lockedSections);
+    
+    if (lockedSections.has(sectionId)) {
+      newLockedSections.delete(sectionId);
+    } else {
+      newLockedSections.add(sectionId);
+    }
+    
+    setLockedSections(newLockedSections);
+  }, [lockedSections, getSectionIdForLine]);
+
+  const unlockSection = useCallback((sectionId: string) => {
+    if (lockedSections.has(sectionId)) {
+      const newLockedSections = new Set(lockedSections);
+      newLockedSections.delete(sectionId);
+      setLockedSections(newLockedSections);
+    }
+  }, [lockedSections]);
+
   return (
     <ProjectPlanContext.Provider
       value={{
@@ -351,7 +488,18 @@ export function ProjectPlanProvider({
         confirmChanges,
         generateProjectPlan,
         reset,
-        editMarkdownSection
+        editMarkdownSection,
+        // MarkdownSectionAnalyzer methods
+        getLineInfo,
+        getAllLines,
+        getSectionById: getSectionFromId,
+        getSectionContent,
+        findListItemRange,
+        // Locking functionality
+        lockedSections,
+        isLineLocked,
+        toggleLock,
+        unlockSection
       }}
     >
       {children}

@@ -3,13 +3,14 @@ import { useProjectPlan } from '../contexts/ProjectPlanContext';
 import { StreamingDiff } from './StreamingDiff';  
 import DraftPlan from './draft_plan/DraftPlan';
 import { ChartCreationChat } from './ChartCreationChat';
-import { useNavigate, useParams } from 'react-router-dom';
 import ProjectPlanTrigger from './ProjectPlanTrigger';
 import ViewSelector, { ViewMode } from './ViewSelector';
 import { MarkdownViewer } from './markdown/MarkdownViewer';
 import GridView from './GridView';
 import { useDraftPlanContext } from '../contexts/DraftPlanContext';
 import { toast } from 'react-hot-toast';
+import { SectionDiffPanel } from './SectionDiffPanel';
+import { EditedSectionProvider } from '../contexts/EditedSectionContext';
 
 const Canvas: React.FC = () => {
   // Use the streaming context from ProjectPlanContext
@@ -18,31 +19,42 @@ const Canvas: React.FC = () => {
     isStreaming
   } = useProjectPlan();
   
-  const [showPlanPane, setShowPlanPane] = useState(false);
-  const [isDraftCollapsed, setIsDraftCollapsed] = useState(false);
+  const [showChat, setShowChat] = useState(false); // Add state to control chat visibility
+  const [showDraftPane, setShowDraftPane] = useState(false); // Add state to control draft pane visibility
   const [viewMode, setViewMode] = useState<ViewMode>('markdown'); // Default to markdown view
-  const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
+  const [showSectionDiff, setShowSectionDiff] = useState(false); // Add state to control section diff visibility
+  const [sectionDiffData, setSectionDiffData] = useState<{ 
+    range: {start: number, end: number} | null,
+    instruction: string
+  }>({ range: null, instruction: '' });
 
   // Get createPlanFromMarkdown from DraftPlanContext
   const { createPlanFromMarkdown } = useDraftPlanContext();
 
-  useEffect(() => {
-    // Show the plan pane once the first plan is generated
-    if (currentText && !showPlanPane) {
-      setShowPlanPane(true);
-    }
-  }, [currentText, showPlanPane]);
-
   const handleChatCancel = () => {
-    // Navigate back to the project detail page
-    if (projectId) {
-      navigate(`/projects/${projectId}`);
-    }
+    // Hide the chat instead of navigating away
+    setShowChat(false);
   };
 
-  const toggleDraftCollapse = () => {
-    setIsDraftCollapsed(!isDraftCollapsed);
+  // Add function to show the chat
+  const handleShowChat = () => {
+    setShowChat(true);
+  };
+
+  // Add function to show/hide the draft plan pane
+  const toggleDraftPane = () => {
+    setShowDraftPane(!showDraftPane);
+  };
+
+  // Add function to show the section diff panel
+  const handleShowSectionDiff = (range: {start: number, end: number}, instruction: string) => {
+    setSectionDiffData({ range, instruction });
+    setShowSectionDiff(true);
+  };
+
+  // Add function to hide the section diff panel
+  const handleSectionDiffCancel = () => {
+    setShowSectionDiff(false);
   };
 
   // Handle creating a draft plan from the current project plan markdown
@@ -108,9 +120,15 @@ const Canvas: React.FC = () => {
           </div>
         );
       case 'markdown':
-        return <MarkdownViewer initialMarkdown={currentText} />;
+        return (
+          <MarkdownViewer 
+            initialMarkdown={currentText} 
+            onShowChat={handleShowChat} 
+            onShowSectionDiff={handleShowSectionDiff}
+          />
+        );
       case 'grid':
-        return <GridView content={currentText} />;
+        return <GridView content={currentText} onShowChat={handleShowChat} />;
       default:
         return null;
     }
@@ -275,113 +293,209 @@ const Canvas: React.FC = () => {
       }} />
 
       {/* Main content wrapper using flex with clearly defined sections */}
-      <div className="flex flex-col h-full" style={{ width: 'calc(100% - 46rem)' }}>
-        {/* Top section with header and content */}
-        <div 
-          className="flex flex-col"
-          style={{ 
-            height: isDraftCollapsed ? 'calc(100% - 3rem)' : 'calc(100% - 500px)',
-            minHeight: '250px' 
-          }}
-        >
-          {/* Fixed header */}
-          <div className="flex-shrink-0 bg-white">
-            <div className="p-3 pb-2 font-balsamiq">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">Project Plan</h2>
-                  <p className="text-sm text-gray-500 mt-1">Auto-generated plan based on your requirements</p>
+      <EditedSectionProvider>
+        <div className="flex flex-col h-full w-full">
+          {/* Top section with header and content */}
+          <div 
+            className="flex flex-col h-full"
+          >
+            {/* Fixed header */}
+            <div className="flex-shrink-0 bg-white">
+              <div className="p-3 pb-2 font-balsamiq">
+                <div className="flex flex-col items-center">
+                  
+                  {/* View Selector - Only show when there is content */}
+                  {currentText && (
+                    <ViewSelector 
+                      currentView={viewMode}
+                      onViewChange={handleViewChange}
+                    />
+                  )}
                 </div>
-                
-                {/* View Selector - Only show when there is content */}
-                {currentText && (
-                  <ViewSelector 
-                    currentView={viewMode}
-                    onViewChange={handleViewChange}
-                  />
-                )}
+              </div>
+            </div>
+            
+            {/* Content pane with its own scroll area */}
+            <div className="flex-grow overflow-auto bg-white">
+              <div className="p-4">
+                {renderCurrentView()}
               </div>
             </div>
           </div>
-          
-          {/* Content pane with its own scroll area */}
-          <div className="flex-grow overflow-auto bg-white">
-            <div className="p-4">
-              {renderCurrentView()}
-            </div>
-          </div>
-        </div>
 
-        {/* Bottom section for Gantt chart - clearly separated with strong visual cues */}
-        <div 
-          className={`
-            flex-shrink-0 bg-white
-            flex flex-col transition-all duration-300 ease-in-out
-            ${isDraftCollapsed ? 'h-12' : 'h-[500px]'}
-          `}
-          style={{ 
-            maxHeight: isDraftCollapsed ? '3rem' : '500px',
-          }}
-        >
-          {/* Fixed header for draft plan with simplified visual styling */}
-          <div className="flex-shrink-0 bg-white border-t border-b border-gray-200">
-            <div className="flex items-center justify-between p-2">
-              <div 
-                className="flex items-center cursor-pointer hover:bg-gray-50 transition-colors px-2 py-1 rounded"
-                onClick={toggleDraftCollapse}
-                aria-label={isDraftCollapsed ? "Expand Gantt chart" : "Collapse Gantt chart"}
-              >
-                <div className="flex items-center text-gray-700">
-                  {/* Ultra minimal Gantt chart icon */}
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-6 w-6" 
-                    viewBox="0 0 24 24" 
-                    fill="none"
-                    stroke="currentColor" 
-                    strokeWidth="1.5"
-                  >
-                    {/* Simple timeline container */}
-                    <rect x="3" y="3" width="18" height="18" rx="1" />
-                    
-                    {/* Simplified Gantt bars - just 3 bars of different lengths */}
-                    <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
-                    <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
-                    <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
-                  </svg>
+          {/* DraftPlan sliding in from the bottom */}
+          <div 
+            className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ease-in-out`}
+            style={{ 
+              height: '500px',
+              maxHeight: '80vh',
+              width: '95%',
+              maxWidth: '95%',
+              margin: '0 auto 64px auto',
+              padding: '0 16px 0 12px',
+              transform: showDraftPane ? 'translateY(0)' : 'translateY(calc(100% + 64px))',
+              opacity: showDraftPane ? 1 : 0,
+              visibility: showDraftPane ? 'visible' : 'hidden',
+              transitionProperty: 'transform, opacity, visibility',
+            }}
+          >
+            <div 
+              className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-lg"
+              style={{ 
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              {/* Fixed header for draft plan with simplified visual styling */}
+              <div className="flex-shrink-0 bg-white border-b border-gray-200">
+                <div className="flex items-center justify-between p-2">
+                  <div className="flex items-center text-gray-700 ml-2">
+                    {/* Ultra minimal Gantt chart icon */}
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-6 w-6" 
+                      viewBox="0 0 24 24" 
+                      fill="none"
+                      stroke="currentColor" 
+                      strokeWidth="1.5"
+                    >
+                      {/* Simple timeline container */}
+                      <rect x="3" y="3" width="18" height="18" rx="1" />
+                      
+                      {/* Simplified Gantt bars - just 3 bars of different lengths */}
+                      <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
+                      <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
+                      <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
+                    </svg>
+                  </div>
                   
+                  <div className="flex items-center">
+                    <button
+                      onClick={handleCreatePlan}
+                      className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded px-2 py-1 transition-colors mr-2"
+                      aria-label="Refresh draft plan"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                      </svg>
+                      <span className="ml-1">Refresh</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleCreatePlan();
+                        toggleDraftPane();
+                      }}
+                      className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded px-2 py-1 transition-colors mr-2"
+                      aria-label="Close draft pane"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
               
-              <button
-                onClick={handleCreatePlan}
-                className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded px-2 py-1 transition-colors"
-                aria-label="Refresh draft plan"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                </svg>
-                <span className="ml-1">Refresh</span>
-              </button>
+              {/* Separately scrollable content area for draft plan */}
+              <div className="flex-grow overflow-auto">
+                <DraftPlan />
+              </div>
             </div>
           </div>
-          
-          {/* Separately scrollable content area for draft plan */}
-          {!isDraftCollapsed && (
-            <div className="flex-grow overflow-auto">
-              <DraftPlan />
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* ChartCreationChat (Right Sidebar) - Fixed width, completely independent */}
-      <div className="w-[46rem] bg-white overflow-hidden border-l border-gray-200">
-        <ChartCreationChat onCancel={handleChatCancel} />
-      </div>
+        {/* ChartCreationChat sliding in from the right side */}
+        <div 
+          className={`fixed top-0 right-0 h-screen z-40 transition-transform duration-300 ease-in-out transform ${showChat ? 'translate-x-0' : 'translate-x-full'}`}
+          style={{ 
+            width: '825px',
+            maxWidth: '95vw',
+            padding: '24px 24px 24px 24px',
+            height: 'calc(100vh - 40px)', // Reduce height to create space at bottom
+          }}
+        >
+          <div 
+            className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden"
+            style={{ 
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <ChartCreationChat onCancel={handleChatCancel} className="h-full w-full" />
+          </div>
+        </div>
 
-      {/* Floating Action Button for triggering new plan generation */}
-      <ProjectPlanTrigger />
+        {/* Section Diff Panel */}
+        <div 
+          className={`fixed top-0 right-0 h-screen z-50 transition-transform duration-300 ease-in-out transform ${showSectionDiff ? 'translate-x-0' : 'translate-x-full'}`}
+          style={{ 
+            width: '825px',
+            maxWidth: '95vw',
+            padding: '24px 24px 24px 24px',
+            height: 'calc(100vh - 48px)', // Reduce height to create space at bottom
+          }}
+        >
+          <div 
+            className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden"
+            style={{ 
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {showSectionDiff && sectionDiffData && sectionDiffData.range && (
+              <SectionDiffPanel 
+                range={sectionDiffData.range} 
+                instruction={sectionDiffData.instruction} 
+                onCancel={handleSectionDiffCancel} 
+                className="h-full w-full"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Floating Action Button for Draft Plan at bottom left */}
+        <button
+          onClick={toggleDraftPane}
+          className="fixed left-20 bottom-20 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
+          aria-label="Show Draft Plan"
+          title="Show Draft Plan"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none"
+            stroke="currentColor" 
+            strokeWidth="2"
+          >
+            {/* Simple timeline container */}
+            <rect x="3" y="3" width="18" height="18" rx="1" />
+            
+            {/* Simplified Gantt bars - just 3 bars of different lengths */}
+            <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
+            <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
+            <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
+          </svg>
+        </button>
+
+        {/* Floating Action Button for showing chat */}
+        <button
+          onClick={handleShowChat}
+          className="fixed right-6 bottom-20 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
+          aria-label="Show Chat"
+          title="Show Chat"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </button>
+
+        {/* Floating Action Button for triggering new plan generation */}
+        <ProjectPlanTrigger />
+      </EditedSectionProvider>
     </div>
   );
 };

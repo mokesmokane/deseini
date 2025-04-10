@@ -49,7 +49,7 @@ const ViewSelector: React.FC<ViewSelectorProps> = ({ currentView, onViewChange }
         <MarkdownIcon />
       </button>
       
-      <button
+      {/* <button
         type="button"
         className={`view-button ${currentView === 'diff' ? 'active' : ''}`}
         onClick={() => onViewChange('diff')}
@@ -58,7 +58,7 @@ const ViewSelector: React.FC<ViewSelectorProps> = ({ currentView, onViewChange }
         title="Diff View"
       >
         <DiffIcon />
-      </button>
+      </button> */}
       
       <button
         type="button"

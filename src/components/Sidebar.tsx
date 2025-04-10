@@ -12,8 +12,9 @@ import {
   CodeBracketIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { ChatMessage } from '../types';
 import { useProjectPlan } from '../contexts/ProjectPlanContext';
+import { useDraftPlanContext } from '../contexts/DraftPlanContext';
+import toast from 'react-hot-toast';
 
 interface SidebarSection {
   id: string;
@@ -32,15 +33,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   const { saveChart } = useChartsList();
   const { 
     project, 
-    userCharts, 
-    isGeneratingTasks, 
-    taskGenerationError, 
-    initialTasksForDialog, 
-    isCreateChartDialogOpen, 
-    setIsCreateChartDialogOpen,
-    handleInitiateTaskGeneration
+    userCharts 
   } = useProject();
-  const { generateProjectPlan } = useProjectPlan();
+  const { tasks, timeline } = useDraftPlanContext();
   const { projectId } = useParams<{ projectId: string }>();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -48,6 +43,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   const [projectJsonError, setProjectJsonError] = useState<string | null>(null);
   const [jsonContent, setJsonContent] = useState('');
   const [projectJsonContent, setProjectJsonContent] = useState('');
+  const [draftPlanJsonContent, setDraftPlanJsonContent] = useState('');
+  const [isGeneratingFinalPlan, setIsGeneratingFinalPlan] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -80,6 +79,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   useEffect(() => {
     setProjectJsonContent(getProjectJsonRepresentation());
   }, [projectId, userCharts, project]);
+
+  useEffect(() => {
+    setDraftPlanJsonContent(getDraftPlanJsonRepresentation());
+  }, [tasks, timeline]);
+
+  const getDraftPlanJsonRepresentation = () => {
+    return JSON.stringify({
+      timeline,
+      tasks: tasks.map(task => ({
+        ...task,
+        // Convert dates to strings for better readability in JSON
+        startDate: task.startDate && task.startDate instanceof Date ? task.startDate.toISOString() : undefined,
+        date: task.date && task.date instanceof Date ? task.date.toISOString() : undefined
+      }))
+    }, null, 2);
+  };
 
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setJsonContent(e.target.value);
@@ -130,14 +145,61 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
     setIsExpanded(false);
   };
 
-  const handleStartProjectPlanGeneration = () => {
-    
-    console.log('[Sidebar] Triggering project plan generation with empty message');
-    generateProjectPlan([]);
-    
-    // Navigate to the Canvas view
-    if (projectId) {
-      navigate(`/projects/${projectId}/canvas`);
+  const handleGenerateFinalPlan = async () => {
+    try {
+      setIsGeneratingFinalPlan(true);
+      setGenerationProgress('Generating final project plan...');
+
+      // Use the project from context
+      const projectContext = project;
+      
+      if (!projectContext) {
+        throw new Error('No project context available');
+      }
+      
+      // Convert tasks to markdown format
+      const draftPlanData = JSON.parse(draftPlanJsonContent);
+      const draftPlanMarkdown = draftPlanData.tasks.map((task: any) => {
+        if (task.type === 'milestone') {
+          return `## ${task.label} - ${new Date(task.date || task.startDate).toLocaleDateString()}`;
+        } else {
+          const startDate = new Date(task.startDate).toLocaleDateString();
+          const durationText = task.duration ? ` (${task.duration} days)` : '';
+          return `- ${task.label} - ${startDate}${durationText}`;
+        }
+      }).join('\n');
+      
+      setGenerationProgress('Calling API to generate final plan...');
+      // Call the API to generate the final plan
+      const response = await fetch('/api/generate-final-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          projectContext,
+          messages: [], // We don't have messages context in the sidebar
+          draftPlanMarkdown,
+          tasks: draftPlanData.tasks
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate final plan');
+      }
+      
+      setGenerationProgress('Processing response...');
+      await response.json(); // Process the response even if we don't use it
+      
+      setActiveSection(null);
+      toast.success('Final project plan generated and saved successfully!');
+    } catch (error) {
+      console.error('Error generating final plan:', error);
+      toast.error(error instanceof Error ? error.message : 'Unknown error occurred');
+    } finally {
+      setIsGeneratingFinalPlan(false);
+      setGenerationProgress('');
     }
   };
 
@@ -263,14 +325,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
               value={projectJsonContent}
               onChange={handleProjectJsonChange}
               className="flex-grow p-2 bg-gray-100 rounded-md text-xs font-mono mb-2 overflow-auto"
-              style={{ resize: 'vertical', minHeight: '250px' }}
+              style={{ resize: 'vertical', minHeight: '150px' }}
             />
             {projectJsonError && (
               <div className="text-red-500 text-xs mb-2">
                 {projectJsonError}
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-6">
               <button
                 onClick={() => {
                   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(projectJsonContent);
@@ -286,7 +348,43 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
                 Export Project JSON
               </button>
             </div>
+            
+            <h4 className="font-medium mb-2">Draft Plan JSON</h4>
+            <textarea
+              value={draftPlanJsonContent}
+              readOnly
+              className="flex-grow p-2 bg-gray-100 rounded-md text-xs font-mono mb-2 overflow-auto"
+              style={{ resize: 'vertical', minHeight: '150px' }}
+            />
+            
+            <div className="flex gap-2">
+              {isGeneratingFinalPlan ? (
+                <div className="flex items-center gap-2 text-blue-500 px-3 py-2 rounded-md text-sm font-medium flex-1">
+                  <div className="spinner w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                  <span>{generationProgress}</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGenerateFinalPlan}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium flex-1 flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                  Generate Final Plan
+                </button>
+              )}
+            </div>
           </div>
+          <style>
+            {`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}
+          </style>
         </div>
       )
     }

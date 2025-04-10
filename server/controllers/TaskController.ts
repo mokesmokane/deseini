@@ -456,19 +456,57 @@ export class TaskController {
         projectContext || null
       );
       
-      if (result.error) {
+      if (result.error || !result.stream) {
         console.error('Markdown section editing error:', result.error);
-        res.status(400).json({ error: result.error });
+        res.status(400).json({ error: result.error || 'Failed to start markdown edit stream' });
         return;
       }
       
-      res.status(200).json({ editedMarkdown: result.editedMarkdown });
+      // Set headers for Server-Sent Events (SSE)
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders(); // Flush headers to establish connection
+      
+      try {
+        // Iterate over the stream and send chunks to the client
+        for await (const chunk of result.stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            // Send the chunk content to the client
+            res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+          }
+        }
+        
+        // Send a final event to signal stream completion
+        res.write(`event: stream_end\ndata: ${JSON.stringify({ message: 'Edit stream ended' })}\n\n`);
+        
+      } catch (streamError) {
+        console.error('Error processing markdown edit stream:', streamError);
+        // Attempt to send an error event if possible
+        if (!res.headersSent) {
+             res.status(500).json({ error: 'Error processing markdown edit stream' });
+        } else if (!res.writableEnded) {
+             res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Edit stream processing failed' })}\n\n`);
+        }
+      } finally {
+        console.log('Markdown edit stream ended. Closing connection.');
+        res.end(); // End the response stream
+      }
     } catch (error) {
       console.error('API Controller Error (editMarkdownSection):', error);
       if (!res.headersSent) {
         res.status(500).json({
           error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
         });
+      } else if (!res.writableEnded) {
+        try {
+          res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Internal server error handling markdown edit' })}\n\n`);
+          res.end();
+        } catch (writeError) {
+          console.error("Failed to write stream error event for markdown edit:", writeError);
+          res.end(); // Force end if write fails
+        }
       }
     }
   }
