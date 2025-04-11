@@ -26,6 +26,7 @@ interface ProjectPlanContextProps {
   currentLineNumber: number;
   setCurrentLineNumber: (lineNumber: number) => void;
   generateProjectPlan: (messages: ChatMessage[]) => Promise<void>;
+  createPlanIfMissing: () => Promise<void>;
   confirmChanges: (confirm: boolean) => Promise<void>;
   reset: () => void;
   editMarkdownSection: (sectionRange: {start: number, end: number}, instruction: string) => Promise<boolean>;
@@ -160,6 +161,12 @@ export function ProjectPlanProvider({
   const [currentLineNumber, setCurrentLineNumber] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [lockedSections, setLockedSections] = useState<Set<string>>(new Set());
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+
+  // Global static flag to track if initialization has happened across all instances
+  // This ensures createPlanIfMissing only runs once globally regardless of how many times
+  // Canvas components are mounted or remounted
+  const hasInitialized = useRef(false);
 
   const projectIdRef = useRef(projectId);
   const projectRef = useRef(project);
@@ -210,6 +217,34 @@ export function ProjectPlanProvider({
     } else {
       // Revert changes
       setCurrentText(previousText);
+    }
+  };
+
+  const createPlanIfMissing = async () => {
+    // Check if global initialization has already happened
+    if (hasInitialized.current) {
+      console.log('[ProjectPlanContext] createPlanIfMissing: Already initialized globally');
+      return;
+    }
+
+    // Check if creation is already in progress or if text already exists
+    if (isCreatingPlan || currentText || isStreaming) {
+      console.log('[ProjectPlanContext] createPlanIfMissing: Already in progress or plan exists');
+      return;
+    }
+    
+    try {
+      setIsCreatingPlan(true);
+      console.log('[ProjectPlanContext] createPlanIfMissing: Starting creation');
+      hasInitialized.current = true; // Mark as initialized before the async call
+      await generateProjectPlan([]);
+    } catch (error) {
+      console.error('[ProjectPlanContext] createPlanIfMissing: Error', error);
+      // If there's an error, we should reset the initialization flag to allow retrying
+      hasInitialized.current = false;
+    } finally {
+      setIsCreatingPlan(false);
+      console.log('[ProjectPlanContext] createPlanIfMissing: Creation completed');
     }
   };
 
@@ -487,6 +522,7 @@ export function ProjectPlanProvider({
         setCurrentLineNumber,
         confirmChanges,
         generateProjectPlan,
+        createPlanIfMissing,
         reset,
         editMarkdownSection,
         // MarkdownSectionAnalyzer methods

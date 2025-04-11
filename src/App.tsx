@@ -10,6 +10,8 @@ import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { DependencyViolationsProvider } from './contexts/DependencyViolationsContext';
 import { ChartsListProvider } from './contexts/ChartsListContext';
 import { ProjectProvider } from './contexts/ProjectContext';
+import { EditedSectionProvider } from './contexts/EditedSectionContext';
+import { ProjectPlanProvider } from './contexts/ProjectPlanContext';
 
 export default function App() {
   const [projects, setProjects] = useState<Array<{ id: string; projectName: string }>>([]);
@@ -127,7 +129,15 @@ export default function App() {
            <DependencyViolationsProvider>
             <GanttProvider>
               <ProjectProvider>
-                <Outlet context={{ projects }} />
+                <ProjectPlanProvider 
+                  projectId={projectId || null} 
+                  project={projects.find(p => p.id === projectId) || null} 
+                  userCharts={[]}
+                >
+                  <EditedSectionProvider>
+                    <Outlet context={{ projects }} />
+                  </EditedSectionProvider>
+                </ProjectPlanProvider>
               </ProjectProvider>
             </GanttProvider>
           </DependencyViolationsProvider>

@@ -462,24 +462,62 @@ export class TaskController {
         return;
       }
       
-      // Set headers for Server-Sent Events (SSE)
-      res.setHeader('Content-Type', 'text/event-stream');
+      // Set headers for JSON streaming
+      res.setHeader('Content-Type', 'application/json');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       res.flushHeaders(); // Flush headers to establish connection
       
       try {
+        let currentLine = '';
+        
         // Iterate over the stream and send chunks to the client
         for await (const chunk of result.stream) {
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
-            // Send the chunk content to the client
-            res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+            // Send the chunk content to the client with type information
+            res.write(JSON.stringify({ 
+              type: 'chunk',
+              content
+            }) + '\n');
+            
+            // Accumulate the content into the current line
+            currentLine += content;
+            
+            // Check if we have a complete line
+            if (content.includes('\n')) {
+              // Split by newline to handle multiple newlines in one chunk
+              const lines = currentLine.split('\n');
+              
+              // The last element is the start of the next line or an empty string
+              currentLine = lines.pop() || '';
+              
+              // Send each complete line
+              for (const line of lines) {
+                const linejson = JSON.stringify({ 
+                  type: 'line', 
+                  content: line 
+                }) + '\n'
+                console.log('Sending line:', linejson);
+                res.write(linejson);
+              }
+            }
           }
         }
         
-        // Send a final event to signal stream completion
-        res.write(`event: stream_end\ndata: ${JSON.stringify({ message: 'Edit stream ended' })}\n\n`);
+        // Send the last line if there's any content remaining
+        if (currentLine) {
+          res.write(JSON.stringify({ 
+            type: 'line', 
+            content: currentLine 
+          }) + '\n');
+        }
+        
+        // Send a final info event to signal stream completion
+        res.write(JSON.stringify({ 
+          type: 'info', 
+          content: 'Edit stream ended' 
+        }) + '\n');
         
       } catch (streamError) {
         console.error('Error processing markdown edit stream:', streamError);
@@ -487,7 +525,11 @@ export class TaskController {
         if (!res.headersSent) {
              res.status(500).json({ error: 'Error processing markdown edit stream' });
         } else if (!res.writableEnded) {
-             res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Edit stream processing failed' })}\n\n`);
+             res.write(JSON.stringify({ 
+               type: 'info', 
+               content: 'Edit stream processing failed',
+               error: true
+             }) + '\n');
         }
       } finally {
         console.log('Markdown edit stream ended. Closing connection.');
@@ -501,7 +543,11 @@ export class TaskController {
         });
       } else if (!res.writableEnded) {
         try {
-          res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Internal server error handling markdown edit' })}\n\n`);
+          res.write(JSON.stringify({ 
+            type: 'info', 
+            content: 'Internal server error handling markdown edit',
+            error: true
+          }) + '\n');
           res.end();
         } catch (writeError) {
           console.error("Failed to write stream error event for markdown edit:", writeError);

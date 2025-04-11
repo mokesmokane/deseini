@@ -38,17 +38,17 @@ const GridIcon = () => (
 const ViewSelector: React.FC<ViewSelectorProps> = ({ currentView, onViewChange }) => {
   return (
     <div className="view-selector-container">
-      <button
+        <button
         type="button"
         className={`view-button ${currentView === 'markdown' ? 'active' : ''}`}
         onClick={() => onViewChange('markdown')}
-        aria-current={currentView === 'markdown' ? 'page' : undefined}
+          aria-current={currentView === 'markdown' ? 'page' : undefined}
         aria-label="Markdown View"
         title="Markdown View"
-      >
-        <MarkdownIcon />
-      </button>
-      
+        >
+          <MarkdownIcon />
+        </button>
+        
       {/* <button
         type="button"
         className={`view-button ${currentView === 'diff' ? 'active' : ''}`}
@@ -60,7 +60,7 @@ const ViewSelector: React.FC<ViewSelectorProps> = ({ currentView, onViewChange }
         <DiffIcon />
       </button> */}
       
-      <button
+          <button
         type="button"
         className={`view-button ${currentView === 'grid' ? 'active' : ''}`}
         onClick={() => onViewChange('grid')}
@@ -69,7 +69,7 @@ const ViewSelector: React.FC<ViewSelectorProps> = ({ currentView, onViewChange }
         title="Grid View"
       >
         <GridIcon />
-      </button>
+          </button>
     </div>
   );
 };

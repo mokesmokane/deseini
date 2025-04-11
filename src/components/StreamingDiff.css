@@ -10,28 +10,42 @@
 
 /* Diff styling */
 .diff-line-removed {
-  background-color: rgba(254, 226, 226, 0.4) !important; /* Lighter red background */
-  transition: all 0.5s ease;
+  background-color: rgba(0, 0, 0, 0.02) !important; /* Very subtle background */
+  transition: all 0.3s ease;
   position: relative;
   padding: 0.125rem 0;
   margin: 0.125rem 0;
+  border-left: 2px solid rgba(0, 0, 0, 0.2); /* Subtle left border */
+  text-decoration: line-through;
 }
 
 .diff-line-added {
-  background-color: rgba(209, 250, 229, 0.4) !important; /* Lighter green background */
-  transition: all 0.5s ease;
+  background-color: rgba(0, 0, 0, 0.01) !important; /* Even more subtle background */
+  transition: all 0.3s ease;
   position: relative;
   padding: 0.125rem 0;
   margin: 0.125rem 0;
+  border-left: 2px solid rgba(0, 0, 0, 0.1); /* Subtle left border */
+  font-weight: 500;
 }
 
 .diff-span {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  transition: all 0.5s ease;
+  transition: all 0.3s ease;
   font-size: 0.875rem;
   word-wrap: break-word; /* Enable word wrapping */
   white-space: pre-wrap; /* Preserve whitespace but allow wrapping */
   overflow-wrap: break-word; /* Ensure long words break too */
+  max-width: 100%; /* Ensure text doesn't expand beyond container */
+}
+
+.diff-span.added {
+  font-weight: 500;
+}
+
+.diff-span.removed {
+  text-decoration: line-through;
+  opacity: 0.7;
 }
 
 .line {
@@ -40,6 +54,7 @@
   padding: 0.125rem 0;
   line-height: 1.5;
   flex-wrap: wrap; /* Allow content to wrap */
+  width: 100%; /* Ensure line takes full width */
 }
 
 .line-number {
@@ -47,18 +62,18 @@
   min-width: 2.5rem;
   flex: 0 0 2.5rem; /* Fixed width, don't grow or shrink */
   text-align: right;
-  color: #9ca3af;
+  color: rgba(0, 0, 0, 0.4); /* Black with opacity for subtlety */
   padding-right: 1rem;
   user-select: none;
   font-size: 0.75rem;
-  opacity: 0.7;
+  opacity: 0.5;
   position: sticky;
   left: 0; /* Keep line numbers at the left edge */
 }
 
 .line-number.active {
   font-weight: bold;
-  color: #6b7280;
+  color: rgba(0, 0, 0, 0.6); /* Slightly darker for active line numbers */
 }
 
 /* Content container to allow wrapping */
@@ -66,19 +81,25 @@
   flex: 1; /* Take remaining space */
   min-width: 0; /* Allow content to shrink below its minimum content size */
   word-break: break-word; /* Break words if necessary */
+  white-space: pre-wrap; /* Preserve whitespace including indentation but allow wrapping */
+}
+
+.line.unchanged {
+  color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 /* Animation classes */
 .color-transition {
-  transition: all 0.5s ease;
+  transition: all 0.3s ease;
 }
 
 .bg-transition {
-  transition: background-color 0.5s ease;
+  transition: background-color 0.3s ease;
 }
 
 .height-transition {
-  transition: max-height 0.5s ease, margin 0.5s ease, padding 0.5s ease, opacity 0.5s ease;
+  transition: max-height 0.3s ease, margin 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
 }
 
 /* Confirmation button styling */
@@ -86,13 +107,13 @@
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  background-color: #111827;
+  background-color: rgba(0, 0, 0, 0.9); /* Near-black for primary button */
   color: white;
   border: none;
-  border-radius: 9999px;
+  border-radius: 8px; /* Slightly less rounded for modern look */
   padding: 0.75rem 1.5rem;
   font-weight: 500;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); /* Subtle shadow */
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -102,9 +123,9 @@
 }
 
 .confirm-changes-button:hover {
-  background-color: #1f2937;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  background-color: black;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
 }
 
 .confirm-changes-button:active {
@@ -117,12 +138,12 @@
   bottom: 2rem;
   left: 2rem;
   background-color: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  border-radius: 9999px;
+  color: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px; /* Matching with confirm button */
   padding: 0.75rem;
   font-weight: 500;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -134,9 +155,9 @@
 }
 
 .create-plan-button:hover {
-  border-color: #d1d5db;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
 }
 
 .create-plan-button:active {

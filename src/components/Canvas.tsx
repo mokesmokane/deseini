@@ -1,23 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useProjectPlan } from '../contexts/ProjectPlanContext';
-import { StreamingDiff } from './StreamingDiff';  
+// import { StreamingDiff } from './StreamingDiff';  
 import DraftPlan from './draft_plan/DraftPlan';
 import { ChartCreationChat } from './ChartCreationChat';
-import ProjectPlanTrigger from './ProjectPlanTrigger';
+// import ProjectPlanTrigger from './ProjectPlanTrigger';
 import ViewSelector, { ViewMode } from './ViewSelector';
 import { MarkdownViewer } from './markdown/MarkdownViewer';
 import GridView from './GridView';
 import { useDraftPlanContext } from '../contexts/DraftPlanContext';
 import { toast } from 'react-hot-toast';
+import { EditedSectionProvider, useEditedSection } from '../contexts/EditedSectionContext';
+
 import { SectionDiffPanel } from './SectionDiffPanel';
-import { EditedSectionProvider } from '../contexts/EditedSectionContext';
+// import { EditedSectionProvider } from '../contexts/EditedSectionContext';
 
 const Canvas: React.FC = () => {
   // Use the streaming context from ProjectPlanContext
   const { 
     currentText,
-    isStreaming
+    isStreaming,
+    createPlanIfMissing
   } = useProjectPlan();
+
+  const { resetState } = useEditedSection();
   
   const [showChat, setShowChat] = useState(false); // Add state to control chat visibility
   const [showDraftPane, setShowDraftPane] = useState(false); // Add state to control draft pane visibility
@@ -27,6 +32,7 @@ const Canvas: React.FC = () => {
     range: {start: number, end: number} | null,
     instruction: string
   }>({ range: null, instruction: '' });
+
 
   // Get createPlanFromMarkdown from DraftPlanContext
   const { createPlanFromMarkdown } = useDraftPlanContext();
@@ -39,11 +45,15 @@ const Canvas: React.FC = () => {
   // Add function to show the chat
   const handleShowChat = () => {
     setShowChat(true);
+    setShowDraftPane(false);
+    setShowSectionDiff(false);
   };
 
   // Add function to show/hide the draft plan pane
   const toggleDraftPane = () => {
     setShowDraftPane(!showDraftPane);
+    setShowChat(false);
+    setShowSectionDiff(false);
   };
 
   // Add function to show the section diff panel
@@ -55,6 +65,8 @@ const Canvas: React.FC = () => {
   // Add function to hide the section diff panel
   const handleSectionDiffCancel = () => {
     setShowSectionDiff(false);
+    //clear all edited section context
+    resetState();
   };
 
   // Handle creating a draft plan from the current project plan markdown
@@ -96,29 +108,29 @@ const Canvas: React.FC = () => {
     }
 
     switch (viewMode) {
-      case 'diff':
-        return (
-          <div className="flex flex-col notepad-container w-full h-full">
-            <div className="markdown-viewer-container">
-              <div className="markdown-container">
-                <div 
-                  className="prose prose-slate max-w-none pt-1 notepad-content" 
-                  style={{ 
-                    color: '#1f2937',
-                    overflowX: 'auto',
-                    minWidth: '100%'
-                  }}
-                >
-                  <StreamingDiff 
-                    onComplete={() => {
-                      // Any future post-completion actions can be added here if needed
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+      // case 'diff':
+      //   return (
+      //     <div className="flex flex-col notepad-container w-full h-full">
+      //       <div className="markdown-viewer-container">
+      //         <div className="markdown-container">
+      //           <div 
+      //             className="prose prose-slate max-w-none pt-1 notepad-content" 
+      //             style={{ 
+      //               color: '#1f2937',
+      //               overflowX: 'auto',
+      //               minWidth: '100%'
+      //             }}
+      //           >
+      //             <StreamingDiff 
+      //               onComplete={() => {
+      //                 // Any future post-completion actions can be added here if needed
+      //               }}
+      //             />
+      //           </div>
+      //         </div>
+      //       </div>
+      //     </div>
+      //   );
       case 'markdown':
         return (
           <MarkdownViewer 
@@ -133,6 +145,20 @@ const Canvas: React.FC = () => {
         return null;
     }
   };
+
+  // Use a ref to track whether initialization has occurred
+  const hasInitializedRef = useRef(false);
+
+  useEffect(() => {
+    // Only call if not already initialized
+    if (!hasInitializedRef.current) {
+      console.log('Canvas: createPlanIfMissing - first initialization');
+      hasInitializedRef.current = true;
+      createPlanIfMissing();
+    } else {
+      console.log('Canvas: skipping duplicate createPlanIfMissing call');
+    }
+  }, []);
 
   return (
     <div className="flex h-full overflow-hidden bg-gray-100">
@@ -293,7 +319,6 @@ const Canvas: React.FC = () => {
       }} />
 
       {/* Main content wrapper using flex with clearly defined sections */}
-      <EditedSectionProvider>
         <div className="flex flex-col h-full w-full">
           {/* Top section with header and content */}
           <div 
@@ -331,7 +356,7 @@ const Canvas: React.FC = () => {
               maxHeight: '80vh',
               width: '95%',
               maxWidth: '95%',
-              margin: '0 auto 64px auto',
+              margin: '0 auto 16px auto',
               padding: '0 16px 0 12px',
               transform: showDraftPane ? 'translateY(0)' : 'translateY(calc(100% + 64px))',
               opacity: showDraftPane ? 1 : 0,
@@ -412,8 +437,8 @@ const Canvas: React.FC = () => {
           style={{ 
             width: '825px',
             maxWidth: '95vw',
-            padding: '24px 24px 24px 24px',
-            height: 'calc(100vh - 40px)', // Reduce height to create space at bottom
+            padding: '24px 24px 0px 24px',
+            height: 'calc(100vh - 16px)', // Reduce height to create space at bottom
           }}
         >
           <div 
@@ -433,8 +458,8 @@ const Canvas: React.FC = () => {
           style={{ 
             width: '825px',
             maxWidth: '95vw',
-            padding: '24px 24px 24px 24px',
-            height: 'calc(100vh - 48px)', // Reduce height to create space at bottom
+            padding: '24px 24px 0px 24px',
+            height: 'calc(100vh - 16px)', // Reduce height to create space at bottom
           }}
         >
           <div 
@@ -458,7 +483,7 @@ const Canvas: React.FC = () => {
         {/* Floating Action Button for Draft Plan at bottom left */}
         <button
           onClick={toggleDraftPane}
-          className="fixed left-20 bottom-20 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
+          className="fixed left-20 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
           aria-label="Show Draft Plan"
           title="Show Draft Plan"
         >
@@ -484,7 +509,7 @@ const Canvas: React.FC = () => {
         {/* Floating Action Button for showing chat */}
         <button
           onClick={handleShowChat}
-          className="fixed right-6 bottom-20 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
+          className="fixed right-6 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
           aria-label="Show Chat"
           title="Show Chat"
         >
@@ -494,8 +519,7 @@ const Canvas: React.FC = () => {
         </button>
 
         {/* Floating Action Button for triggering new plan generation */}
-        <ProjectPlanTrigger />
-      </EditedSectionProvider>
+        {/* <ProjectPlanTrigger /> */}
     </div>
   );
 };

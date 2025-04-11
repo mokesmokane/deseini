@@ -7,7 +7,7 @@ import ProjectForm from '../components/ProjectForm';
 import Canvas from '../components/Canvas.tsx';
 import { MessagesProvider } from '../contexts/MessagesContext';
 import { ProjectPlanProvider } from '../contexts/ProjectPlanContext';
-import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
+// import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
 import { DraftPlanProvider } from '../contexts/DraftPlanContext';
 
 const ProjectView = () => {
@@ -50,11 +50,6 @@ const ProjectView = () => {
   // Always render the main layout structure
   // Wrap the entire view content with MessagesProvider
   return (
-    <ProjectPlanProvider
-      projectId={projectId??null}
-      project={project}
-      userCharts={userCharts}
-    >
       <DraftPlanProvider>
       
     <MessagesProvider
@@ -93,7 +88,6 @@ const ProjectView = () => {
       
     </MessagesProvider>
     </DraftPlanProvider>
-    </ProjectPlanProvider>
   );
 };
 
