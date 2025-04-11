@@ -26,6 +26,7 @@ interface MarkdownLineProps {
   toggleLock: (lineNumber: number) => void;
   deleteSection: (lineNumber: number) => void;
   isLineEditing: (lineNumber: number) => boolean;
+  onDoubleClick?: (lineNumber: number) => void;
 }
 
 export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
@@ -52,7 +53,8 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
   setOpenChatDropdownLine,
   toggleLock,
   deleteSection,
-  isLineEditing
+  isLineEditing,
+  onDoubleClick
 }) => {
   const classes = ['line'];
   
@@ -94,6 +96,12 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
     !shouldShowButtons && 
     isLocked && 
     isHeader;
+
+  const handleDoubleClick = () => {
+    if (onDoubleClick && !isLocked) {
+      onDoubleClick(lineNumber);
+    }
+  };
   
   return (
     <div 
@@ -104,6 +112,7 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
         handleLineHover(lineNumber);
         console.log('Line clicked:', lineNumber, line);
       }}
+      onDoubleClick={handleDoubleClick}
       data-line={lineNumber}
     >
       {line}

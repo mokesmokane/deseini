@@ -517,3 +517,84 @@ textarea:focus {
 .markdown-raw .line.editing-line {
   background-color: rgba(0, 0, 0, 0.05);
 }
+
+/* Section editor styles */
+.markdown-section-editor {
+  width: 100%;
+  border-radius: 8px;
+  border: 2px solid #000;
+  background-color: white;
+  padding: 0;
+  margin: 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.section-editor-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  background-color: white;
+  color: #1f2937;
+}
+
+.section-editor-controls {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f9fafb;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.section-editor-button {
+  padding: 6px 12px;
+  margin-right: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.section-editor-button.save-button {
+  background-color: #000;
+  color: white;
+  border-color: #000;
+}
+
+.section-editor-button.save-button:hover {
+  background-color: #333;
+}
+
+.section-editor-button.cancel-button {
+  background-color: white;
+  color: #374151;
+}
+
+.section-editor-button.cancel-button:hover {
+  background-color: #f3f4f6;
+}
+
+.section-editor-help {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.section-editor-help kbd {
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  padding: 2px 4px;
+  margin: 0 2px;
+  font-size: 0.7rem;
+}

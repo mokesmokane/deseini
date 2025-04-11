@@ -25,8 +25,8 @@ interface ProjectPlanContextProps {
   setIsStreaming: (streaming: boolean) => void;
   currentLineNumber: number;
   setCurrentLineNumber: (lineNumber: number) => void;
-  generateProjectPlan: (messages: ChatMessage[]) => Promise<void>;
-  createPlanIfMissing: () => Promise<void>;
+  generateProjectPlan: (messages: ChatMessage[], projectData: Project) => Promise<void>;
+  createPlanIfMissing: (project: Project) => Promise<void>;
   confirmChanges: (confirm: boolean) => Promise<void>;
   reset: () => void;
   editMarkdownSection: (sectionRange: {start: number, end: number}, instruction: string) => Promise<boolean>;
@@ -220,7 +220,7 @@ export function ProjectPlanProvider({
     }
   };
 
-  const createPlanIfMissing = async () => {
+  const createPlanIfMissing = async (project: Project) => {
     // Check if global initialization has already happened
     if (hasInitialized.current) {
       console.log('[ProjectPlanContext] createPlanIfMissing: Already initialized globally');
@@ -237,7 +237,7 @@ export function ProjectPlanProvider({
       setIsCreatingPlan(true);
       console.log('[ProjectPlanContext] createPlanIfMissing: Starting creation');
       hasInitialized.current = true; // Mark as initialized before the async call
-      await generateProjectPlan([]);
+      await generateProjectPlan([], project);
     } catch (error) {
       console.error('[ProjectPlanContext] createPlanIfMissing: Error', error);
       // If there's an error, we should reset the initialization flag to allow retrying
@@ -248,7 +248,7 @@ export function ProjectPlanProvider({
     }
   };
 
-  const generateProjectPlan = async (currentMessages: ChatMessage[]) => {
+  const generateProjectPlan = async (currentMessages: ChatMessage[], projectData: Project) => {
     console.log('[ProjectPlanContext] generateProjectPlan: START');
     if (isStreaming) {
       console.log('[ProjectPlanContext] generateProjectPlan: Skipping (already streaming)');
@@ -277,7 +277,7 @@ export function ProjectPlanProvider({
     setCurrentLineNumber(0);
 
     try {
-      const projectData = getProjectJsonRepresentation();
+      console.log('[ProjectPlanContext] generateProjectPlan: Project context:', JSON.stringify(projectData, null, 2));
       const requestBody = JSON.stringify({
         messages: currentMessages,
         projectContext: projectData,

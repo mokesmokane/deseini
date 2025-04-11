@@ -10,6 +10,7 @@ import GridView from './GridView';
 import { useDraftPlanContext } from '../contexts/DraftPlanContext';
 import { toast } from 'react-hot-toast';
 import { EditedSectionProvider, useEditedSection } from '../contexts/EditedSectionContext';
+import { useProject } from '../contexts/ProjectContext';
 
 import { SectionDiffPanel } from './SectionDiffPanel';
 // import { EditedSectionProvider } from '../contexts/EditedSectionContext';
@@ -22,6 +23,9 @@ const Canvas: React.FC = () => {
     createPlanIfMissing
   } = useProjectPlan();
 
+  const { 
+    project
+  } = useProject();
   const { resetState } = useEditedSection();
   
   const [showChat, setShowChat] = useState(false); // Add state to control chat visibility
@@ -154,7 +158,7 @@ const Canvas: React.FC = () => {
     if (!hasInitializedRef.current) {
       console.log('Canvas: createPlanIfMissing - first initialization');
       hasInitializedRef.current = true;
-      createPlanIfMissing();
+      createPlanIfMissing(project!);
     } else {
       console.log('Canvas: skipping duplicate createPlanIfMissing call');
     }

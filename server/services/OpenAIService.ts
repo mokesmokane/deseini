@@ -411,7 +411,31 @@ export class OpenAIService implements AIService {
           projectDetails.push(`Project Description: ${projectContext.description}`);
         }
         if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles: ${projectContext.roles.length} roles defined`);
+          projectDetails.push(`Project Roles:`);
+          projectContext.roles.forEach(role => {
+            const roleDetails = [
+              `- Title: ${role.title || 'Untitled'}`,
+              `  Type: ${role.type || 'Not specified'}`,
+              `  Level: ${role.level || 'Not specified'}`,
+              `  Description: ${role.description || 'No description provided'}`
+            ];
+            
+            // Add deliverables if they exist
+            if (role.deliverables && role.deliverables.length > 0) {
+              roleDetails.push(`  Deliverables:`);
+              role.deliverables.forEach((deliverable: {
+                id?: string;
+                deliverableName: string;
+                deadline: string;
+                fee?: number | null;
+                description: string;
+              }) => {
+                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
+              });
+            }
+            
+            projectDetails.push(roleDetails.join('\n'));
+          });
         }
         if (projectContext.charts && projectContext.charts.length > 0) {
           projectDetails.push(`Existing Charts: ${projectContext.charts.length} charts`);
@@ -510,7 +534,7 @@ export class OpenAIService implements AIService {
 
       // Enhance system message with project context if available
       if (projectContext) {
-        const projectDetails = [];
+        const projectDetails: string[] = [];
         
         if (projectContext.projectName) {
           projectDetails.push(`Project Name: ${projectContext.projectName}`);
@@ -521,19 +545,35 @@ export class OpenAIService implements AIService {
         }
         
         if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles: ${projectContext.roles.length} roles defined`);
-          // Include up to 3 roles as examples
-          const roleExamples = projectContext.roles.slice(0, 3).map(role => 
-            `- ${role.title || 'Untitled Role'}${role.description ? `: ${role.description.substring(0, 100)}${role.description.length > 100 ? '...' : ''}` : ''}`
-          );
-          projectDetails.push(roleExamples.join('\n'));
+          projectDetails.push(`Project Roles:`);
+          projectContext.roles.forEach(role => {
+            const roleDetails = [
+              `- Title: ${role.title || 'Untitled'}`,
+              `  Type: ${role.type || 'Not specified'}`,
+              `  Level: ${role.level || 'Not specified'}`,
+              `  Description: ${role.description || 'No description provided'}`
+            ];
+            
+            // Add deliverables if they exist
+            if (role.deliverables && role.deliverables.length > 0) {
+              roleDetails.push(`  Deliverables:`);
+              role.deliverables.forEach((deliverable: {
+                id?: string;
+                deliverableName: string;
+                deadline: string;
+                fee?: number | null;
+                description: string;
+              }) => {
+                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
+              });
+            }
+            
+            projectDetails.push(roleDetails.join('\n'));
+          });
         }
         
         if (projectContext.charts && projectContext.charts.length > 0) {
           projectDetails.push(`Existing Charts: ${projectContext.charts.length} charts`);
-          // List chart names
-          const chartNames = projectContext.charts.map(chart => `- ${chart.name || 'Untitled Chart'}`);
-          projectDetails.push(chartNames.join('\n'));
         }
         
         // Add project context to system message
@@ -691,10 +731,36 @@ export class OpenAIService implements AIService {
           projectDetails.push(`Project Description: ${projectContext.description}`);
         }
         if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles: ${projectContext.roles.length} roles defined`);
+          projectDetails.push(`Project Roles:`);
+          projectContext.roles.forEach(role => {
+            const roleDetails = [
+              `- Title: ${role.title || 'Untitled'}`,
+              `  Type: ${role.type || 'Not specified'}`,
+              `  Level: ${role.level || 'Not specified'}`,
+              `  Description: ${role.description || 'No description provided'}`
+            ];
+            
+            // Add deliverables if they exist
+            if (role.deliverables && role.deliverables.length > 0) {
+              roleDetails.push(`  Deliverables:`);
+              role.deliverables.forEach((deliverable: {
+                id?: string;
+                deliverableName: string;
+                deadline: string;
+                fee?: number | null;
+                description: string;
+              }) => {
+                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
+              });
+            }
+            
+            projectDetails.push(roleDetails.join('\n'));
+          });
         }
+        
+        // Include charts information if available
         if (projectContext.charts && projectContext.charts.length > 0) {
-          projectDetails.push(`Existing Charts: ${projectContext.charts.length} charts`);
+          projectDetails.push(`Project has ${projectContext.charts.length} defined charts`);
         }
 
         if (projectDetails.length > 0) {
@@ -774,6 +840,7 @@ export class OpenAIService implements AIService {
   // Updated to return a stream
   async generateProjectPlan(messages: ChatMessage[], projectContext?: ProjectContext | null, currentPlan?: string | null): Promise<StreamedPlanResponse> {
     try {
+      console.log('generateProjectPlan - received project context:', JSON.stringify(projectContext, null, 2));
       const dateTimePrefix = `Current date and time: ${new Date().toISOString()}\n\n`;
       let systemMessage = `You are a project consultant taking notes during a client conversation. Your task is to maintain and update a set of structured consultation notes in Markdown format based on the ongoing conversation.`;
 
@@ -838,7 +905,7 @@ ONLY REPLY WITH THE GENERATED NOTES.
       
       // Add project context
       if (projectContext) {
-        const projectDetails = [];
+        const projectDetails: string[] = [];
         
         if (projectContext.projectName) {
           projectDetails.push(`Project Name: ${projectContext.projectName}`);
@@ -849,11 +916,36 @@ ONLY REPLY WITH THE GENERATED NOTES.
         }
         
         if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles: ${projectContext.roles.length} roles defined`);
+          projectDetails.push(`Project Roles:`);
+          projectContext.roles.forEach(role => {
+            const roleDetails = [
+              `- Title: ${role.title || 'Untitled'}`,
+              `  Type: ${role.type || 'Not specified'}`,
+              `  Level: ${role.level || 'Not specified'}`,
+              `  Description: ${role.description || 'No description provided'}`
+            ];
+            
+            // Add deliverables if they exist
+            if (role.deliverables && role.deliverables.length > 0) {
+              roleDetails.push(`  Deliverables:`);
+              role.deliverables.forEach((deliverable: {
+                id?: string;
+                deliverableName: string;
+                deadline: string;
+                fee?: number | null;
+                description: string;
+              }) => {
+                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
+              });
+            }
+            
+            projectDetails.push(roleDetails.join('\n'));
+          });
         }
         
+        // Include charts information if available
         if (projectContext.charts && projectContext.charts.length > 0) {
-          projectDetails.push(`Existing Charts: ${projectContext.charts.length} charts`);
+          projectDetails.push(`Project has ${projectContext.charts.length} defined charts`);
         }
 
         if (projectDetails.length > 0) {
@@ -936,7 +1028,7 @@ Extract tasks and milestones from the project plan, including:
 5. Determine the overall timeline (earliest start date and latest end date)
 
 Output should be a single valid JSON object with:
-- tasks: An array of task objects (each with label, startDate, and either duration for tasks or date for milestones)
+- tasks: An array of task objects (each with id, type, label, startDate, and either duration for tasks or date for milestones)
 - timeline: An object with startDate and endDate properties
 
 For dates, use ISO format (YYYY-MM-DD). If exact dates aren't specified, make reasonable estimates based on context.
@@ -1288,16 +1380,38 @@ Create professional-looking task names and descriptions as needed.
         
         if (projectContext.roles && projectContext.roles.length > 0) {
           projectDetails.push(`Project Roles:`);
-          projectContext.roles.forEach((role, index) => {
-            projectDetails.push(`- Role ${index + 1}: ${role.title || 'Untitled Role'} (ID: ${role.id || 'unknown'})`);
+          projectContext.roles.forEach(role => {
+            const roleDetails = [
+              `- Title: ${role.title || 'Untitled'}`,
+              `  Type: ${role.type || 'Not specified'}`,
+              `  Level: ${role.level || 'Not specified'}`,
+              `  Description: ${role.description || 'No description provided'}`
+            ];
+            
+            // Add deliverables if they exist
+            if (role.deliverables && role.deliverables.length > 0) {
+              roleDetails.push(`  Deliverables:`);
+              role.deliverables.forEach((deliverable: {
+                id?: string;
+                deliverableName: string;
+                deadline: string;
+                fee?: number | null;
+                description: string;
+              }) => {
+                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
+              });
+            }
+            
+            projectDetails.push(roleDetails.join('\n'));
           });
+        }
+        
+        // Include charts information if available
+        if (projectContext.charts && projectContext.charts.length > 0) {
+          projectDetails.push(`Project has ${projectContext.charts.length} defined charts`);
         }
       }
       
-      if (projectDetails.length > 0) {
-        systemMessage += `\n\nProject Context:\n${projectDetails.join('\n')}`;
-      }
-
       // Add the expected output format template to the system message
       systemMessage += `\n\nYour output must be in this exact JSON format:
 {

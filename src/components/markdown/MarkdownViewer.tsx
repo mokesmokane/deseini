@@ -4,6 +4,7 @@ import { useProjectPlan } from '../../contexts/ProjectPlanContext';
 import { useMessages } from '../../contexts/MessagesContext';
 import { MarkdownLineRenderer } from './renderer/MarkdownLineRenderer';
 import { getSectionRange } from './utils/markdownHelpers';
+import { MarkdownSectionEditor } from './MarkdownSectionEditor';
 
 interface Props {
   initialMarkdown: string;
@@ -31,6 +32,7 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
   const [openChatDropdownLine, setOpenChatDropdownLine] = useState<number | null>(null);
   const [lineHovered, setLineHovered] = useState<number | null>(null);
   const [editingSection, setEditingSection] = useState<{start: number, end: number} | null>(null);
+  const [directEditingSection, setDirectEditingSection] = useState<{start: number, end: number, content: string} | null>(null);
   
   const buttonRefs = useRef<Map<number, React.RefObject<HTMLButtonElement>>>(new Map());
   const chatButtonRefs = useRef<Map<number, React.RefObject<HTMLButtonElement>>>(new Map());
@@ -303,11 +305,81 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
     
   }, [getLineInfo, getAllLines, findListItemRange, handleSendMessage, onShowChat]);
 
+  // New handler for double-click to edit
+  const handleDoubleClick = useCallback((lineNumber: number) => {
+    const info = getLineInfo(lineNumber);
+    let sectionRange: {start: number, end: number} | null = null;
+    
+    if (info.isList) {
+      sectionRange = findListItemRange(lineNumber);
+    } else if (info.sections.length > 0) {
+      const deepestSection = info.sections[info.sections.length - 1];
+      sectionRange = {
+        start: deepestSection.start,
+        end: deepestSection.end
+      };
+    } else {
+      // Single line
+      sectionRange = {
+        start: lineNumber,
+        end: lineNumber
+      };
+    }
+    
+    if (sectionRange) {
+      const lines = getAllLines();
+      const sectionContent = lines.slice(sectionRange.start, sectionRange.end + 1).join('\n');
+      setDirectEditingSection({
+        start: sectionRange.start,
+        end: sectionRange.end,
+        content: sectionContent
+      });
+      
+      // Clear any active dropdowns
+      setOpenDropdownLine(null);
+      setOpenChatDropdownLine(null);
+    }
+  }, [getLineInfo, findListItemRange, getAllLines]);
+
+  // Save direct edits
+  const saveDirectEdit = useCallback((editedContent: string) => {
+    if (!directEditingSection || !currentText) return;
+    
+    const lines = getAllLines();
+    const beforeSection = lines.slice(0, directEditingSection.start).join('\n');
+    const afterSection = lines.slice(directEditingSection.end + 1).join('\n');
+    
+    let newText = '';
+    
+    if (beforeSection && afterSection) {
+      newText = `${beforeSection}\n${editedContent}\n${afterSection}`;
+    } else if (beforeSection) {
+      newText = `${beforeSection}\n${editedContent}`;
+    } else if (afterSection) {
+      newText = `${editedContent}\n${afterSection}`;
+    } else {
+      newText = editedContent;
+    }
+    
+    setCurrentText(newText);
+    setDirectEditingSection(null);
+  }, [directEditingSection, setCurrentText, getAllLines, currentText]);
+
+  // Cancel direct edits
+  const cancelDirectEdit = useCallback(() => {
+    setDirectEditingSection(null);
+  }, []);
+
   // Line editing status checks
   const isLineEditing = useCallback((lineNumber: number) => {
     if (!editingSection) return false;
     return lineNumber >= editingSection.start && lineNumber <= editingSection.end;
   }, [editingSection]);
+
+  const isLineDirectEditing = useCallback((lineNumber: number) => {
+    if (!directEditingSection) return false;
+    return lineNumber >= directEditingSection.start && lineNumber <= directEditingSection.end;
+  }, [directEditingSection]);
 
   const isTopLineEditing = useCallback((lineNumber: number) => {
     if (!editingSection) return false;
@@ -337,45 +409,34 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
     
     const lines = getAllLines();
     
+    // If a section is being direct edited, render the section editor
+    if (directEditingSection) {
+      const beforeLines = lines.slice(0, directEditingSection.start);
+      const afterLines = lines.slice(directEditingSection.end + 1);
+      
+      return (
+        <pre>
+          <code className="markdown-raw">
+            {beforeLines.map((line, index) => renderMarkdownLine(line, index))}
+            
+            <div className="direct-edit-container">
+              <MarkdownSectionEditor
+                content={directEditingSection.content}
+                onSave={saveDirectEdit}
+                onCancel={cancelDirectEdit}
+              />
+            </div>
+            
+            {afterLines.map((line, index) => renderMarkdownLine(line, index + directEditingSection.end + 1))}
+          </code>
+        </pre>
+      );
+    }
+    
     return (
       <pre>
         <code className="markdown-raw">
-          {lines.map((line, index) => {
-            const info = getLineInfo(index);
-            const isLocked = isLineLocked(index);
-            const isDropdownOpen = openDropdownLine === index;
-            const isChatDropdownOpen = openChatDropdownLine === index;
-            
-            return (
-              <MarkdownLineRenderer
-                key={index}
-                line={line}
-                lineNumber={index}
-                isHeader={info.isHeader}
-                headerLevel={info.headerLevel}
-                isList={info.isList}
-                listLevel={info.listLevel}
-                isActive={activeLines.has(index)}
-                isHovered={lineHovered === index}
-                isEditing={isLineEditing(index)}
-                isTopLineEditing={isTopLineEditing(index)}
-                isLocked={isLocked}
-                isDropdownOpen={isDropdownOpen}
-                isChatDropdownOpen={isChatDropdownOpen}
-                buttonRef={getButtonRef(index)}
-                chatButtonRef={getChatButtonRef(index)}
-                handleLineHover={handleLineHover}
-                handleLineLeave={handleLineLeave}
-                handleOptionSelect={handleOptionSelect}
-                handleChatOptionSelect={handleChatOptionSelect}
-                setOpenDropdownLine={setOpenDropdownLine}
-                setOpenChatDropdownLine={setOpenChatDropdownLine}
-                toggleLock={toggleLock}
-                deleteSection={deleteSection}
-                isLineEditing={isLineEditing}
-              />
-            );
-          })}
+          {lines.map((line, index) => renderMarkdownLine(line, index))}
         </code>
       </pre>
     );
@@ -397,7 +458,74 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
     handleOptionSelect,
     handleChatOptionSelect,
     getButtonRef,
-    getChatButtonRef
+    getChatButtonRef,
+    directEditingSection,
+    saveDirectEdit,
+    cancelDirectEdit
+  ]);
+
+  // Helper function to render markdown line
+  const renderMarkdownLine = useCallback((line: string, index: number) => {
+    const info = getLineInfo(index);
+    const isLocked = isLineLocked(index);
+    const isDropdownOpen = openDropdownLine === index;
+    const isChatDropdownOpen = openChatDropdownLine === index;
+    
+    // Skip rendering lines that are being direct edited
+    if (directEditingSection && index >= directEditingSection.start && index <= directEditingSection.end) {
+      return null;
+    }
+    
+    return (
+      <MarkdownLineRenderer
+        key={index}
+        line={line}
+        lineNumber={index}
+        isHeader={info.isHeader}
+        headerLevel={info.headerLevel}
+        isList={info.isList}
+        listLevel={info.listLevel}
+        isActive={activeLines.has(index)}
+        isHovered={lineHovered === index}
+        isEditing={isLineEditing(index) || isLineDirectEditing(index)}
+        isTopLineEditing={isTopLineEditing(index)}
+        isLocked={isLocked}
+        isDropdownOpen={isDropdownOpen}
+        isChatDropdownOpen={isChatDropdownOpen}
+        buttonRef={getButtonRef(index)}
+        chatButtonRef={getChatButtonRef(index)}
+        handleLineHover={handleLineHover}
+        handleLineLeave={handleLineLeave}
+        handleOptionSelect={handleOptionSelect}
+        handleChatOptionSelect={handleChatOptionSelect}
+        setOpenDropdownLine={setOpenDropdownLine}
+        setOpenChatDropdownLine={setOpenChatDropdownLine}
+        toggleLock={toggleLock}
+        deleteSection={deleteSection}
+        isLineEditing={isLineEditing}
+        onDoubleClick={handleDoubleClick}
+      />
+    );
+  }, [
+    activeLines, 
+    handleLineHover, 
+    handleLineLeave, 
+    isLineLocked, 
+    lineHovered, 
+    openDropdownLine, 
+    openChatDropdownLine, 
+    getLineInfo, 
+    toggleLock, 
+    deleteSection, 
+    isLineEditing,
+    isLineDirectEditing,
+    isTopLineEditing, 
+    handleOptionSelect, 
+    handleChatOptionSelect, 
+    getButtonRef, 
+    getChatButtonRef,
+    directEditingSection,
+    handleDoubleClick
   ]);
 
   return (
