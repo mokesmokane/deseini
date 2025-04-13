@@ -277,7 +277,6 @@ textarea {
   color: #1f2937;
   border: 1px solid #e5e7eb;
   border-radius: 0.375rem;
-  padding: 0.75rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.875rem;
   line-height: 1.5;
@@ -521,45 +520,74 @@ textarea:focus {
 /* Section editor styles */
 .markdown-section-editor {
   width: 100%;
-  border-radius: 8px;
-  border: 2px solid #000;
-  background-color: white;
+  max-width: 100%; /* Ensure it doesn't exceed parent width */
+  background-color: transparent;
   padding: 0;
-  margin: 8px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin: 0;
+  max-height: 60vh; /* Prevent editor from becoming too tall */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden; /* Prevent overflow causing scrollbars */
+  position: relative; /* For absolute positioning if needed */
 }
 
 .section-editor-textarea {
   width: 100%;
-  min-height: 150px;
-  padding: 12px;
+  max-width: 100%; /* Ensure it doesn't exceed parent width */
+  min-height: 100px;
+  max-height: none;
+  padding: 0 0 0 6px; /* Add left padding to offset content from border */
+  margin: 0;
   border: none;
-  border-bottom: 1px solid #e5e7eb;
   font-family: inherit;
   font-size: 1rem;
   line-height: 1.5;
-  resize: vertical;
+  resize: none; /* Disable manual resizing as we're handling it with JS */
   outline: none;
-  background-color: white;
+  background-color: #fafafa; /* Light gray background - more noticeable */
   color: #1f2937;
+  overflow-y: auto; /* Enable scrolling */
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  position: relative; /* For the pseudo-element positioning */
+  border-left: 3px solid #000; /* Thicker border for emphasis */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); /* Subtle shadow to lift editor */
+}
+
+/* When textarea content exceeds max-height, show scrollbars */
+.markdown-section-editor.overflow .section-editor-textarea.auto-resize {
+  overflow-y: auto;
+  max-height: calc(60vh - 30px); /* Account for controls height */
+}
+
+.section-editor-textarea.auto-resize {
+  overflow-y: hidden; /* Hide scrollbar for auto-resize mode */
+  transition: height 0.1s ease;
+}
+
+/* Remove the before pseudo-element that was adding a border */
+.markdown-section-editor::before,
+.section-editor-textarea::before {
+  display: none;
 }
 
 .section-editor-controls {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  background-color: #f9fafb;
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
+  padding: 2px 0;
+  margin: 0;
+  background-color: transparent;
+  min-height: 24px;
 }
 
 .section-editor-button {
-  padding: 6px 12px;
-  margin-right: 8px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  padding: 2px 8px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 3px;
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -575,26 +603,26 @@ textarea:focus {
 }
 
 .section-editor-button.cancel-button {
-  background-color: white;
+  background-color: #f3f4f6;
   color: #374151;
 }
 
 .section-editor-button.cancel-button:hover {
-  background-color: #f3f4f6;
+  background-color: #e5e7eb;
 }
 
 .section-editor-help {
-  margin-left: auto;
-  font-size: 0.75rem;
-  color: #6b7280;
+  margin-left: 4px;
+  font-size: 0.7rem;
+  color: #9ca3af;
 }
 
 .section-editor-help kbd {
-  background-color: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 3px;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-  padding: 2px 4px;
-  margin: 0 2px;
+  background-color: transparent;
+  border: none;
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 0 2px;
+  margin: 0;
   font-size: 0.7rem;
 }

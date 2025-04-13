@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "server": "ts-node --esm server.ts",
-    "dev-server": "nodemon --exec ts-node --esm server.ts",
+    "server": "NODE_OPTIONS=\"--loader ts-node/esm\" node server.ts",
+    "dev-server": "nodemon --exec \"NODE_OPTIONS='--loader ts-node/esm' node server.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui"

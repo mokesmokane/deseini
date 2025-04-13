@@ -1,0 +1,111 @@
+%%{init: {'theme': 'neutral', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'secondaryColor': '#f8f8f8', 'tertiaryColor': '#ffffff'}}}%%
+
+flowchart TD
+    %% Main Components with clean, black and white aesthetic
+    Client(["👤 Client Browser"]) --> Frontend("📱 Frontend React App")
+    Frontend --> Router("🧭 React Router")
+    Frontend --> ContextProviders("🔄 Context Providers")
+    Frontend <--> APIClient("🔌 API Client")
+    APIClient <--> ExpressServer("⚙️ Express Server")
+    ExpressServer <--> Controllers("🎮 Controllers")
+    Controllers <--> Services("🛠️ Services")
+    Controllers <--> OpenAI("🧠 OpenAI API")
+    APIClient <--> Supabase("💾 Supabase")
+    
+    %% Frontend Layer - Clean, modern organization
+    subgraph "Frontend Layer"
+        direction TB
+        Router --> Views("📄 Views")
+        Router --> Components("🧩 UI Components")
+        Views --> Components
+        
+        subgraph "State Management"
+            direction LR
+            ContextProviders --> AuthContext("🔐 Auth Context")
+            ContextProviders --> ProjectContext("📋 Project Context")
+            ContextProviders --> TaskContext("✅ Task Context")
+        end
+        
+        subgraph "Component Structure"
+            direction LR
+            Components --> Pages("📑 Pages")
+            Components --> Common("🔄 Common Components")
+            Components --> Form("📝 Form Components")
+        end
+    end
+    
+    %% Backend Layer - Clear separation of concerns
+    subgraph "Backend Layer"
+        direction TB
+        ExpressServer --> ApiRoutes("🛣️ API Routes")
+        
+        subgraph "Controller Layer"
+            direction LR
+            ApiRoutes --> RoleController("👥 Role Controller")
+            ApiRoutes --> TaskController("📋 Task Controller")
+        end
+        
+        subgraph "Service Layer"
+            direction LR
+            RoleController --> RoleService("👥 Role Service")
+            TaskController --> TaskService("📋 Task Service")
+            RoleService --> OpenAI
+            TaskService --> OpenAI
+        end
+    end
+    
+    %% Data Layer - Clean database structure
+    subgraph "Data Layer"
+        direction TB
+        Supabase --> Auth("🔑 Authentication")
+        Supabase --> Database("🗄️ PostgreSQL Database")
+        
+        subgraph "Database Tables"
+            direction TB
+            Database --> Projects("📂 Projects")
+            Database --> Tasks("✅ Tasks")
+            Database --> Roles("👥 Roles")
+            Database --> Users("👤 Users")
+            Database --> Conversations("💬 Conversations")
+            Database --> ProjectPlans("📊 Project Plans")
+        end
+    end
+    
+    %% API Endpoints - Modern, organized structure
+    subgraph "API Endpoints"
+        direction TB
+        ApiRoutes --> HealthCheck["/api/health"]
+        ApiRoutes --> ExtractRole["/api/extract-role-info"]
+        ApiRoutes --> Conversation["/api/conversation"]
+        ApiRoutes --> CreateTasks["/api/create-tasks"]
+        ApiRoutes --> GenSuggestions["/api/generate-suggestions"]
+        ApiRoutes --> GenProjectPlan["/api/generate-project-plan"]
+        ApiRoutes --> ConvertPlanToTasks["/api/convert-plan-to-tasks"]
+        ApiRoutes --> GenFinalPlan["/api/generate-final-plan"]
+        ApiRoutes --> GetProjectContext["/api/get-project-context"]
+        ApiRoutes --> EditMarkdown["/api/edit-markdown-section"]
+    end
+    
+    %% User Flow - Clean, numbered steps
+    Client --> |"1. Auth"|Auth
+    Client --> |"2. Projects"|Projects
+    Client --> |"3. Tasks"|Tasks
+    Client --> |"4. Role Info"|ExtractRole
+    Client --> |"5. Planning"|Conversation
+    Client --> |"6. Project Plan"|GenProjectPlan
+    
+    %% Application Flow
+    ExtractRole --> |"AI Processing"|OpenAI
+    Conversation --> |"AI Processing"|OpenAI
+    GenProjectPlan --> |"AI Processing"|OpenAI
+    
+    %% Modern, clean styling
+    classDef primary fill:#000000,stroke:#000000,stroke-width:2px,color:#ffffff,font-weight:bold
+    classDef secondary fill:#ffffff,stroke:#000000,stroke-width:1px,color:#000000
+    classDef tertiary fill:#f8f8f8,stroke:#000000,stroke-width:1px,color:#000000
+    classDef emphasis fill:#ffffff,stroke:#000000,stroke-width:3px,color:#000000,font-weight:bold
+    
+    class Client,Frontend,ExpressServer,Supabase,OpenAI primary
+    class Router,APIClient,Controllers,Services,Database secondary
+    class Views,Components,ApiRoutes,ContextProviders tertiary
+    class Auth,Projects,Tasks,Conversation emphasis
