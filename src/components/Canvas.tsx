@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useProjectPlan } from '../contexts/ProjectPlanContext';
 // import { StreamingDiff } from './StreamingDiff';  
 import DraftPlan from './draft_plan/DraftPlan';
+import DraftPlanMermaid from './draft_plan_mermaid/DraftPlanMermaid';
 import { ChartCreationChat } from './ChartCreationChat';
 // import ProjectPlanTrigger from './ProjectPlanTrigger';
 import ViewSelector, { ViewMode } from './ViewSelector';
@@ -9,10 +10,12 @@ import { MarkdownViewer } from './markdown/MarkdownViewer';
 import GridView from './GridView';
 import { useDraftPlanContext } from '../contexts/DraftPlanContext';
 import { toast } from 'react-hot-toast';
-import { EditedSectionProvider, useEditedSection } from '../contexts/EditedSectionContext';
+import { useEditedSection } from '../contexts/EditedSectionContext';
 import { useProject } from '../contexts/ProjectContext';
+import { useDraftPlanMermaidContext } from '../contexts/DraftPlanContextMermaid';
 
 import { SectionDiffPanel } from './SectionDiffPanel';
+import { MermaidSyntaxPanel } from './mermaid/MermaidSyntaxPanel';
 // import { EditedSectionProvider } from '../contexts/EditedSectionContext';
 
 const Canvas: React.FC = () => {
@@ -27,9 +30,14 @@ const Canvas: React.FC = () => {
     project
   } = useProject();
   const { resetState } = useEditedSection();
-  
+  const { 
+      createPlanFromMarkdown: createMermaidPlan,
+      streamProgress
+    } = useDraftPlanMermaidContext();
   const [showChat, setShowChat] = useState(false); // Add state to control chat visibility
   const [showDraftPane, setShowDraftPane] = useState(false); // Add state to control draft pane visibility
+  const [showMermaidPane, setShowMermaidPane] = useState(false); // Add state to control Mermaid Gantt pane visibility
+  const [showMermaidPlanBottom, setShowMermaidPlanBottom] = useState(false); // Add state to control bottom Mermaid plan panel
   const [viewMode, setViewMode] = useState<ViewMode>('markdown'); // Default to markdown view
   const [showSectionDiff, setShowSectionDiff] = useState(false); // Add state to control section diff visibility
   const [sectionDiffData, setSectionDiffData] = useState<{ 
@@ -40,6 +48,8 @@ const Canvas: React.FC = () => {
 
   // Get createPlanFromMarkdown from DraftPlanContext
   const { createPlanFromMarkdown } = useDraftPlanContext();
+  
+  // We no longer need to get mermaidSyntax and streamProgress since they're used in MermaidSyntaxPanel
 
   const handleChatCancel = () => {
     // Hide the chat instead of navigating away
@@ -51,6 +61,16 @@ const Canvas: React.FC = () => {
     setShowChat(true);
     setShowDraftPane(false);
     setShowSectionDiff(false);
+    setShowMermaidPane(false);
+    setShowMermaidPlanBottom(false);
+  };
+
+  // Add function to show/hide the draft plan pane and generate plan
+  const toggleDraftPaneAndGenerate = () => {
+    toggleDraftPane();
+    if (currentText) {
+      handleCreatePlan();
+    }
   };
 
   // Add function to show/hide the draft plan pane
@@ -58,6 +78,17 @@ const Canvas: React.FC = () => {
     setShowDraftPane(!showDraftPane);
     setShowChat(false);
     setShowSectionDiff(false);
+    setShowMermaidPane(false);
+    setShowMermaidPlanBottom(false);
+  };
+  
+  // Add function to show/hide the Mermaid Gantt syntax pane
+  const toggleMermaidPane = () => {
+    setShowMermaidPane(!showMermaidPane);
+    setShowChat(false);
+    setShowSectionDiff(false);
+    setShowDraftPane(false);
+    setShowMermaidPlanBottom(false);
   };
 
   // Add function to show the section diff panel
@@ -71,6 +102,36 @@ const Canvas: React.FC = () => {
     setShowSectionDiff(false);
     //clear all edited section context
     resetState();
+  };
+
+  // Add function to toggle the Mermaid plan bottom panel
+  const handleToggleMermaidPlanBottom = () => {
+
+    if (!currentText) {
+      toast.error('No project plan available to convert');
+      return;
+    }
+
+    if(!showMermaidPlanBottom) {
+      let genPlan = false;
+      if(streamProgress > 0 ) {
+        //launch dialog asking user if they want to regenerate
+        const shouldRegenerate = window.confirm('A Mermaid plan is currently being generated. Do you want to regenerate it?');
+        if (shouldRegenerate) {
+          genPlan = true;
+        }
+      }
+      
+      if(genPlan) {
+        createMermaidPlan(currentText);
+      }
+    }
+    setShowMermaidPlanBottom(!showMermaidPlanBottom);
+    // Close other panes for better UX
+    setShowChat(false);
+    setShowDraftPane(false);
+    setShowMermaidPane(false);
+    setShowSectionDiff(false);
   };
 
   // Handle creating a draft plan from the current project plan markdown
@@ -93,6 +154,11 @@ const Canvas: React.FC = () => {
       console.error('Error creating draft plan:', error);
     }
   };
+  
+  // Use handleCreatePlan in the "Create Mermaid Gantt" button click event
+  const handleShowMermaidPaneAndGenerate = () => {
+    toggleMermaidPane();
+  };
 
   // Handle switching between different view modes
   const handleViewChange = (newViewMode: ViewMode) => {
@@ -112,30 +178,34 @@ const Canvas: React.FC = () => {
     }
 
     switch (viewMode) {
-      // case 'diff':
-      //   return (
-      //     <div className="flex flex-col notepad-container w-full h-full">
-      //       <div className="markdown-viewer-container">
-      //         <div className="markdown-container">
-      //           <div 
-      //             className="prose prose-slate max-w-none pt-1 notepad-content" 
-      //             style={{ 
-      //               color: '#1f2937',
-      //               overflowX: 'auto',
-      //               minWidth: '100%'
-      //             }}
-      //           >
-      //             <StreamingDiff 
-      //               onComplete={() => {
-      //                 // Any future post-completion actions can be added here if needed
-      //               }}
-      //             />
-      //           </div>
-      //         </div>
-      //       </div>
-      //     </div>
-      //   );
+      case 'chart':
+        return (
+          <div style={{ 
+            width: '100%', 
+            height: 'calc(100vh - 200px)',
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)',
+            border: '1px solid #e5e7eb',
+            padding: '2rem',
+            margin: '0 auto 1.5rem auto',
+            maxWidth: '1600px',
+            overflowX: 'auto'
+          }}>
+            <div style={{
+              width: '100%',
+              minWidth: '1400px',
+              height: '100%',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <DraftPlanMermaid />
+            </div>
+          </div>
+        );
       case 'markdown':
+        console.log('Markdown view selected');
         return (
           <MarkdownViewer 
             initialMarkdown={currentText} 
@@ -200,77 +270,6 @@ const Canvas: React.FC = () => {
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
-          }
-          
-          /* Reset specific margins and paddings */
-          .markdown-body ul,
-          .markdown-body ol {
-            padding-left: 1.25rem !important;
-          }
-          
-          .markdown-body blockquote {
-            padding-left: 1rem !important;
-            border-left: 4px solid #e5e7eb !important;
-          }
-          
-          /* Ensure line heights are consistent */
-          .line-number, 
-          .markdown-body p, 
-          .markdown-body li, 
-          .markdown-body h1, 
-          .markdown-body h2, 
-          .markdown-body h3 {
-            line-height: 24px !important;
-            height: 24px !important;
-          }
-          
-          /* Reset any additional borders in the container */
-          .notepad-container,
-          .notepad-content,
-          .line-numbers {
-            border: none !important;
-          }
-          
-          /* Prevent text wrapping */
-          .notepad-content {
-            min-width: 100%;
-            overflow-x: auto !important;
-          }
-          
-          /* StreamingDiff specific styles */
-          .diff-container {
-            font-family: 'Comic Neue', 'Comic Sans MS', cursive;
-            letter-spacing: -0.5px;
-            overflow-x: auto;
-            min-width: 100%;
-          }
-          
-          .line {
-            line-height: 24px;
-            height: 24px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-          
-          .line-number {
-            display: inline-block;
-            width: 30px;
-            text-align: right;
-            padding-right: 8px;
-            margin-right: 8px;
-            color: #9ca3af;
-            user-select: none;
-          }
-          
-          .line-number.active {
-            background-color: #fef3c7;
-            color: #000;
-            font-weight: bold;
-          }
-          
-          .diff-span {
-            transition: color 0.5s, background-color 0.5s;
           }
           
           /* Improved transition classes with ease-in-out timing */
@@ -343,7 +342,7 @@ const Canvas: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Content pane with its own scroll area */}
             <div className="flex-grow overflow-auto bg-white">
               <div className="p-4">
@@ -351,179 +350,204 @@ const Canvas: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* DraftPlan sliding in from the bottom */}
-          <div 
-            className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ease-in-out`}
-            style={{ 
-              height: '500px',
-              maxHeight: '80vh',
-              width: '95%',
-              maxWidth: '95%',
-              margin: '0 auto 16px auto',
-              padding: '0 16px 0 12px',
-              transform: showDraftPane ? 'translateY(0)' : 'translateY(calc(100% + 64px))',
-              opacity: showDraftPane ? 1 : 0,
-              visibility: showDraftPane ? 'visible' : 'hidden',
-              transitionProperty: 'transform, opacity, visibility',
-            }}
-          >
-            <div 
-              className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-lg"
-              style={{ 
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-            >
-              {/* Fixed header for draft plan with simplified visual styling */}
-              <div className="flex-shrink-0 bg-white border-b border-gray-200">
-                <div className="flex items-center justify-between p-2">
-                  <div className="flex items-center text-gray-700 ml-2">
-                    {/* Ultra minimal Gantt chart icon */}
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="h-6 w-6" 
-                      viewBox="0 0 24 24" 
-                      fill="none"
-                      stroke="currentColor" 
-                      strokeWidth="1.5"
-                    >
-                      {/* Simple timeline container */}
-                      <rect x="3" y="3" width="18" height="18" rx="1" />
-                      
-                      {/* Simplified Gantt bars - just 3 bars of different lengths */}
-                      <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
-                      <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
-                      <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
-                    </svg>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <button
-                      onClick={handleCreatePlan}
-                      className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded px-2 py-1 transition-colors mr-2"
-                      aria-label="Refresh draft plan"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                      </svg>
-                      <span className="ml-1">Refresh</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        handleCreatePlan();
-                        toggleDraftPane();
-                      }}
-                      className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded px-2 py-1 transition-colors mr-2"
-                      aria-label="Close draft pane"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Separately scrollable content area for draft plan */}
-              <div className="flex-grow overflow-auto">
-                <DraftPlan />
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* ChartCreationChat sliding in from the right side */}
+      {/* Draft Plan Pane */}
+      <div 
+        className={`fixed top-0 right-0 h-screen z-50 transition-transform duration-300 ease-in-out transform ${showDraftPane ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ 
+          width: '825px',
+          maxWidth: '95vw',
+          padding: '24px 24px 0px 24px',
+          height: 'calc(100vh - 16px)', // Reduce height to create space at bottom
+        }}
+      >
         <div 
-          className={`fixed top-0 right-0 h-screen z-40 transition-transform duration-300 ease-in-out transform ${showChat ? 'translate-x-0' : 'translate-x-full'}`}
+          className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden"
           style={{ 
-            width: '825px',
-            maxWidth: '95vw',
-            padding: '24px 24px 0px 24px',
-            height: 'calc(100vh - 16px)', // Reduce height to create space at bottom
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
-          <div 
-            className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden"
-            style={{ 
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            <ChartCreationChat onCancel={handleChatCancel} className="h-full w-full" />
-          </div>
+          <DraftPlan />
         </div>
+      </div>
 
-        {/* Section Diff Panel */}
+      {/* Mermaid Gantt Syntax Pane */}
+      <MermaidSyntaxPanel 
+        currentText={currentText} 
+        isVisible={showMermaidPane} 
+        onClose={toggleMermaidPane} 
+      />
+
+      {/* ChartCreationChat sliding in from the right side */}
+      <div 
+        className={`fixed top-0 right-0 h-screen z-40 transition-transform duration-300 ease-in-out transform ${showChat ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ 
+          width: '825px',
+          maxWidth: '95vw',
+          padding: '24px 24px 0px 24px',
+          height: 'calc(100vh - 16px)', // Reduce height to create space at bottom
+        }}
+      >
         <div 
-          className={`fixed top-0 right-0 h-screen z-50 transition-transform duration-300 ease-in-out transform ${showSectionDiff ? 'translate-x-0' : 'translate-x-full'}`}
+          className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden"
           style={{ 
-            width: '825px',
-            maxWidth: '95vw',
-            padding: '24px 24px 0px 24px',
-            height: 'calc(100vh - 16px)', // Reduce height to create space at bottom
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
-          <div 
-            className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden"
-            style={{ 
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            {showSectionDiff && sectionDiffData && sectionDiffData.range && (
-              <SectionDiffPanel 
-                range={sectionDiffData.range} 
-                instruction={sectionDiffData.instruction} 
-                onCancel={handleSectionDiffCancel} 
-                className="h-full w-full"
-              />
-            )}
-          </div>
+          <ChartCreationChat onCancel={handleChatCancel} className="h-full w-full" />
         </div>
+      </div>
 
-        {/* Floating Action Button for Draft Plan at bottom left */}
-        <button
-          onClick={toggleDraftPane}
-          className="fixed left-20 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
-          aria-label="Show Draft Plan"
-          title="Show Draft Plan"
+      {/* Section Diff Panel */}
+      <div 
+        className={`fixed top-0 right-0 h-screen z-50 transition-transform duration-300 ease-in-out transform ${showSectionDiff ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ 
+          width: '825px',
+          maxWidth: '95vw',
+          padding: '24px 24px 0px 24px',
+          height: 'calc(100vh - 16px)', // Reduce height to create space at bottom
+        }}
+      >
+        <div 
+          className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden"
+          style={{ 
+            display: 'flex',
+            flexDirection: 'column'
+          }}
         >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
-            fill="none"
-            stroke="currentColor" 
-            strokeWidth="2"
+          {showSectionDiff && sectionDiffData && sectionDiffData.range && (
+            <SectionDiffPanel 
+              range={sectionDiffData.range} 
+              instruction={sectionDiffData.instruction} 
+              onCancel={handleSectionDiffCancel} 
+              className="h-full w-full"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Floating Action Button for Draft Plan at bottom left */}
+      <button
+        onClick={toggleDraftPaneAndGenerate}
+        className="fixed left-20 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
+        aria-label="Show Draft Plan"
+        title="Show Draft Plan"
+      >
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="20" 
+          height="20" 
+          viewBox="0 0 24 24" 
+          fill="none"
+          stroke="currentColor" 
+          strokeWidth="2"
+        >
+          {/* Simple timeline container */}
+          <rect x="3" y="3" width="18" height="18" rx="1" />
+          
+          {/* Simplified Gantt bars - just 3 bars of different lengths */}
+          <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
+          <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
+          <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
+        </svg>
+      </button>
+      
+      {/* Floating Action Button for Mermaid Gantt Syntax */}
+      <button
+        onClick={handleShowMermaidPaneAndGenerate}
+        className="fixed left-36 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
+        aria-label="Show Mermaid Gantt Syntax"
+        title="Show Mermaid Gantt Syntax"
+      >
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="20" 
+          height="20" 
+          viewBox="0 0 24 24" 
+          fill="none"
+          stroke="currentColor" 
+          strokeWidth="2"
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+          <polyline points="22,6 12,13 2,6" />
+        </svg>
+      </button>
+
+      {/* Floating Action Button for showing chat */}
+      <button
+        onClick={handleShowChat}
+        className="fixed right-6 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
+        aria-label="Show Chat"
+        title="Show Chat"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </button>
+
+      {/* Floating Action Button for Mermaid Plan (Bottom Panel) */}
+      <button
+        onClick={handleToggleMermaidPlanBottom}
+        className="fixed left-52 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
+        aria-label="Show Mermaid Plan"
+        title="Show Mermaid Plan"
+      >
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="20" 
+          height="20" 
+          viewBox="0 0 24 24" 
+          fill="none"
+          stroke="currentColor" 
+          strokeWidth="2"
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          {/* Diagram icon */}
+          <path d="M3 3v18h18" />
+          <path d="M7 17l4-4 4 4 5-5" />
+          <circle cx="18" cy="7" r="2" />
+        </svg>
+      </button>
+
+      {/* Bottom panel for Mermaid Plan */}
+      <div 
+        className={`fixed bottom-0 left-0 right-0 z-40 transition-transform duration-300 ease-in-out transform ${showMermaidPlanBottom ? 'translate-y-0' : 'translate-y-full'}`}
+        style={{ 
+          height: '60vh',
+          maxHeight: 'calc(100vh - 100px)',
+          background: 'white',
+          borderTop: '1px solid rgb(229, 231, 235)',
+          borderTopLeftRadius: '16px',
+          borderTopRightRadius: '16px',
+          boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06)',
+        }}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold">Mermaid Gantt Plan</h2>
+          <button
+            onClick={handleToggleMermaidPlanBottom}
+            className="p-2 text-gray-700 hover:text-black transition-colors"
+            aria-label="Close"
           >
-            {/* Simple timeline container */}
-            <rect x="3" y="3" width="18" height="18" rx="1" />
-            
-            {/* Simplified Gantt bars - just 3 bars of different lengths */}
-            <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
-            <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
-            <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
-          </svg>
-        </button>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div className="h-full overflow-auto pb-4">
+          {renderCurrentView()}
+        </div>
+      </div>
 
-        {/* Floating Action Button for showing chat */}
-        <button
-          onClick={handleShowChat}
-          className="fixed right-6 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
-          aria-label="Show Chat"
-          title="Show Chat"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
-        </button>
-
-        {/* Floating Action Button for triggering new plan generation */}
-        {/* <ProjectPlanTrigger /> */}
+      {/* Floating Action Button for triggering new plan generation */}
+      {/* <ProjectPlanTrigger /> */}
     </div>
   );
 };

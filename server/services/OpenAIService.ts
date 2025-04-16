@@ -80,6 +80,11 @@ export type StreamedPlanResponse =
   | { stream: any; error?: undefined; } // Successful stream
   | { error: string; stream?: undefined; }; // Error case
 
+// Defines the expected response for streamed project plan generation
+export type StreamedGanttResponse =
+  | { stream: any; error?: undefined; } // Successful stream
+  | { error: string; stream?: undefined; }; // Error case
+
 // These operation interfaces were defined for future expansion of editing capabilities
 // and will be used in upcoming implementations of the granular editing features.
 // For now, we're commenting them out to avoid lint warnings.
@@ -277,6 +282,54 @@ export class OpenAIService implements AIService {
     console.log('==========================================\n');
   }
   
+  // Helper function to build the project context string
+  private _buildProjectContextString(projectContext: ProjectContext | null): string {
+    if (!projectContext) {
+      return "";
+    }
+
+    const projectDetails: string[] = [];
+
+    if (projectContext.projectName) {
+      projectDetails.push(`Project Name: ${projectContext.projectName}`);
+    }
+    if (projectContext.description) {
+      projectDetails.push(`Project Description: ${projectContext.description}`);
+    }
+    if (projectContext.roles && projectContext.roles.length > 0) {
+      projectDetails.push(`Project Roles:`);
+      projectContext.roles.forEach(role => {
+        const roleDetails = [
+          `- Title: ${role.title || 'Untitled'}`,
+          `  Type: ${role.type || 'Not specified'}`,
+          `  Level: ${role.level || 'Not specified'}`,
+          `  Description: ${role.description || 'No description provided'}`
+        ];
+
+        // Add deliverables if they exist
+        if (role.deliverables && role.deliverables.length > 0) {
+          roleDetails.push(`  Deliverables:`);
+          role.deliverables.forEach((deliverable: {
+            id?: string;
+            deliverableName: string;
+            deadline: string;
+            fee?: number | null;
+            description: string;
+          }) => {
+            roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
+          });
+        }
+
+        projectDetails.push(roleDetails.join('\n'));
+      });
+    }
+    if (projectContext.charts && projectContext.charts.length > 0) {
+      projectDetails.push(`Existing Charts: ${projectContext.charts.length} charts`);
+    }
+
+    return projectDetails.length > 0 ? `Project Context:\n${projectDetails.join('\n\n')}` : "";
+  }
+
   async extractRoleInfo(text: string): Promise<ExtractRoleResponse> {
     try {
       const dateTimePrefix = `Current date and time: ${new Date().toISOString()}\n\n`;
@@ -354,13 +407,13 @@ export class OpenAIService implements AIService {
       
       // Log the API call
       this.logApiCall('extractRoleInfo', messages, { 
-        model: "gpt-4o", 
+        model: "gpt-4.1", 
         functions: [functionParams], 
         function_call: { name: "extract_role_info" } 
       });
       
       const response = await this.client.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         messages: messages,
         functions: [functionParams],
         function_call: { name: "extract_role_info" }
@@ -399,49 +452,13 @@ export class OpenAIService implements AIService {
       const dateTimePrefix = `Current date and time: ${new Date().toISOString()}\n\n`;
       
       let systemMessage = `You are a helpful and conversational project planning assistant.`;
-      
-      const projectDetails: string[] = [];
-      let projectName = "this project"; 
+      let projectContextString = undefined;
+      let projectName = "this project";
       if (projectContext) {
-        if (projectContext.projectName) {
-          projectName = projectContext.projectName; // Use actual project name
-          projectDetails.push(`Project Name: ${projectContext.projectName}`);
-        }
-        if (projectContext.description) {
-          projectDetails.push(`Project Description: ${projectContext.description}`);
-        }
-        if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles:`);
-          projectContext.roles.forEach(role => {
-            const roleDetails = [
-              `- Title: ${role.title || 'Untitled'}`,
-              `  Type: ${role.type || 'Not specified'}`,
-              `  Level: ${role.level || 'Not specified'}`,
-              `  Description: ${role.description || 'No description provided'}`
-            ];
-            
-            // Add deliverables if they exist
-            if (role.deliverables && role.deliverables.length > 0) {
-              roleDetails.push(`  Deliverables:`);
-              role.deliverables.forEach((deliverable: {
-                id?: string;
-                deliverableName: string;
-                deadline: string;
-                fee?: number | null;
-                description: string;
-              }) => {
-                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
-              });
-            }
-            
-            projectDetails.push(roleDetails.join('\n'));
-          });
-        }
-        if (projectContext.charts && projectContext.charts.length > 0) {
-          projectDetails.push(`Existing Charts: ${projectContext.charts.length} charts`);
-        }
+        projectContextString = this._buildProjectContextString(projectContext);
+        projectName = projectContext.projectName || "this project";
       }
-      
+
       if (isInitiation) {
         systemMessage += `Initiate the planning conversation for project${projectName !== "this project" ? ` '${projectName}'` : ''}.
                          Message must be concise and professional.
@@ -450,8 +467,8 @@ export class OpenAIService implements AIService {
                          You are to sound direct and professional. Do not sound excitable. Avoid using Exclamation marks to express yourself.
                          Ask the user how to proceed.
                          Use provided Project Context minimally.`;
-        if (projectDetails.length > 0) {
-          systemMessage += `\n\nProject Context:\n${projectDetails.join('\n')}`;
+          if (projectContextString) {
+          systemMessage += `\n\n${projectContextString}`;
         }
       } else {
         systemMessage += `Your job is to gather information about the user's project needs by asking questions.
@@ -465,8 +482,8 @@ export class OpenAIService implements AIService {
                          If talking about project scope, ask about the scope of the project in terms of features or deliverables. offer suggestion for specific deliverabvles and milestones. dont be shy pretend youi know all about the project.
                          If talking about roles,dont forget you see all the roles defined in the project context. Offer suggestion abou who should eb doing what.
                          Make your questions specific to the project context when possible.`;
-        if (projectDetails.length > 0) {
-          systemMessage += `\n\nProject Context:\n${projectDetails.join('\n\n')}`;
+        if (projectContextString) {
+          systemMessage += `\n\n${projectContextString}`;
           systemMessage += `\nUse this context to inform your questions and responses.`;
         }
       }
@@ -484,11 +501,11 @@ export class OpenAIService implements AIService {
       }
       
       // Log the API call
-      this.logApiCall('handleConversation', formattedMessages, { model: "gpt-4o", stream: true });
+      this.logApiCall('handleConversation', formattedMessages, { model: "gpt-4.1", stream: true });
       
       // Request stream
       const stream = await this.client.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         messages: formattedMessages,
         stream: true,
       });
@@ -534,61 +551,20 @@ export class OpenAIService implements AIService {
 
       // Enhance system message with project context if available
       if (projectContext) {
-        const projectDetails: string[] = [];
-        
-        if (projectContext.projectName) {
-          projectDetails.push(`Project Name: ${projectContext.projectName}`);
-        }
-        
-        if (projectContext.description) {
-          projectDetails.push(`Project Description: ${projectContext.description}`);
-        }
-        
-        if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles:`);
-          projectContext.roles.forEach(role => {
-            const roleDetails = [
-              `- Title: ${role.title || 'Untitled'}`,
-              `  Type: ${role.type || 'Not specified'}`,
-              `  Level: ${role.level || 'Not specified'}`,
-              `  Description: ${role.description || 'No description provided'}`
-            ];
-            
-            // Add deliverables if they exist
-            if (role.deliverables && role.deliverables.length > 0) {
-              roleDetails.push(`  Deliverables:`);
-              role.deliverables.forEach((deliverable: {
-                id?: string;
-                deliverableName: string;
-                deadline: string;
-                fee?: number | null;
-                description: string;
-              }) => {
-                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
-              });
-            }
-            
-            projectDetails.push(roleDetails.join('\n'));
-          });
-        }
-        
-        if (projectContext.charts && projectContext.charts.length > 0) {
-          projectDetails.push(`Existing Charts: ${projectContext.charts.length} charts`);
-        }
-        
-        // Add project context to system message
-        if (projectDetails.length > 0) {
-            systemMessage += `\n\nProject Context:\n${projectDetails.join('\n\n')}`;
-            // Add instructions for using the context
-            systemMessage += `\n\nUse this project context to create a more relevant and detailed markdown task breakdown.
+        const projectContextString = this._buildProjectContextString(projectContext);
+        if (projectContextString) {
+          systemMessage += `\n\n${projectContextString}`;
+          // Add instructions for using the context
+          systemMessage += `\n\nUse this project context to create a more relevant and detailed markdown task breakdown.
                            Ensure tasks align with the project goals and consider existing roles and deliverables.
                            Remember to output ONLY the markdown list.`;
         }
-
-        // Update the system message in formatted messages
-        formattedMessages[0].content = systemMessage;
       }
-      
+
+      // Update the system message in formatted messages
+      formattedMessages[0].content = systemMessage;
+
+
       // Add previous conversation messages for context
       if (previousMessages.length > 0) {
         previousMessages.forEach(msg => {
@@ -609,11 +585,11 @@ export class OpenAIService implements AIService {
       formattedMessages[0].content = dateTimePrefix + formattedMessages[0].content; 
 
       // Log the API call
-      this.logApiCall('generateProjectTasks', formattedMessages, { model: "gpt-4o", stream: false });
+      this.logApiCall('generateProjectTasks', formattedMessages, { model: "gpt-4.1", stream: false });
 
       // Make the non-streaming API call
       const response = await this.client.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         messages: formattedMessages,
         stream: false, // Ensure stream is false
       });
@@ -651,7 +627,7 @@ export class OpenAIService implements AIService {
     }
   }
 
-  // Method for generating suggested replies (using gpt-4o)
+  // Method for generating suggested replies (using gpt-4.1)
   async generateSuggestedReplies(messages: ChatMessage[], projectContext?: ProjectContext | null): Promise<SuggestionResponse> {
     try {
       if (!messages || messages.length === 0) {
@@ -722,49 +698,9 @@ export class OpenAIService implements AIService {
 
       // Add project context
       if (projectContext) {
-        const projectDetails: string[] = [];
-        
-        if (projectContext.projectName) {
-          projectDetails.push(`Project Name: ${projectContext.projectName}`);
-        }
-        if (projectContext.description) {
-          projectDetails.push(`Project Description: ${projectContext.description}`);
-        }
-        if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles:`);
-          projectContext.roles.forEach(role => {
-            const roleDetails = [
-              `- Title: ${role.title || 'Untitled'}`,
-              `  Type: ${role.type || 'Not specified'}`,
-              `  Level: ${role.level || 'Not specified'}`,
-              `  Description: ${role.description || 'No description provided'}`
-            ];
-            
-            // Add deliverables if they exist
-            if (role.deliverables && role.deliverables.length > 0) {
-              roleDetails.push(`  Deliverables:`);
-              role.deliverables.forEach((deliverable: {
-                id?: string;
-                deliverableName: string;
-                deadline: string;
-                fee?: number | null;
-                description: string;
-              }) => {
-                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
-              });
-            }
-            
-            projectDetails.push(roleDetails.join('\n'));
-          });
-        }
-        
-        // Include charts information if available
-        if (projectContext.charts && projectContext.charts.length > 0) {
-          projectDetails.push(`Project has ${projectContext.charts.length} defined charts`);
-        }
-
-        if (projectDetails.length > 0) {
-          systemMessage += `\n\nRelevant Project Context (use this to make suggestions more specific):\n${projectDetails.join('\n')}`;
+        const projectContextString = this._buildProjectContextString(projectContext);
+        if (projectContextString) {
+          systemMessage += `\n\nRelevant ${projectContextString} (use this to make suggestions more specific)`;
         }
       }
 
@@ -793,13 +729,13 @@ export class OpenAIService implements AIService {
 
       // Log the API call
       this.logApiCall('generateSuggestedReplies', formattedMessages, { 
-        model: "gpt-4o", 
+        model: "gpt-4.1", 
         functions: [functionParams], 
         function_call: { name: "provide_suggested_replies" } 
       });
 
       const response = await this.client.chat.completions.create({
-        model: "gpt-4o", // Using gpt-4o model
+        model: "gpt-4.1", // Using gpt-4.1 model
         messages: formattedMessages,
         functions: [
           functionParams
@@ -905,52 +841,9 @@ ONLY REPLY WITH THE GENERATED NOTES.
       
       // Add project context
       if (projectContext) {
-        const projectDetails: string[] = [];
-        
-        if (projectContext.projectName) {
-          projectDetails.push(`Project Name: ${projectContext.projectName}`);
-        }
-        
-        if (projectContext.description) {
-          projectDetails.push(`Project Description: ${projectContext.description}`);
-        }
-        
-        if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles:`);
-          projectContext.roles.forEach(role => {
-            const roleDetails = [
-              `- Title: ${role.title || 'Untitled'}`,
-              `  Type: ${role.type || 'Not specified'}`,
-              `  Level: ${role.level || 'Not specified'}`,
-              `  Description: ${role.description || 'No description provided'}`
-            ];
-            
-            // Add deliverables if they exist
-            if (role.deliverables && role.deliverables.length > 0) {
-              roleDetails.push(`  Deliverables:`);
-              role.deliverables.forEach((deliverable: {
-                id?: string;
-                deliverableName: string;
-                deadline: string;
-                fee?: number | null;
-                description: string;
-              }) => {
-                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
-              });
-            }
-            
-            projectDetails.push(roleDetails.join('\n'));
-          });
-        }
-        
-        // Include charts information if available
-        if (projectContext.charts && projectContext.charts.length > 0) {
-          projectDetails.push(`Project has ${projectContext.charts.length} defined charts`);
-        }
+        const projectContextString = this._buildProjectContextString(projectContext);
 
-        if (projectDetails.length > 0) {
-          systemMessage += `\n\nProject Context:\n${projectDetails.join('\n')}`;
-        }
+        systemMessage += `\n\n${projectContextString}`;
       }
       
       // Format messages
@@ -989,11 +882,11 @@ ONLY REPLY WITH THE GENERATED NOTES.
       }
       
       // Log the API call
-      this.logApiCall('generateProjectPlan', formattedMessages, { model: "gpt-4o", stream: true });
+      this.logApiCall('generateProjectPlan', formattedMessages, { model: "gpt-4.1", stream: true });
 
       // Call OpenAI API to generate/update project plan stream
       const stream = await this.client.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         messages: formattedMessages,
         stream: true, // Enable streaming
       });
@@ -1014,7 +907,7 @@ ONLY REPLY WITH THE GENERATED NOTES.
     try {
       const dateTimePrefix = `Current date and time: ${new Date().toISOString()}\n\n`;
       const response = await this.client.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         messages: [
           {
             role: "system",
@@ -1216,7 +1109,7 @@ Generate unique IDs for each task/milestone.
           content: markdownPlan
         }
       ], { 
-        model: "gpt-4o", 
+        model: "gpt-4.1", 
         temperature: 0.2,
         tool_choice: { type: "function", function: { name: "extract_plan_data" } },
         tools: [
@@ -1341,11 +1234,101 @@ Generate unique IDs for each task/milestone.
     }
   }
 
+  async parsePlanToGantt(markdownPlan: string): Promise<StreamedGanttResponse> {
+    try {
+      const dateTimePrefix = `Current date and time: ${new Date().toISOString()}\n\n`;
+      
+      // Create system prompt that instructs how to convert markdown plan to Mermaid Gantt
+      const systemPrompt = `You are a helpful assistant that converts a project plan in markdown format into a Mermaid gantt chart. 
+
+Follow these rules:
+1. Extract tasks, milestones and their timing information from the project plan
+2. Before creating the chart, break down each task into subtasks and milestones, explaining your reasoning
+3. Create a clean, well-formatted Mermaid gantt chart syntax
+4. First output your reasoning and then the Mermaid syntax
+5. Include all important tasks, milestones and dependencies
+
+THINK THROUGH YOUR REASONING OUTLOUD STEP BY STEP 
+1. First, parse the markdown plan to extract the high level tasks (sections)
+2. Then, break down each task into subtasks give an esitmate in days for how long each subtask will take
+3. Next, explain any dependencies between tasks
+4. Then, you can list the milestones related to the high level tasks with relation to the dependencies
+5. Given all of this you can now restate the sections with subtasks(with dependencies), milestones. Dates must be included based on your estimates and dependencies
+6. Finally output the Mermaid gantt chart syntax in a mermaid code block
+
+your resaoning process should be thought through in markdown using headers for the following reasoning sections:
+#Reasoning
+##Identifying Key Tasks:
+##Breaking down into subtasks
+##Considering dependencies between tasks
+##Identifying milestones
+##Reorganizing tasks with estimates and dependencies
+
+Example mermaid output:
+\`\`\`mermaid
+gantt
+    title Project Timeline
+    dateFormat YYYY-MM-DD
+    section Phase 1
+    Task 1: t1, 2025-01-01, 10d
+    Task 2: t2, after t1, 5d
+    Milestone 1: milestone, after t1
+    section Phase 2
+    Task 3: t3, after m1, 7d
+\`\`\`
+
+Important:
+- CUSTOM RULE: Tasks are always defined as <taskname>: <id>, <startdate|"after <taskid>">, <duration|enddate>
+- CUSTOM RULE: Milestones are always defined as <milestonename>: milestone, <"after <taskid>">
+- CUSTOM RULE: Milestones are ALWAYS dependent on a task within the same section (Explicit dates for milestones are not valid in this implementation and will break the chart)
+- CUSTOM RULE: Start dates are ALWAYS defined as <date> or "after <taskid>" - there are no other options. ie "Task 1: t1, 2025-01-01, 10d" or "Task 2: t2, after t1, 5d"
+- Sections are always defined as "section <sectionname>"
+- DO NOT write it in any other way
+    - e.g. "Developed Design Theme: edt, 2024-06-30, milestone" is not a valid milestone, use "Developed Design Theme: milestone, after t1" instead
+    - e.g. "Developed Design Theme: edt, 2024-06-30, task" is not a valid task, use "Developed Design Theme: t1, 2024-06-30, 10d" instead
+
+- Use indentation for readability
+- Group related tasks in sections
+- Include dependencies with "after" syntax where appropriate
+- If exact dates aren't specified, make reasonable estimates based on context
+- Ensure the syntax is valid Mermaid gantt chart code
+
+AFTER thinking through your reasoning and immediately BEFORE outputting the Mermaid syntax, state all the CUSTOM RULES you need to follow in the output
+`
+;
+
+      // Log the API call
+      this.logApiCall('parsePlanToGantt', [
+        { role: "system", content: dateTimePrefix + systemPrompt },
+        { role: "user", content: markdownPlan }
+      ], { model: "gpt-4.1", stream: true });
+
+      // Call OpenAI API to generate Mermaid Gantt chart with streaming
+      const stream = await this.client.chat.completions.create({
+        model: "gpt-4.1",
+        messages: [
+          { role: "system", content: dateTimePrefix + systemPrompt },
+          { role: "user", content: markdownPlan }
+        ],
+        stream: true, // Enable streaming
+      });
+
+      return { stream }; // Return the stream object
+
+    } catch (error) {
+      console.error('OpenAI API error in parsePlanToGantt:', error);
+      const message = error instanceof Error ? error.message : "An unknown error occurred during Gantt chart generation";
+      return {
+        error: message // Return error in the correct format
+      };
+    }
+  }
+
   // Generate the final plan in JSON format for Gantt chart visualization
   async generateFinalPlan(
-    projectContext: ProjectContext, 
-    conversationHistory: ChatMessage[], 
-    draftPlanMarkdown: string, 
+    projectContext: ProjectContext,
+    conversationHistory: ChatMessage[],
+    draftPlanMarkdown: string,
     tasks: ProjectTask[]
   ): Promise<GenerateFinalPlanResponse> {
     try {
@@ -1367,51 +1350,9 @@ Create professional-looking task names and descriptions as needed.
 `;
 
       // Add context to the system message
-      const projectDetails: string[] = [];
-      
-      if (projectContext) {
-        if (projectContext.projectName) {
-          projectDetails.push(`Project Name: ${projectContext.projectName}`);
-        }
-        
-        if (projectContext.description) {
-          projectDetails.push(`Project Description: ${projectContext.description}`);
-        }
-        
-        if (projectContext.roles && projectContext.roles.length > 0) {
-          projectDetails.push(`Project Roles:`);
-          projectContext.roles.forEach(role => {
-            const roleDetails = [
-              `- Title: ${role.title || 'Untitled'}`,
-              `  Type: ${role.type || 'Not specified'}`,
-              `  Level: ${role.level || 'Not specified'}`,
-              `  Description: ${role.description || 'No description provided'}`
-            ];
-            
-            // Add deliverables if they exist
-            if (role.deliverables && role.deliverables.length > 0) {
-              roleDetails.push(`  Deliverables:`);
-              role.deliverables.forEach((deliverable: {
-                id?: string;
-                deliverableName: string;
-                deadline: string;
-                fee?: number | null;
-                description: string;
-              }) => {
-                roleDetails.push(`    - ${deliverable.deliverableName || 'Unnamed deliverable'}${deliverable.description ? `: ${deliverable.description}` : ''} (Deadline: ${deliverable.deadline || 'None'})`);
-              });
-            }
-            
-            projectDetails.push(roleDetails.join('\n'));
-          });
-        }
-        
-        // Include charts information if available
-        if (projectContext.charts && projectContext.charts.length > 0) {
-          projectDetails.push(`Project has ${projectContext.charts.length} defined charts`);
-        }
-      }
-      
+      const projectContextString = this._buildProjectContextString(projectContext);
+
+
       // Add the expected output format template to the system message
       systemMessage += `\n\nYour output must be in this exact JSON format:
 {
@@ -1458,38 +1399,47 @@ NOTE: Do NOT include any project id fields in your response. The system will gen
       const formattedMessages: ChatCompletionMessageParam[] = [
         { role: "system", content: dateTimePrefix + systemMessage }
       ];
-      
+
+       // Add project context string if it exists
+       if (projectContextString) {
+        formattedMessages.push({
+          role: 'user', // Using 'user' role to provide context like user input
+          content: `Here is the relevant project context:\n\n${projectContextString}`
+        });
+      }
+
+
       // Add conversation history as context
       if (conversationHistory.length > 0) {
-        const conversationString = conversationHistory.map(msg => 
+        const conversationString = conversationHistory.map(msg =>
           `${msg.role === 'assistant' ? 'Consultant' : 'Client'}: ${msg.content}`
         ).join('\n\n');
-        
-        formattedMessages.push({ 
+
+        formattedMessages.push({
           role: 'user',
           content: `Here is the conversation history related to this project plan:\n\n${conversationString}`
         });
       }
-      
+
       // Add the draft plan markdown
-      formattedMessages.push({ 
+      formattedMessages.push({
         role: 'user',
         content: `Here is the draft project plan in markdown format:\n\n${draftPlanMarkdown}`
       });
-      
+
       // Add the tasks list if available
       if (tasks && tasks.length > 0) {
         const tasksString = JSON.stringify(tasks, null, 2);
-        formattedMessages.push({ 
+        formattedMessages.push({
           role: 'user',
           content: `Here is the current task list structure:\n\n${tasksString}`
         });
       }
-      
+
       // Final instruction
-      formattedMessages.push({ 
+      formattedMessages.push({
         role: 'user',
-        content: `Based on all the information provided, generate a complete final project plan in the JSON format specified. 
+        content: `Based on all the information provided, generate a complete final project plan in the JSON format specified.
 Make sure to:
 1. Create a logical task hierarchy
 2. Set appropriate start and end dates
@@ -1500,13 +1450,13 @@ Make sure to:
 
 Your response should be ONLY the valid JSON object, nothing else.`
       });
-      
+
       // Log the API call
-      this.logApiCall('generateFinalPlan', formattedMessages, { model: "gpt-4o" });
+      this.logApiCall('generateFinalPlan', formattedMessages, { model: "gpt-4.1" });
 
       // Call OpenAI API to generate the final plan
       const response = await this.client.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4.1",
         messages: formattedMessages,
         temperature: 0.2, // Lower temperature for more consistent output
         response_format: { type: "json_object" }, // Ensure JSON response
@@ -1514,11 +1464,11 @@ Your response should be ONLY the valid JSON object, nothing else.`
 
       // Extract and parse the JSON response
       const content = response.choices[0]?.message?.content;
-      
+
       if (!content) {
         throw new Error("Empty response from API");
       }
-      
+
       try {
         // Parse and validate the response
         const finalPlan = JSON.parse(content) as FinalProjectPlan;
@@ -1547,8 +1497,8 @@ Your response should be ONLY the valid JSON object, nothing else.`
 
   // Edit a specific section of markdown based on an instruction
   async editMarkdownSection(
-    fullMarkdown: string, 
-    sectionRange: {start: number, end: number}, 
+    fullMarkdown: string,
+    sectionRange: {start: number, end: number},
     instruction: string,
     projectContext?: ProjectContext | null
   ): Promise<{editedMarkdown: string, error?: string, stream?: any}> {
@@ -1581,34 +1531,9 @@ Your response should be a direct replacement for the original section.`;
 
       // Add project context if available - this is vital for contextually relevant edits
       if (projectContext) {
-        const contextDetails: string[] = [];
-        
-        if (projectContext.projectName) {
-          contextDetails.push(`Project Name: ${projectContext.projectName}`);
-        }
-        if (projectContext.description) {
-          contextDetails.push(`Project Description: ${projectContext.description}`);
-        }
-        if (projectContext.roles && projectContext.roles.length > 0) {
-          contextDetails.push(`Roles: ${projectContext.roles.map(r => r.role).join(', ')}`);
-          
-          // Include important role details for context
-          projectContext.roles.forEach(role => {
-            if (role.description || role.responsibilities) {
-              contextDetails.push(`${role.role}:${role.description ? ` ${role.description}` : ''}${
-                role.responsibilities ? ` Responsibilities: ${role.responsibilities.join(', ')}` : ''
-              }`);
-            }
-          });
-        }
-        
-        // Include charts information if available
-        if (projectContext.charts && projectContext.charts.length > 0) {
-          contextDetails.push(`Project has ${projectContext.charts.length} defined charts`);
-        }
-        
-        if (contextDetails.length > 0) {
-          systemContent += `\n\nProject Context (use this to make your edits more relevant and accurate):\n${contextDetails.join('\n')}`;
+        const projectContextString = this._buildProjectContextString(projectContext);
+        if (projectContextString) {
+          systemContent += `\n\n${projectContextString} (use this to make your edits more relevant and accurate)`;
         }
       }
 
@@ -1638,11 +1563,11 @@ Please ONLY return the edited version of this specific section, not the entire d
       ];
 
       // Log API call with stream flag
-      this.logApiCall('editMarkdownSection', messages, { model: "gpt-4o", stream: true });
+      this.logApiCall('editMarkdownSection', messages, { model: "gpt-4.1", stream: true });
 
       // Call OpenAI API with streaming enabled
       const stream = await this.client.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4.1',
         messages,
         temperature: 0.7,
         max_tokens: 2000,
@@ -1653,9 +1578,9 @@ Please ONLY return the edited version of this specific section, not the entire d
       return { editedMarkdown: '', stream };
     } catch (error) {
       console.error('OpenAI API error in editMarkdownSection:', error);
-      return { 
-        editedMarkdown: '', 
-        error: error instanceof Error ? error.message : 'Unknown error occurred during markdown editing' 
+      return {
+        editedMarkdown: '',
+        error: error instanceof Error ? error.message : 'Unknown error occurred during markdown editing'
       };
     }
   }

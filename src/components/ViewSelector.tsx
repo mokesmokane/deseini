@@ -1,7 +1,8 @@
 import React from 'react';
 import './ViewSelector.css';
+import GanttIcon from '../icons/GanttIcon';
 
-export type ViewMode = 'diff' | 'markdown' | 'grid';
+export type ViewMode = 'chart' | 'markdown' | 'grid';
 
 interface ViewSelectorProps {
   currentView: ViewMode;
@@ -18,13 +19,6 @@ const MarkdownIcon = () => (
   </svg>
 );
 
-const DiffIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 4v16"/>
-    <path d="M20 8H4"/>
-    <path d="M20 16H4"/>
-  </svg>
-);
 
 const GridIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -48,19 +42,8 @@ const ViewSelector: React.FC<ViewSelectorProps> = ({ currentView, onViewChange }
         >
           <MarkdownIcon />
         </button>
-        
-      {/* <button
-        type="button"
-        className={`view-button ${currentView === 'diff' ? 'active' : ''}`}
-        onClick={() => onViewChange('diff')}
-        aria-current={currentView === 'diff' ? 'page' : undefined}
-        aria-label="Diff View"
-        title="Diff View"
-      >
-        <DiffIcon />
-      </button> */}
       
-          <button
+      <button
         type="button"
         className={`view-button ${currentView === 'grid' ? 'active' : ''}`}
         onClick={() => onViewChange('grid')}
@@ -69,6 +52,16 @@ const ViewSelector: React.FC<ViewSelectorProps> = ({ currentView, onViewChange }
         title="Grid View"
       >
         <GridIcon />
+          </button>
+          <button
+        type="button"
+        className={`view-button ${currentView === 'chart' ? 'active' : ''}`}
+        onClick={() => onViewChange('chart')}
+        aria-current={currentView === 'chart' ? 'page' : undefined}
+        aria-label="Chart View"
+        title="Chart View"
+      >
+        <GanttIcon />
           </button>
     </div>
   );

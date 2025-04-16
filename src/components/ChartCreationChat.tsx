@@ -25,8 +25,6 @@ export function ChartCreationChat({
     isGeneratingTasks,
     input,
     setInput,
-    isInitialized,
-    initializeChat,
     handleSendMessage,
     handleSelectSuggestion,
     handleEditSuggestion,
@@ -35,11 +33,11 @@ export function ChartCreationChat({
   } = useMessages();
 
   // Initialize chat when the component is mounted if not already initialized
-  useEffect(() => {
-    if (!isInitialized) {
-      initializeChat();
-    }
-  }, [isInitialized, initializeChat]);
+  // useEffect(() => {
+  //   if (!isInitialized) {
+  //     initializeChat();
+  //   }
+  // }, [isInitialized, initializeChat]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

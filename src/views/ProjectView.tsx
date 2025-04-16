@@ -7,6 +7,7 @@ import ProjectForm from '../components/ProjectForm';
 import Canvas from '../components/Canvas.tsx';
 import { MessagesProvider } from '../contexts/MessagesContext';
 import { ProjectPlanProvider } from '../contexts/ProjectPlanContext';
+import { DraftPlanMermaidProvider } from '../contexts/DraftPlanContextMermaid';
 // import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
 import { DraftPlanProvider } from '../contexts/DraftPlanContext';
 
@@ -51,7 +52,7 @@ const ProjectView = () => {
   // Wrap the entire view content with MessagesProvider
   return (
       <DraftPlanProvider>
-      
+      <DraftPlanMermaidProvider>
     <MessagesProvider
       // Conditionally pass projectId only when it's valid and not 'new'
       projectId={(projectId && projectId !== 'new') ? projectId : ''} 
@@ -87,6 +88,7 @@ const ProjectView = () => {
       </div>
       
     </MessagesProvider>
+    </DraftPlanMermaidProvider>
     </DraftPlanProvider>
   );
 };

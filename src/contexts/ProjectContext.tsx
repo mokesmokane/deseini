@@ -492,7 +492,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
              prompt: prompt,
              projectContext: projectData,
              messages: chatMessages,
-             model: "gpt-4o"
+             model: "gpt-4.1"
          }),
       });
 

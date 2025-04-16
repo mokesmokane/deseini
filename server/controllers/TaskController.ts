@@ -1,6 +1,6 @@
 import express from 'express';
 import { OpenAIService } from '../services/OpenAIService.ts';
-import type { ConversationResponse, GenerateTasksResponse, StreamedPlanResponse, DraftPlanData } from '../services/OpenAIService.ts'; // Import necessary types
+import type { ConversationResponse, GenerateTasksResponse, StreamedPlanResponse, DraftPlanData, StreamedGanttResponse } from '../services/OpenAIService.ts'; // Import necessary types
 
 // Controller class following Single Responsibility Principle
 export class TaskController {
@@ -274,6 +274,8 @@ export class TaskController {
           if (content) {
              // Send the chunk content
              res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+             // Flush to ensure data is sent immediately
+             (res as any).flushHeaders?.();
           }
         }
         
@@ -334,6 +336,67 @@ export class TaskController {
       res.status(200).json(draftPlanData);
     } catch (error) {
       console.error('API Controller Error (convertPlanToTasks):', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+        });
+      }
+    }
+  }
+  // Converts project plan markdown to structured task data for draft plan
+  async convertPlanToGantt(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { markdownPlan } = req.body;
+      
+      // Validate the markdown plan exists
+      if (!markdownPlan || typeof markdownPlan !== 'string' || markdownPlan.trim() === '') {
+        res.status(400).json({ error: 'Project plan markdown is required' });
+        return;
+      }
+      
+      console.log('Converting project plan markdown to Mermaid Gantt...');
+      const ganttResponse: StreamedGanttResponse = await this.aiService.parsePlanToGantt(markdownPlan);
+      
+      if (ganttResponse.error) {
+        console.error('Plan conversion error:', ganttResponse.error);
+        res.status(400).json({ error: ganttResponse.error });
+        return;
+      }
+      
+      // Set up response headers for streaming
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      
+      // Stream each chunk from OpenAI to the client
+      try {
+        for await (const chunk of ganttResponse.stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          console.log('Gantt chunk:', content);
+          if (content) {
+            // Send the content as SSE (Server-Sent Events)
+            res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            // Flush to ensure data is sent immediately
+            (res as any).flushHeaders?.();
+          }
+        }
+        
+        // End the stream with a completion event
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
+      } catch (streamError) {
+        console.error('Streaming error:', streamError);
+        // Only send error if headers haven't been sent yet
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error while streaming Gantt chart data' });
+        } else {
+          // If headers are already sent, just end the stream
+          res.write(`data: ${JSON.stringify({ error: 'Error while streaming Gantt chart data' })}\n\n`);
+          res.end();
+        }
+      }
+    } catch (error) {
+      console.error('API Controller Error (convertPlanToGantt):', error);
       if (!res.headersSent) {
         res.status(500).json({
           error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
