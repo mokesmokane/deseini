@@ -52,7 +52,8 @@ interface DraftPlanMermaidContextType {
   processAllBuffer: () => void;
   actionBufferLength: number;
   nextAction: BufferedAction | null;
-  actionBuffer: BufferedAction[]; 
+  actionBuffer: BufferedAction[];
+  updateTaskStartDate: (taskId: string, newStartDate: Date) => void;
 }
 
 const DraftPlanMermaidContext = createContext<DraftPlanMermaidContextType | undefined>(undefined);
@@ -199,6 +200,18 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
       processAllActions();
     }
   }, []);
+
+  // Function to update a task's start date (for drag functionality)
+  const updateTaskStartDate = useCallback((taskId: string, newStartDate: Date) => {
+    // Add an action to update the task's start date
+    addActionToBuffer('UPDATE_TASK', {
+      id: taskId,
+      updates: { startDate: newStartDate }
+    });
+    
+    // Process the action immediately
+    processAllBuffer();
+  }, [addActionToBuffer, processAllBuffer]);
 
   // Handle streaming data from the server
   const handleStreamData = useCallback((content: string) => {
@@ -415,7 +428,8 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     processAllBuffer,
     actionBufferLength,
     nextAction,
-    actionBuffer: actionBufferRef.current 
+    actionBuffer: actionBufferRef.current,
+    updateTaskStartDate
   };
 
   return (
@@ -433,4 +447,3 @@ export const useDraftPlanMermaidContext = () => {
   }
   return context;
 }
-

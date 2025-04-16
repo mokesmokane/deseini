@@ -18,6 +18,7 @@ interface TaskData {
 
 const TaskNode = ({ data }: { data: TaskData }) => {
   const [showSubMenu, setShowSubMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   
   // Calculate the width based on duration
   const width = data.hasDuration ? (data.width || 60) : 60; // Default to 60px if no width/duration
@@ -67,17 +68,21 @@ const TaskNode = ({ data }: { data: TaskData }) => {
         fontFamily: 'sans-serif',
         fontSize: '16px',
         textAlign: 'center',
-        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        // transition: isDragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: 'pointer',
+        cursor: 'grab',
+        boxShadow: isDragging ? '0 4px 8px rgba(0,0,0,0.3)' : 'none',
       }}
       onMouseEnter={() => setShowSubMenu(true)}
       onMouseLeave={() => setShowSubMenu(false)}
+      onMouseDown={() => setIsDragging(true)}
+      onMouseUp={() => setIsDragging(false)}
       title={tooltipText}
     >
+      
       <NodeResizeControl 
         className="resize-control"
         style={{
@@ -95,6 +100,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
         minWidth={100}
         minHeight={60}
       />
+      
       <div 
         style={{
           width: '100%',
@@ -106,61 +112,39 @@ const TaskNode = ({ data }: { data: TaskData }) => {
         {data.label}
       </div>
       
-      {/* Task submenu that appears on hover */}
-      {showSubMenu && (
+      {/* Task details panel that appears on hover (but not when dragging) */}
+      {showSubMenu && !isDragging && (
         <div 
           style={{
             position: 'absolute',
-            top: '-40px',
+            top: '-160px', // Position it well above the node
             left: '50%',
             transform: 'translateX(-50%)',
             display: 'flex',
-            gap: '8px',
+            flexDirection: 'column',
             background: 'white',
             border: '1px solid black',
             borderRadius: '4px',
-            padding: '4px 8px',
+            padding: '8px 12px',
             boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-            zIndex: 10
+            zIndex: 10,
+            minWidth: '160px',
+            textAlign: 'left',
+            fontSize: '12px'
           }}
         >
-          <button 
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '2px 6px',
-              borderRadius: '2px',
-              fontWeight: 'bold',
-              fontSize: '12px'
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              // Action for editing - to be implemented
-              console.log('Edit:', data.id);
-            }}
-          >
-            Edit
-          </button>
-          
-          <button 
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '2px 6px',
-              borderRadius: '2px',
-              fontWeight: 'bold',
-              fontSize: '12px'
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              // Action for clone - to be implemented
-              console.log('Clone:', data.id);
-            }}
-          >
-            Clone
-          </button>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{data.label}</div>
+          <div>Start: {startDateStr}</div>
+          {endDateStr && <div>End: {endDateStr}</div>}
+          {durationStr && <div>Duration: {durationStr}</div>}
+          {data.dependencies && data.dependencies.length > 0 && (
+            <div style={{ marginTop: '4px' }}>
+              <div>Dependencies:</div>
+              <div style={{ paddingLeft: '8px' }}>
+                {data.dependencies.join(', ')}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
