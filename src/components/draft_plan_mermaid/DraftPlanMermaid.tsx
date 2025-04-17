@@ -131,13 +131,79 @@ function DraftPlanMermaid() {
       const adjustedX = Math.max(0, snappedRawX);
       const newDate = getDateFromXPosition(adjustedX, timeline.startDate);
       updateTaskStartDate(node.id, newDate);
+      // Cascade move: downstream for future, upstream for past
+      let originalStart: Date | null = null;
+      let originalTask;
+      for (const section of sections) {
+        const tsk = section.tasks.find(t => t.id === node.id);
+        if (tsk) { originalTask = tsk; originalStart = ensureDate(tsk.startDate); break; }
+      }
+      if (originalStart && originalTask) {
+        const movedEnd = node.type === 'milestone'
+          ? newDate
+          : (() => { const e = new Date(newDate); if (originalTask.duration) e.setDate(e.getDate() + originalTask.duration); return e; })();
+        if (newDate.getTime() > originalStart.getTime()) {
+          console.log(`Cascade rightward from ${node.id}: start=${originalStart.toISOString()}, newStart=${newDate.toISOString()}, end=${movedEnd.toISOString()}, duration=${originalTask.duration}`);
+          const processDownstream = (parentId: string, parentEnd: Date) => {
+            for (const section of sections) {
+              for (const child of section.tasks.filter(task => task.dependencies?.includes(parentId))) {
+                const childStart = new Date(parentEnd);
+                console.log(`Updating downstream ${child.id} based on parent ${parentId}: new start ${childStart.toISOString()}`);
+                updateTaskStartDate(child.id, childStart);
+                const childEnd = child.type === 'milestone' 
+                  ? childStart 
+                  : (() => { const e = new Date(childStart); if (child.duration) e.setDate(e.getDate() + child.duration); return e; })();
+                console.log(`Downstream ${child.id}: duration=${child.duration}, end=${childEnd.toISOString()}`);
+                updateTaskStartDate(child.id, childStart); // Update context start date for child dependency
+                // Immediately update visual position for child
+                const rawChildX = getXPositionFromDate(childStart, timeline.startDate);
+                const snappedRawChildX = roundPositionToDay(rawChildX);
+                const childX = snappedRawChildX + baseX;
+                setNodes(nds => nds.map(n => n.id === child.id ? {
+                  ...n,
+                  position: { ...n.position, x: childX },
+                  data: { ...n.data, startDate: childStart }
+                } : n));
+                processDownstream(child.id, childEnd);
+              }
+            }
+          };
+          processDownstream(node.id, movedEnd);
+        } else if (newDate.getTime() < originalStart.getTime()) {
+          console.log(`Cascade leftward from ${node.id}: start ${originalStart.toISOString()} -> ${newDate.toISOString()}`);
+          const processUpstream = (childId: string, childStart: Date) => {
+            for (const section of sections) {
+              for (const parent of section.tasks.filter(task => task.dependencies?.includes(childId))) {
+                const parentEnd = new Date(childStart);
+                const parentStart = parent.duration
+                  ? (() => { const s = new Date(parentEnd); s.setDate(s.getDate() - parent.duration); return s; })()
+                  : parentEnd;
+                console.log(`Updating upstream ${parent.id} based on child ${childId}: new end ${parentEnd.toISOString()}, new start ${parentStart.toISOString()}`);
+                console.log(`Upstream ${parent.id}: duration=${parent.duration}, start=${parentStart.toISOString()}, end=${parentEnd.toISOString()}`);
+                updateTaskStartDate(parent.id, parentStart); // Update context start date for parent dependency
+                // Immediately update visual position for parent
+                const rawParentX = getXPositionFromDate(parentStart, timeline.startDate);
+                const snappedRawParentX = roundPositionToDay(rawParentX);
+                const parentX = snappedRawParentX + baseX;
+                setNodes(nds => nds.map(n => n.id === parent.id ? {
+                  ...n,
+                  position: { ...n.position, x: parentX },
+                  data: { ...n.data, startDate: parentStart }
+                } : n));
+                processUpstream(parent.id, parentStart);
+              }
+            }
+          };
+          processUpstream(node.id, newDate);
+        }
+      }
       setNodes(nds => nds.map(n => n.id === node.id ? {
         ...n,
         position: { ...n.position, x: snappedX },
         data: { ...n.data, startDate: newDate }
       } : n));
     }
-  }, [timeline, updateTaskStartDate, setNodes]);
+  }, [timeline, updateTaskStartDate, setNodes, sections]);
 
   const nodesMemo = useMemo(() => {
     // Create the generate chart node regardless of whether there are sections or not
@@ -386,7 +452,7 @@ function DraftPlanMermaid() {
     timeline
   ]);
 
-  // Effect to update flowNodes when computed nodes change
+  // Always sync ReactFlow nodes to computed nodesMemo
   useEffect(() => {
     setNodes(nodesMemo);
   }, [nodesMemo]);
