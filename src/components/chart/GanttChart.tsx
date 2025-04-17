@@ -100,6 +100,12 @@ const roles: Role[] = [
   { id: 'ai-9', name: 'Resource Allocator', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=ResourceAllocator', type: 'ai_agent', isFavorite: false }
 ];
 
+import { findTask, updateTaskRecursive, cloneTask, insertTask } from './utils/taskUtils';
+import { generateTaskId } from './utils/idUtils';
+import { validateTaskDates } from './utils/ganttValidation';
+import { getNextColor } from './utils/colorUtils';
+import { createTimelineNodes, createDayGridLines, updateNodeDates } from './utils/timelineUtils';
+
 export const GanttChart: React.FC<GanttChartProps> = () => {
   const { currentChart, setHoveredNodes, setCurrentChart } = useGantt();
   const { saveChart } = useChartsList();
@@ -121,22 +127,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     }
 
     // Helper function to find complete task data with dependencies
-    const findTaskInData = (tasks: Task[]): Task | null => {
-      for (const t of tasks) {
-        if (t.id === task.id) {
-          return t; // Return the complete task data from the chart
-        }
-
-        if (t.tasks && Array.isArray(t.tasks) && t.tasks.length > 0) {
-          const foundTask = findTaskInData(t.tasks);
-          if (foundTask) return foundTask;
-        }
-      }
-      return null;
-    };
-
-    // Get complete task data from chart
-    const completeTask = findTaskInData(currentChart.tasks);
+    const completeTask = findTask(task.id, currentChart.tasks);
 
     if (completeTask) {
       setSelectedTask(completeTask);
@@ -193,30 +184,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
 
       const updatedChart = { ...currentChart };
       
-      // Recursive helper function with proper type safety
-      const updateTaskRecursive = (tasks: Task[]): boolean => {
-        for (let i = 0; i < tasks.length; i++) {
-          if (tasks[i].id === taskId) {
-            tasks[i] = { ...tasks[i], ...updates };
-            return true;
-          }
-          
-          // Safely handle subtasks with proper type checking
-          const subtasks = tasks[i].tasks;
-          if (subtasks && Array.isArray(subtasks) && subtasks.length > 0) {
-            if (updateTaskRecursive(subtasks)) {
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-
-      // Use optional chaining and type guards to safely access tasks
-      const tasks = updatedChart.tasks;
-      if (tasks && Array.isArray(tasks)) {
-        updateTaskRecursive(tasks);
-      }
+      updateTaskRecursive(updatedChart.tasks, taskId, updates);
 
       setCurrentChart(updatedChart);
       setHasUnsavedChanges(true);
@@ -455,39 +423,11 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
   );
 
 
-  // Helper function to find a task in the task hierarchy
-  const findTask = useCallback(
-    (taskId: string, tasks?: Task[]): { task: Task | null; parent: Task[] | null; index: number } => {
-      if (!tasks) {
-        if (!currentChart || !currentChart.tasks) return { task: null, parent: null, index: -1 };
-        tasks = currentChart.tasks;
-      }
-      
-      for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id === taskId) {
-          return { task: tasks[i], parent: tasks, index: i };
-        }
-        
-        // Safely check for subtasks using optional chaining
-        const subtasks = tasks[i].tasks;
-        if (subtasks && Array.isArray(subtasks) && subtasks.length > 0) {
-          const result = findTask(taskId, subtasks);
-          if (result.task) {
-            return result;
-          }
-        }
-      }
-      
-      return { task: null, parent: null, index: -1 };
-    },
-    [currentChart]
-  );
-  
   // Helper function to generate a unique ID for a new task
   const generateTaskId = useCallback(() => {
-    return 'task-' + Math.random().toString(36).substring(2, 11);
+    return generateTaskId();
   }, []);
-  
+
   // Helper function to validate task dates when adding new tasks
   const validateTaskDates = useCallback(
     (task: Task, tasks: Task[], dependencies: Dependency[]) => {
@@ -506,11 +446,11 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     (sourceTask: Task) => {
       if (!currentChart) return;
       
-      const { parent, index } = findTask(sourceTask.id);
+      const { parent, index } = findTask(sourceTask.id, currentChart.tasks);
       if (!parent || index === -1) return;
       
       // Deep clone the task and generate a new ID
-      const clonedTask: Task = JSON.parse(JSON.stringify(sourceTask));
+      const clonedTask: Task = cloneTask(sourceTask);
       clonedTask.id = generateTaskId();
       
       // Clear any subtasks from the clone (we're just cloning the parent)
@@ -523,7 +463,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       // Find the parent array and update it
       const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
       if (targetParent) {
-        targetParent.splice(index, 0, clonedTask);
+        insertTask(targetParent, index, clonedTask);
         
         // Validate dependencies to prevent race conditions
         validateTaskDates(clonedTask, updatedTasks, updatedChart.dependencies || []);
@@ -540,7 +480,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     (sourceTask: Task) => {
       if (!currentChart) return;
       
-      const { parent, index } = findTask(sourceTask.id);
+      const { parent, index } = findTask(sourceTask.id, currentChart.tasks);
       if (!parent || index === -1) return;
       
       // Create a new task with same dates but empty properties
@@ -560,7 +500,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       // Find the parent array and update it
       const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
       if (targetParent) {
-        targetParent.splice(index, 0, newTask);
+        insertTask(targetParent, index, newTask);
         
         // Validate dependencies to prevent race conditions
         validateTaskDates(newTask, updatedTasks, updatedChart.dependencies || []);
@@ -577,7 +517,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     (sourceTask: Task) => {
       if (!currentChart) return;
       
-      const { parent, index } = findTask(sourceTask.id);
+      const { parent, index } = findTask(sourceTask.id, currentChart.tasks);
       if (!parent || index === -1) return;
       
       // Create a new event task (events are single-day tasks)
@@ -598,7 +538,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       // Find the parent array and update it
       const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
       if (targetParent) {
-        targetParent.splice(index, 0, newEvent);
+        insertTask(targetParent, index, newEvent);
         
         // Validate dependencies to prevent race conditions
         validateTaskDates(newEvent, updatedTasks, updatedChart.dependencies || []);
@@ -615,11 +555,11 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     (sourceTask: Task) => {
       if (!currentChart) return;
       
-      const { parent, index } = findTask(sourceTask.id);
+      const { parent, index } = findTask(sourceTask.id, currentChart.tasks);
       if (!parent || index === -1) return;
       
       // Deep clone the task and generate a new ID
-      const clonedTask: Task = JSON.parse(JSON.stringify(sourceTask));
+      const clonedTask: Task = cloneTask(sourceTask);
       clonedTask.id = generateTaskId();
       
       // Clear any subtasks from the clone (we're just cloning the parent)
@@ -632,7 +572,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       // Find the parent array and update it
       const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
       if (targetParent) {
-        targetParent.splice(index + 1, 0, clonedTask);
+        insertTask(targetParent, index + 1, clonedTask);
         
         // Validate dependencies to prevent race conditions
         validateTaskDates(clonedTask, updatedTasks, updatedChart.dependencies || []);
@@ -649,7 +589,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     (sourceTask: Task) => {
       if (!currentChart) return;
       
-      const { parent, index } = findTask(sourceTask.id);
+      const { parent, index } = findTask(sourceTask.id, currentChart.tasks);
       if (!parent || index === -1) return;
       
       // Create a new task with same dates but empty properties
@@ -669,7 +609,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       // Find the parent array and update it
       const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
       if (targetParent) {
-        targetParent.splice(index + 1, 0, newTask);
+        insertTask(targetParent, index + 1, newTask);
         
         // Validate dependencies to prevent race conditions
         validateTaskDates(newTask, updatedTasks, updatedChart.dependencies || []);
@@ -686,7 +626,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     (sourceTask: Task) => {
       if (!currentChart) return;
       
-      const { parent, index } = findTask(sourceTask.id);
+      const { parent, index } = findTask(sourceTask.id, currentChart.tasks);
       if (!parent || index === -1) return;
       
       // Create a new event task (events are single-day tasks)
@@ -707,7 +647,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       // Find the parent array and update it
       const { parent: targetParent } = findTask(sourceTask.id, updatedTasks);
       if (targetParent) {
-        targetParent.splice(index + 1, 0, newEvent);
+        insertTask(targetParent, index + 1, newEvent);
         
         // Validate dependencies to prevent race conditions
         validateTaskDates(newEvent, updatedTasks, updatedChart.dependencies || []);
@@ -722,64 +662,9 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
 
 
   // Function to generate a slightly different color for subtasks
-  const getNextColor = (baseColor?: string): string => {
-    // Default color if none provided
-    const defaultColor = '#3b82f6'; // Primary blue
-    
-    if (!baseColor) return defaultColor;
-    
-    try {
-      // Modern, professional color palette with hex codes
-      const colors = [
-        '#3b82f6', // Primary blue
-        '#10b981', // Emerald green
-        '#ef4444', // Red
-        '#f59e0b', // Amber
-        '#8b5cf6', // Violet
-        '#ec4899', // Pink
-        '#06b6d4', // Cyan
-        '#6366f1', // Indigo
-        '#84cc16', // Lime
-        '#14b8a6', // Teal
-        '#a855f7', // Purple
-        '#f97316'  // Orange
-      ];
-      
-      // Handle both hex codes and named colors
-      let index = colors.indexOf(baseColor);
-      if (index === -1) {
-        // Try to find by simple name
-        const colorNameMap: Record<string, string> = {
-          'blue': '#3b82f6',
-          'green': '#10b981',
-          'red': '#ef4444',
-          'yellow': '#f59e0b',
-          'violet': '#8b5cf6',
-          'pink': '#ec4899',
-          'cyan': '#06b6d4',
-          'indigo': '#6366f1',
-          'lime': '#84cc16',
-          'teal': '#14b8a6',
-          'purple': '#a855f7',
-          'orange': '#f97316'
-        };
-        
-        const matchedHex = colorNameMap[baseColor.toLowerCase()];
-        if (matchedHex) {
-          index = colors.indexOf(matchedHex);
-        }
-      }
-      
-      // If still not found, start from beginning
-      if (index === -1) return colors[0];
-      
-      return colors[(index + 1) % colors.length];
-    } catch (error) {
-      console.error('Error generating next color:', error);
-      // If any error in color conversion, return default
-      return defaultColor;
-    }
-  };
+  const getNextColor = useCallback((baseColor?: string): string => {
+    return getNextColor(baseColor);
+  }, []);
 
   // Placeholder for the createSubChart function (to be implemented later)
   const onCreateSubTask = useCallback((task: Task) => {

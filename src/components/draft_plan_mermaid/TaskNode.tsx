@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { NodeResizeControl } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
 
@@ -17,6 +17,7 @@ interface TaskData {
 }
 
 const TaskNode = ({ data }: { data: TaskData }) => {
+  useEffect(() => { console.log('TaskNode mounted', data.id); }, []);
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   

@@ -5,10 +5,8 @@ import ReactFlow, {
   Controls,
   MiniMap,
   ReactFlowInstance,
-  applyNodeChanges,
-  NodeChange,
+  useNodesState,
   NodeDragHandler,
-  OnNodesChange,
 } from 'reactflow';
 import "react-datepicker/dist/react-datepicker.css";
 import 'reactflow/dist/style.css';
@@ -29,11 +27,14 @@ const ensureDate = (date: Date | string | undefined): Date => {
 const getXPositionFromDate = (date: Date | string | undefined, startDate: Date | string, pixelsPerDay: number = 30) => {
   if (!date) return 0;
   
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const startDateObj = typeof startDate === 'string' ? new Date(startDate) : startDate;
+  const dateObj = typeof date === 'string' ? new Date(date) : new Date(date);
+  const startDateObj = typeof startDate === 'string' ? new Date(startDate) : new Date(startDate);
+  // Normalize to start of day
+  dateObj.setHours(0,0,0,0);
+  startDateObj.setHours(0,0,0,0);
   
-  // Calculate days between dates
-  const daysDiff = Math.floor((dateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+  // Calculate days between dates (rounded)
+  const daysDiff = Math.round((dateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
   
   // Convert days to pixels
   return daysDiff * pixelsPerDay;
@@ -61,10 +62,12 @@ const getTaskDate = (task: Task): Date => {
 const getDateFromXPosition = (xPosition: number, startDate: Date | string, pixelsPerDay: number = 30) => {
   if (!startDate) return new Date();
   
-  const startDateObj = typeof startDate === 'string' ? new Date(startDate) : startDate;
+  const startDateObj = typeof startDate === 'string' ? new Date(startDate) : new Date(startDate);
+  // Normalize to start of day
+  startDateObj.setHours(0,0,0,0);
   
-  // Calculate days difference based on pixels
-  const daysDiff = Math.floor(xPosition / pixelsPerDay);
+  // Calculate days difference based on pixels (rounded)
+  const daysDiff = Math.round(xPosition / pixelsPerDay);
   
   // Create new date object
   const newDate = new Date(startDateObj);
@@ -95,324 +98,48 @@ function DraftPlanMermaid() {
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [timelineVisible, setTimelineVisible] = useState(false);
   const [timelineWidth, setTimelineWidth] = useState(200);
-  const [flowNodes, setFlowNodes] = useState<Node[]>([]);
   const [prevSections, setPrevSections] = useState<Section[]>([]);
   const [prevTimeline, setPrevTimeline] = useState<Timeline | undefined>();
   const [prevSectionStartDates, setPrevSectionStartDates] = useState<Record<string, Date>>({});
   const [prevSectionEndDates, setPrevSectionEndDates] = useState<Record<string, Date>>({});
   const [changedNodeIds, setChangedNodeIds] = useState<string[]>([]);
   
-  // Handler for node changes (position, etc.)
-  const onNodesChange: OnNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      setFlowNodes((nds) => applyNodeChanges(changes, nds));
-    },
-    []
-  );
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
 
   // Handler for node drag operations
   const onNodeDrag: NodeDragHandler = useCallback((_event, node) => {
-    // Only allow horizontal movement
-    console.log('Node drag:', node);
-    const currentNode = flowNodes.find(n => n.id === node.id);
-    if (currentNode && currentNode.type === 'task') {
-      // Force y position to stay the same
-      node.position.y = currentNode.position.y;
-      
-      // Snap to grid horizontally
-      const snappedX = roundPositionToDay(node.position.x);
+    if (node.type === 'task' || node.type === 'milestone') {
+      const current = nodes.find(n => n.id === node.id);
+      if (current) node.position.y = current.position.y;
+      const baseX = 10;
+      const rawX = node.position.x - baseX;
+      const snappedRawX = roundPositionToDay(rawX);
+      const snappedX = snappedRawX + baseX;
       node.position.x = snappedX;
-      
-      // Update the task's start date if moving the node to a different day
-      if (timeline?.startDate) {
-        // Convert x position to a date
-        const baseX = 10; // Base offset from the layout
-        const adjustedX = Math.max(0, snappedX - baseX);
-        const newStartDate = getDateFromXPosition(adjustedX, timeline.startDate);
-        
-        // Check if we've found the task in our data structure
-        let taskFound = false;
-        
-        // Find the task and update its start date
-        for (const section of sections) {
-          const task = section.tasks.find(t => t.id === node.id);
-          if (task) {
-            // Only update if the date has actually changed
-            const currentStartDate = ensureDate(task.startDate);
-            if (currentStartDate.getTime() !== newStartDate.getTime()) {
-              console.log(`Updating task ${task.id} start date from ${currentStartDate} to ${newStartDate}`);
-              updateTaskStartDate(task.id, newStartDate);
-              
-              // Also update the node data in flowNodes to ensure hover details are updated
-              setFlowNodes(prevNodes => {
-                return prevNodes.map(n => {
-                  if (n.id === node.id && n.type === 'task') {
-                    // Create a new data object with the updated start date
-                    return {
-                      ...n,
-                      data: {
-                        ...n.data,
-                        startDate: newStartDate,
-                        // If the task has an end date based on duration, update that too
-                        ...(task.duration ? {
-                          endDate: (() => {
-                            const endDate = new Date(newStartDate);
-                            endDate.setDate(endDate.getDate() + task.duration);
-                            return endDate;
-                          })()
-                        } : {})
-                      }
-                    };
-                  }
-                  return n;
-                });
-              });
-            }
-            taskFound = true;
-            break;
-          }
-        }
-        
-        if (!taskFound) {
-          console.warn(`Task with ID ${node.id} not found in sections`);
-        }
-      }
+      setNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { ...n.position, x: snappedX } } : n));
     }
-  }, [flowNodes, sections, timeline, updateTaskStartDate]);
+  }, [nodes, setNodes]);
 
   // Handler when node drag stops
   const onNodeDragStop: NodeDragHandler = useCallback((_event, node) => {
-    console.log('Node drag stopped:', node);
-    if (node.type === 'task' && timeline?.startDate) {
-      // Find the task in our data structure
-      let taskFound = false;
-      
-      for (const section of sections) {
-        const task = section.tasks.find(t => t.id === node.id);
-        if (task) {
-          // Convert x position to a date
-          const baseX = 10; // Base offset from the layout
-          const adjustedX = Math.max(0, node.position.x - baseX);
-          const newStartDate = getDateFromXPosition(adjustedX, timeline.startDate);
-          
-          // Store original start date for checking if there was actual movement
-          const originalStartDate = task.startDate ? new Date(task.startDate) : null;
-          
-          // Check if there was actual movement that needs to be processed
-          if (originalStartDate && originalStartDate.getTime() !== newStartDate.getTime()) {
-            console.log(`Task ${task.id} moved from ${originalStartDate} to ${newStartDate}, updating dependencies`);
-            
-            // Instead of calling updateTaskStartDate and then updateDependentTasks separately,
-            // calculate the task's new end date directly for more accurate dependency updates
-            let newEndDate: Date;
-            if (task.type === 'milestone') {
-              newEndDate = new Date(newStartDate);
-            } else if (task.duration) {
-              newEndDate = new Date(newStartDate);
-              newEndDate.setDate(newEndDate.getDate() + task.duration);
-            } else {
-              newEndDate = new Date(newStartDate);
-            }
-            
-            console.log(`Calculated new end date for task ${task.id}: ${newEndDate}`);
-            
-            // Apply the update to the data model
-            updateTaskStartDate(task.id, newStartDate);
-            
-            // Force update for all dependent tasks using the newly calculated end date
-            forceUpdateDependentTasks(task.id, sections, newEndDate);
-          } else {
-            // Just update the task position without dependency cascade
-            updateTaskStartDate(task.id, newStartDate);
-          }
-          
-          taskFound = true;
-          break;
-        }
-      }
-      
-      if (!taskFound) {
-        console.warn(`Task with ID ${node.id} not found in sections`);
-      }
+    if ((node.type === 'task' || node.type === 'milestone') && timeline?.startDate) {
+      const baseX = 10;
+      const rawX = node.position.x - baseX;
+      const snappedRawX = roundPositionToDay(rawX);
+      const snappedX = snappedRawX + baseX;
+      node.position.x = snappedX;
+      const adjustedX = Math.max(0, snappedRawX);
+      const newDate = getDateFromXPosition(adjustedX, timeline.startDate);
+      updateTaskStartDate(node.id, newDate);
+      setNodes(nds => nds.map(n => n.id === node.id ? {
+        ...n,
+        position: { ...n.position, x: snappedX },
+        data: { ...n.data, startDate: newDate }
+      } : n));
     }
-  }, [sections, timeline, updateTaskStartDate]);
+  }, [timeline, updateTaskStartDate, setNodes]);
 
-  /**
-   * Force update all tasks that depend on the given task ID with the provided end date
-   * This variant ensures all dependent tasks move regardless of their current position
-   * @param taskId ID of the task that was moved
-   * @param currentSections Current sections with tasks
-   * @param dependencyEndDate The calculated end date of the moved task
-   */
-  const forceUpdateDependentTasks = useCallback((taskId: string, currentSections: Section[], dependencyEndDate: Date) => {
-    console.log(`Force updating all tasks dependent on ${taskId} to start after ${dependencyEndDate}`);
-    
-    // Keep track of processed task IDs to avoid circular dependencies
-    const processedTaskIds = new Set<string>();
-    // Keep track of tasks that were actually updated
-    const updatedTaskIds = new Set<string>();
-    // Keep track of sections that need to be updated
-    const affectedSectionNames = new Set<string>();
-    
-    // Process each task that depends on the given task ID recursively
-    const processTaskDependents = (parentId: string, parentEndDate: Date) => {
-      if (processedTaskIds.has(parentId)) {
-        console.log(`Task ${parentId} already processed, skipping to avoid circular dependency`);
-        return;
-      }
-      
-      processedTaskIds.add(parentId);
-      
-      // Find all tasks that depend on this parent
-      const directDependents: Task[] = [];
-      for (const section of currentSections) {
-        for (const task of section.tasks) {
-          if (task.dependencies && task.dependencies.includes(parentId)) {
-            directDependents.push(task);
-            console.log(`Found task ${task.id} (${task.label}) depends on ${parentId}`);
-            
-            // Track which section this task belongs to
-            for (const section of currentSections) {
-              if (section.tasks.includes(task)) {
-                affectedSectionNames.add(section.name);
-                break;
-              }
-            }
-          }
-        }
-      }
-      
-      // Process each dependent task
-      for (const task of directDependents) {
-        console.log(`Updating dependent task ${task.id} to start after ${parentEndDate}`);
-        
-        // Update the task start date to match the parent's end date
-        updateTaskStartDate(task.id, parentEndDate);
-        updatedTaskIds.add(task.id);
-        
-        // Calculate new X position based on the new start date
-        const newXPosition = getXPositionFromDate(parentEndDate, timeline?.startDate || new Date()) + 10; // Add base offset
-        
-        // Also update the flowNodes to ensure hover details are updated AND position is updated
-        setFlowNodes(prevNodes => {
-          return prevNodes.map(n => {
-            if (n.id === task.id && n.type === 'task') {
-              // Keep the same Y position but update X position based on new date
-              return {
-                ...n,
-                position: {
-                  ...n.position,
-                  x: newXPosition
-                },
-                data: {
-                  ...n.data,
-                  startDate: parentEndDate,
-                  ...(task.duration ? {
-                    endDate: (() => {
-                      const endDate = new Date(parentEndDate);
-                      endDate.setDate(endDate.getDate() + task.duration);
-                      return endDate;
-                    })()
-                  } : {})
-                }
-              };
-            }
-            return n;
-          });
-        });
-        
-        // Calculate this task's new end date for its dependents
-        let taskEndDate: Date;
-        if (task.type === 'milestone') {
-          taskEndDate = new Date(parentEndDate);
-        } else if (task.duration) {
-          taskEndDate = new Date(parentEndDate);
-          taskEndDate.setDate(taskEndDate.getDate() + task.duration);
-        } else {
-          taskEndDate = new Date(parentEndDate);
-        }
-        
-        // Process this task's dependents recursively
-        processTaskDependents(task.id, taskEndDate);
-      }
-    };
-    
-    // Start the recursive process with the initial task
-    processTaskDependents(taskId, dependencyEndDate);
-    
-    // After all tasks are updated, update the section bars for affected sections
-    if (affectedSectionNames.size > 0) {
-      console.log(`Updating section bars for sections: ${Array.from(affectedSectionNames).join(', ')}`);
-      
-      setFlowNodes(prevNodes => {
-        return prevNodes.map(node => {
-          // Check if this is a section bar node for an affected section
-          if (node.id.startsWith('section_') && affectedSectionNames.has(node.data.label)) {
-            const sectionName = node.data.label;
-            const section = currentSections.find(s => s.name === sectionName);
-            
-            if (section) {
-              // Calculate section boundaries based on its tasks
-              let sectionStartDate: Date | undefined;
-              let sectionEndDate: Date | undefined;
-              
-              for (const task of section.tasks) {
-                const taskDate = getTaskDate(task);
-                
-                // Update section start date
-                if (!sectionStartDate || taskDate < sectionStartDate) {
-                  sectionStartDate = new Date(taskDate);
-                }
-                
-                // Calculate task end date
-                let taskEndDate: Date;
-                if (task.type === 'milestone') {
-                  taskEndDate = new Date(taskDate);
-                } else if (task.endDate) {
-                  taskEndDate = new Date(task.endDate);
-                } else if (task.duration && task.startDate) {
-                  taskEndDate = new Date(task.startDate);
-                  taskEndDate.setDate(taskEndDate.getDate() + task.duration);
-                } else {
-                  taskEndDate = new Date(taskDate);
-                }
-                
-                // Update section end date
-                if (!sectionEndDate || taskEndDate > sectionEndDate) {
-                  sectionEndDate = new Date(taskEndDate);
-                }
-              }
-              
-              if (sectionStartDate && sectionEndDate && timeline?.startDate) {
-                // Calculate new X position and width
-                const newXPosition = getXPositionFromDate(sectionStartDate, timeline.startDate) + 10; // Add base offset
-                const sectionWidth = getWidthBetweenDates(sectionStartDate, sectionEndDate);
-                
-                // Update the section bar node
-                return {
-                  ...node,
-                  position: {
-                    ...node.position,
-                    x: newXPosition
-                  },
-                  style: {
-                    ...node.style,
-                    width: `${sectionWidth}px`
-                  }
-                };
-              }
-            }
-          }
-          return node;
-        });
-      });
-    }
-    
-    console.log(`Dependency chain update complete. Updated ${updatedTaskIds.size} tasks: ${Array.from(updatedTaskIds).join(', ')}`);
-    console.log(`Updated ${affectedSectionNames.size} section bars: ${Array.from(affectedSectionNames).join(', ')}`);
-  }, [updateTaskStartDate, setFlowNodes, timeline]);
-
-  const nodes: Node[] = useMemo(() => {
+  const nodesMemo = useMemo(() => {
     // Create the generate chart node regardless of whether there are sections or not
     const generateNode: Node = {
       id: 'generate_chart',
@@ -599,7 +326,7 @@ function DraftPlanMermaid() {
               transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
               zIndex: 10, // Ensure milestones are on top
             },
-            draggable: false, // Prevent dragging of milestone nodes
+            draggable: true, // Allow dragging of milestone nodes
           };
           allNodes.push(milestoneNode);
         } else {
@@ -661,8 +388,8 @@ function DraftPlanMermaid() {
 
   // Effect to update flowNodes when computed nodes change
   useEffect(() => {
-    setFlowNodes(nodes);
-  }, [nodes]);
+    setNodes(nodesMemo);
+  }, [nodesMemo]);
 
   // Effect to identify which nodes have changed
   useEffect(() => {
@@ -1078,7 +805,7 @@ function DraftPlanMermaid() {
   return (
     <div style={{ width: '100%', height: '100%', minHeight: '500px', position: 'relative' }}>
       <ReactFlow
-        nodes={flowNodes}
+        nodes={nodes}
         onNodesChange={onNodesChange}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
