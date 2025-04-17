@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import ReactFlow, {
   Node,
   Background,
@@ -94,7 +94,6 @@ function DraftPlanMermaid() {
   const [tasksWithDates, setTasksWithDates] = useState<string[]>([]);
   const [tasksWithDurations, setTasksWithDurations] = useState<string[]>([]);
   const [visibleSectionBars, setVisibleSectionBars] = useState<string[]>([]);
-  const [sectionBarsWithWidths, setSectionBarsWithWidths] = useState<string[]>([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [timelineVisible, setTimelineVisible] = useState(false);
   const [timelineWidth, setTimelineWidth] = useState(200);
@@ -105,6 +104,9 @@ function DraftPlanMermaid() {
   const [changedNodeIds, setChangedNodeIds] = useState<string[]>([]);
   
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+
+  // Ref for debouncing drag updates
+  const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Handler for node drag operations
   const onNodeDrag: NodeDragHandler = useCallback((_event, node) => {
@@ -117,8 +119,17 @@ function DraftPlanMermaid() {
       const snappedX = snappedRawX + baseX;
       node.position.x = snappedX;
       setNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { ...n.position, x: snappedX } } : n));
+      // Debounce context update for root task
+      if (timeline?.startDate) {
+        // Clear existing timer
+        clearTimeout(dragUpdateTimers.current[node.id]);
+        // Compute new date
+        const newDate = getDateFromXPosition(snappedRawX, timeline.startDate);
+        // Schedule update after drag pause
+        dragUpdateTimers.current[node.id] = setTimeout(() => updateTaskStartDate(node.id, newDate), 200);
+      }
     }
-  }, [nodes, setNodes]);
+  }, [nodes, setNodes, timeline, updateTaskStartDate]);
 
   // Handler when node drag stops
   const onNodeDragStop: NodeDragHandler = useCallback((_event, node) => {
@@ -130,68 +141,110 @@ function DraftPlanMermaid() {
       node.position.x = snappedX;
       const adjustedX = Math.max(0, snappedRawX);
       const newDate = getDateFromXPosition(adjustedX, timeline.startDate);
-      updateTaskStartDate(node.id, newDate);
+      // Capture original start and duration before updating root
+      const currentNode = nodes.find(n => n.id === node.id);
+      const originalStart = currentNode ? ensureDate((currentNode.data as any).startDate) : null;
+      const originalDuration = (currentNode?.data as any)?.duration;
+      // Collect pending updates to context
+      const pendingUpdates: { id: string; newStartDate: Date }[] = [];
+      // Root update buffered
+      pendingUpdates.push({ id: node.id, newStartDate: newDate });
       // Cascade move: downstream for future, upstream for past
-      let originalStart: Date | null = null;
-      let originalTask;
-      for (const section of sections) {
-        const tsk = section.tasks.find(t => t.id === node.id);
-        if (tsk) { originalTask = tsk; originalStart = ensureDate(tsk.startDate); break; }
-      }
-      if (originalStart && originalTask) {
+      if (originalStart) {
         const movedEnd = node.type === 'milestone'
           ? newDate
-          : (() => { const e = new Date(newDate); if (originalTask.duration) e.setDate(e.getDate() + originalTask.duration); return e; })();
+          : (() => { const e = new Date(newDate); if (originalDuration) e.setDate(e.getDate() + originalDuration); return e; })();
         if (newDate.getTime() > originalStart.getTime()) {
-          console.log(`Cascade rightward from ${node.id}: start=${originalStart.toISOString()}, newStart=${newDate.toISOString()}, end=${movedEnd.toISOString()}, duration=${originalTask.duration}`);
+          console.log(`Cascade rightward from ${node.id}: start=${originalStart.toISOString()}, newStart=${newDate.toISOString()}, end=${movedEnd.toISOString()}, duration=${originalDuration}`);
           const processDownstream = (parentId: string, parentEnd: Date) => {
             for (const section of sections) {
-              for (const child of section.tasks.filter(task => task.dependencies?.includes(parentId))) {
+              // Iterate dependent tasks and compare against latest start date
+              for (const task of section.tasks.filter(task => task.dependencies?.includes(parentId))) {
+                const nodeInfo = nodes.find(n => n.id === task.id);
+                const currentChildStart = nodeInfo
+                  ? (task.type === 'milestone'
+                      ? ensureDate((nodeInfo.data as any).date)
+                      : ensureDate((nodeInfo.data as any).startDate))
+                  : (task.type === 'milestone'
+                      ? ensureDate(task.date!)
+                      : ensureDate(task.startDate!));
+                // Skip if child already starts at or after parent end
+                if (currentChildStart >= parentEnd) continue;
                 const childStart = new Date(parentEnd);
-                console.log(`Updating downstream ${child.id} based on parent ${parentId}: new start ${childStart.toISOString()}`);
-                updateTaskStartDate(child.id, childStart);
-                const childEnd = child.type === 'milestone' 
+                console.log(`Updating downstream ${task.id} based on parent ${parentId}: new start ${childStart.toISOString()}, moved end ${movedEnd.toISOString()}, task.startdate ${task.startDate?.toISOString()}`);
+                // Buffer child update
+                pendingUpdates.push({ id: task.id, newStartDate: childStart });
+                const childEnd = task.type === 'milestone' 
                   ? childStart 
-                  : (() => { const e = new Date(childStart); if (child.duration) e.setDate(e.getDate() + child.duration); return e; })();
-                console.log(`Downstream ${child.id}: duration=${child.duration}, end=${childEnd.toISOString()}`);
-                updateTaskStartDate(child.id, childStart); // Update context start date for child dependency
+                  : (() => { const e = new Date(childStart); if (task.duration) e.setDate(e.getDate() + task.duration); return e; })();
+                console.log(`Downstream ${task.id}: duration=${task.duration}, end=${childEnd.toISOString()}`);
                 // Immediately update visual position for child
                 const rawChildX = getXPositionFromDate(childStart, timeline.startDate);
                 const snappedRawChildX = roundPositionToDay(rawChildX);
                 const childX = snappedRawChildX + baseX;
-                setNodes(nds => nds.map(n => n.id === child.id ? {
+                setNodes(nds => nds.map(n => n.id === task.id ? {
                   ...n,
                   position: { ...n.position, x: childX },
-                  data: { ...n.data, startDate: childStart }
+                  data: {
+                    ...n.data,
+                    ...(task.type === 'milestone'
+                      ? { date: childStart }
+                      : { startDate: childStart })
+                  }
                 } : n));
-                processDownstream(child.id, childEnd);
+                processDownstream(task.id, childEnd);
               }
             }
           };
           processDownstream(node.id, movedEnd);
         } else if (newDate.getTime() < originalStart.getTime()) {
           console.log(`Cascade leftward from ${node.id}: start ${originalStart.toISOString()} -> ${newDate.toISOString()}`);
+          // Traverse actual parent tasks as defined in dependencies
           const processUpstream = (childId: string, childStart: Date) => {
-            for (const section of sections) {
-              for (const parent of section.tasks.filter(task => task.dependencies?.includes(childId))) {
-                const parentEnd = new Date(childStart);
-                const parentStart = parent.duration
-                  ? (() => { const s = new Date(parentEnd); s.setDate(s.getDate() - parent.duration); return s; })()
-                  : parentEnd;
-                console.log(`Updating upstream ${parent.id} based on child ${childId}: new end ${parentEnd.toISOString()}, new start ${parentStart.toISOString()}`);
-                console.log(`Upstream ${parent.id}: duration=${parent.duration}, start=${parentStart.toISOString()}, end=${parentEnd.toISOString()}`);
-                updateTaskStartDate(parent.id, parentStart); // Update context start date for parent dependency
-                // Immediately update visual position for parent
-                const rawParentX = getXPositionFromDate(parentStart, timeline.startDate);
-                const snappedRawParentX = roundPositionToDay(rawParentX);
-                const parentX = snappedRawParentX + baseX;
-                setNodes(nds => nds.map(n => n.id === parent.id ? {
-                  ...n,
-                  position: { ...n.position, x: parentX },
-                  data: { ...n.data, startDate: parentStart }
-                } : n));
-                processUpstream(parent.id, parentStart);
-              }
+            // Get dependencies (parent IDs) for this task
+            const parentIds = sections.flatMap(section =>
+              section.tasks.find(task => task.id === childId)?.dependencies ?? []
+            );
+            for (const parentId of parentIds) {
+              // Find the parent task object
+              const parentTask = sections.flatMap(sec => sec.tasks).find(task => task.id === parentId);
+              if (!parentTask) continue;
+              // Determine current parent end to skip non-overlapping moves
+              const nodeInfo = nodes.find(n => n.id === parentId);
+              const currentParentStart = nodeInfo
+                ? ensureDate((nodeInfo.data as any).startDate ?? (nodeInfo.data as any).date)
+                : ensureDate(parentTask.startDate ?? parentTask.date!);
+              const currentParentDuration = nodeInfo
+                ? (nodeInfo.data as any).duration
+                : parentTask.duration ?? 0;
+              const currentParentEnd = parentTask.type === 'milestone'
+                ? currentParentStart
+                : (() => { const e = new Date(currentParentStart); e.setDate(e.getDate() + currentParentDuration); return e; })();
+              if (childStart >= currentParentEnd) continue;
+              // Compute new parent end & start
+              const parentEnd = new Date(childStart);
+              const parentStart = parentTask.duration
+                ? (() => { const s = new Date(parentEnd); s.setDate(s.getDate() - parentTask.duration); return s; })()
+                : parentEnd;
+              console.log(`Updating upstream ${parentId} based on child ${childId}: new end ${parentEnd.toISOString()}, new start ${parentStart.toISOString()}`);
+              // Buffer parent update
+              pendingUpdates.push({ id: parentId, newStartDate: parentStart });
+              // Visual update for parent
+              const rawParentX = getXPositionFromDate(parentStart, timeline.startDate);
+              const snappedRawParentX = roundPositionToDay(rawParentX);
+              const parentX = snappedRawParentX + baseX;
+              setNodes(nds => nds.map(n => n.id === parentId ? {
+                ...n,
+                position: { ...n.position, x: parentX },
+                data: {
+                  ...n.data,
+                  ...(parentTask.type === 'milestone'
+                    ? { date: parentStart }
+                    : { startDate: parentStart })
+                }
+              } : n));
+              // Recurse up the chain
+              processUpstream(parentId, parentStart);
             }
           };
           processUpstream(node.id, newDate);
@@ -202,8 +255,30 @@ function DraftPlanMermaid() {
         position: { ...n.position, x: snappedX },
         data: { ...n.data, startDate: newDate }
       } : n));
+      // Apply all buffered context updates
+      pendingUpdates.forEach(({ id, newStartDate }) => updateTaskStartDate(id, newStartDate));
+      // Debug: log section spans after drag stop
+      console.log('DragStop: section spans update');
+      sections.forEach(section => {
+        const spans = section.tasks.map(task => {
+          const sd = ensureDate(task.startDate ?? task.date);
+          const ed = task.type === 'milestone'
+            ? sd
+            : task.endDate
+              ? ensureDate(task.endDate)
+              : (task.duration
+                ? new Date(sd.getTime() + task.duration * 24 * 60 * 60 * 1000)
+                : sd);
+          return { sd, ed };
+        });
+        const times = spans.flatMap(s => [s.sd.getTime(), s.ed.getTime()]);
+        const secStart = new Date(Math.min(...times));
+        const secEnd = new Date(Math.max(...times));
+        const widthPx = getWidthBetweenDates(secStart, secEnd);
+        console.log(`DragStop section_bar_${section.name}: start=${secStart.toISOString()}, end=${secEnd.toISOString()}, width=${widthPx}px`);
+      });
     }
-  }, [timeline, updateTaskStartDate, setNodes, sections]);
+  }, [nodes, setNodes, sections, timeline, updateTaskStartDate]);
 
   const nodesMemo = useMemo(() => {
     // Create the generate chart node regardless of whether there are sections or not
@@ -311,8 +386,8 @@ function DraftPlanMermaid() {
       const sectionXPosition = getXPositionFromDate(sectionStartDate, defaultStartDate) + 10;
       
       const sectionBarId = `section_bar_${section.name}`;
-      const isSectionVisible = visibleSectionBars.includes(sectionBarId);
-      const hasSectionWidth = sectionBarsWithWidths.includes(sectionBarId);
+      
+      console.log(`SectionBar ${sectionBarId} resized: start=${sectionStartDate.toISOString()}, end=${sectionEndDate.toISOString()}, width=${sectionWidth}px`);
       
       const sectionBarNode: Node = {
         id: sectionBarId,
@@ -325,12 +400,13 @@ function DraftPlanMermaid() {
           y: yPosition, 
         },
         style: {
-          width: hasSectionWidth ? `${sectionWidth}px` : '40px',
+          // Dynamic resize: visible bars adapt to task span
+          width: `${sectionWidth}px`,
           height: '60px', // Match task height exactly
           borderRadius: '8px', // Match task border radius
-          background: '#ffffff',
-          border: '2px solid #000000', // Match task border thickness
-          opacity: isSectionVisible ? 1 : 0,
+          background: '#000000',
+          border: '2px solid #ffffff', // Match task border thickness
+          opacity: 1, // Always visible
           transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
           zIndex: 1,
           display: 'flex',
@@ -339,7 +415,7 @@ function DraftPlanMermaid() {
           padding: '10px 20px', // Match task padding
           fontSize: '16px', // Match task font size
           fontWeight: 'bold',
-          color: '#000000',
+          color: '#ffffff',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -447,7 +523,6 @@ function DraftPlanMermaid() {
     tasksWithDates,
     tasksWithDurations,
     visibleSectionBars,
-    sectionBarsWithWidths,
     sections,
     timeline
   ]);
@@ -696,6 +771,14 @@ function DraftPlanMermaid() {
       changedIds.push('timeline');
     }
     
+    console.log(`useEffect[sections] detected task changes: [${changedIds.join(', ')}], section changes: [${changedSectionBarIds.join(', ')}]`);
+    // Debug: log computed section spans after context update
+    newSectionNames.forEach(sectionName => {
+      const newStart = newSectionStartDates[sectionName];
+      const newEnd = newSectionEndDates[sectionName];
+      console.log(`useEffect span ${sectionName}: start=${newStart.toISOString()}, end=${newEnd.toISOString()}, width=${getWidthBetweenDates(newStart, newEnd)}px`);
+    });
+    
     // Update state with changed node IDs - only if there are actual changes
     if (changedIds.length > 0 || changedSectionBarIds.length > 0) {
       setChangedNodeIds([...changedIds, ...changedSectionBarIds]);
@@ -720,7 +803,6 @@ function DraftPlanMermaid() {
     const currentTasksWithDates = new Set(tasksWithDates);
     const currentTasksWithDurations = new Set(tasksWithDurations);
     const currentVisibleSectionBars = new Set(visibleSectionBars);
-    const currentSectionBarsWithWidths = new Set(sectionBarsWithWidths);
     
     // Extract section bar IDs from changed nodes
     const changedSectionBarIds = changedNodeIds.filter(id => id.startsWith('section_bar_'));
@@ -736,7 +818,6 @@ function DraftPlanMermaid() {
     // Remove changed section bars from visible collections
     changedSectionBarIds.forEach(id => {
       currentVisibleSectionBars.delete(id);
-      currentSectionBarsWithWidths.delete(id);
     });
     
     // Apply the filtered visible states
@@ -744,7 +825,6 @@ function DraftPlanMermaid() {
     setTasksWithDates([...currentTasksWithDates]);
     setTasksWithDurations([...currentTasksWithDurations]);
     setVisibleSectionBars([...currentVisibleSectionBars]);
-    setSectionBarsWithWidths([...currentSectionBarsWithWidths]);
     
     // Only hide timeline if it's one of the changed nodes
     if (changedNodeIds.includes('timeline')) {
@@ -821,7 +901,7 @@ function DraftPlanMermaid() {
         });
         
         // Animate section bar widths
-        setSectionBarsWithWidths(prev => {
+        setVisibleSectionBars(prev => {
           const newSet = new Set([...prev]);
           sectionBarsToAnimate.forEach(id => newSet.add(id));
           return [...newSet];
