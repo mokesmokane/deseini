@@ -313,7 +313,12 @@ function DraftPlanMermaid() {
         .map(date => new Date(date!));
 
       const endDates = section.tasks
-        .map(task => task.endDate)
+        .map(task => {
+          if (task.type === 'milestone') {
+            return task.startDate;
+          }
+          return task.endDate;
+        })
         .filter(Boolean)
         .map(date => new Date(date!));
 
@@ -321,6 +326,8 @@ function DraftPlanMermaid() {
       let sectionEndDate = endDates.length > 0 ? endDates.reduce((a, b) => a > b ? a : b) : undefined;
       console.log('section.name', section.name)
       console.log('taskcount', startDates.length)
+      console.log('startDates', startDates)
+      console.log('endDates', endDates)
       
       console.log('sectionStartDate', sectionStartDate)
       console.log('sectionEndDate', sectionEndDate)
