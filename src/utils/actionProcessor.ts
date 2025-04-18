@@ -5,6 +5,7 @@ import { BufferedAction } from './types';
  * Interface for application state relevant to action processing
  */
 export interface AppState {
+  x0Date: Date | null;
   sections: Section[];
   timeline: Timeline | undefined;
 }
@@ -88,7 +89,9 @@ export const processAction = (
     case 'UPDATE_TASK': {
       const { sectionName, task } = action.payload;
       console.log(`Adding or updating task ${task.id} in section ${sectionName} ${task.startDate}`);
-      
+      if (!state.x0Date) {
+        updatedState.x0Date = task.startDate;
+      }
       // Add or update the task in the section
       updatedState.sections = updatedState.sections.map(section => {
         if (section.name === sectionName) {

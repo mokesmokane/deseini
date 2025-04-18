@@ -86,7 +86,8 @@ const nodeTypes = {
 };
 
 function DraftPlanMermaid() {
-  const { sections, timeline, updateTaskStartDate } = useDraftPlanMermaidContext();
+  const { sections, timeline, updateTaskStartDate, x0Date } = useDraftPlanMermaidContext();
+  const anchorDate = x0Date ? ensureDate(x0Date) : (timeline ? ensureDate(timeline.startDate) : new Date());
   const [visibleTasks, setVisibleTasks] = useState<string[]>([]);
   const [tasksWithDates, setTasksWithDates] = useState<string[]>([]);
   const [tasksWithDurations, setTasksWithDurations] = useState<string[]>([]);
@@ -116,27 +117,27 @@ function DraftPlanMermaid() {
       node.position.x = snappedX;
       setNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { ...n.position, x: snappedX } } : n));
       // Debounce context update for root task
-      if (timeline?.startDate) {
+      if (anchorDate) {
         // Clear existing timer
         clearTimeout(dragUpdateTimers.current[node.id]);
         // Compute new date
-        const newDate = getDateFromXPosition(snappedRawX, timeline.startDate);
+        const newDate = getDateFromXPosition(snappedRawX, anchorDate);
         // Schedule update after drag pause
         // dragUpdateTimers.current[node.id] = setTimeout(() => updateTaskStartDate(node.id, newDate), 200);
       }
     }
-  }, [nodes, setNodes, timeline, updateTaskStartDate]);
+  }, [nodes, setNodes, anchorDate, updateTaskStartDate]);
 
   // Handler when node drag stops
   const onNodeDragStop: NodeDragHandler = useCallback((_event, node) => {
-    if ((node.type === 'task' || node.type === 'milestone') && timeline?.startDate) {
+    if ((node.type === 'task' || node.type === 'milestone') && anchorDate) {
       const baseX = 10;
       const rawX = node.position.x - baseX;
       const snappedRawX = roundPositionToDay(rawX);
       const snappedX = snappedRawX + baseX;
       node.position.x = snappedX;
       const adjustedX = snappedRawX;
-      const newDate = getDateFromXPosition(adjustedX, timeline.startDate);
+      const newDate = getDateFromXPosition(adjustedX, anchorDate);
       // Capture original start and duration before updating root
       const currentNode = nodes.find(n => n.id === node.id);
       const originalStart = currentNode ? ensureDate((currentNode.data as any).startDate) : null;
@@ -169,7 +170,7 @@ function DraftPlanMermaid() {
                   ? childStart 
                   : (() => { const e = new Date(childStart); if (task.duration) e.setDate(e.getDate() + task.duration); return e; })();
                 // Immediately update visual position for child
-                const rawChildX = getXPositionFromDate(childStart, timeline.startDate);
+                const rawChildX = getXPositionFromDate(childStart, anchorDate);
                 const snappedRawChildX = roundPositionToDay(rawChildX);
                 const childX = snappedRawChildX + baseX;
                 setNodes(nds => nds.map(n => n.id === task.id ? {
@@ -216,7 +217,7 @@ function DraftPlanMermaid() {
               // Buffer parent update
               pendingUpdates.push({ id: parentId, newStartDate: parentStart });
               // Visual update for parent
-              const rawParentX = getXPositionFromDate(parentStart, timeline.startDate);
+              const rawParentX = getXPositionFromDate(parentStart, anchorDate);
               const snappedRawParentX = roundPositionToDay(rawParentX);
               const parentX = snappedRawParentX + baseX;
               setNodes(nds => nds.map(n => n.id === parentId ? {
@@ -260,7 +261,7 @@ function DraftPlanMermaid() {
         const widthPx = getWidthBetweenDates(secStart, secEnd);
       });
     }
-  }, [nodes, setNodes, sections, timeline, updateTaskStartDate]);
+  }, [nodes, setNodes, sections, anchorDate, updateTaskStartDate]);
 
   // Pixels per day for timeline (match with bar/task width logic)
   const TIMELINE_PIXELS_PER_DAY = 30;
@@ -300,15 +301,7 @@ function DraftPlanMermaid() {
 
   // Fixed origin for X=0 and compute timeline X position when start date changes
   const TIMELINE_BASE_X = 10;
-  const originDateRef = useRef<Date | null>(null);
-  useEffect(() => {
-    if (!originDateRef.current) {
-      originDateRef.current = timelineRange.startDate;
-    }
-  }, [timelineRange.startDate]);
-  const timelineX = originDateRef.current
-    ? TIMELINE_BASE_X + getXPositionFromDate(timelineRange.startDate, originDateRef.current, TIMELINE_PIXELS_PER_DAY) - 230
-    : TIMELINE_BASE_X;
+  const timelineX = TIMELINE_BASE_X + getXPositionFromDate(timelineRange.startDate, anchorDate, TIMELINE_PIXELS_PER_DAY);
 
   const nodesMemo = useMemo(() => {
     // Create the generate chart node regardless of whether there are sections or not
@@ -406,7 +399,7 @@ function DraftPlanMermaid() {
       
       // Add section bar node
       const sectionWidth = sectionStartDate && sectionEndDate ? getWidthBetweenDates(sectionStartDate, sectionEndDate) : 0;
-      const defaultStartDate = timeline?.startDate ? new Date(timeline.startDate) : new Date();
+      const defaultStartDate = anchorDate;
       const sectionXPosition = getXPositionFromDate(sectionStartDate, defaultStartDate) + 10;
       
       const sectionBarId = `section_bar_${section.name}`;
@@ -465,7 +458,7 @@ function DraftPlanMermaid() {
         
         // Calculate position for this item
         const taskXPosition = hasDate
-          ? getXPositionFromDate(taskDate, timeline?.startDate ? new Date(timeline.startDate) : new Date()) + 10
+          ? getXPositionFromDate(taskDate, anchorDate) + 10
           : 10;
         
         if (task.type === 'milestone') {
@@ -544,7 +537,8 @@ function DraftPlanMermaid() {
     tasksWithDurations,
     visibleSectionBars,
     sections,
-    timeline
+    timeline,
+    anchorDate
   ]);
 
   // Always sync ReactFlow nodes to computed nodesMemo

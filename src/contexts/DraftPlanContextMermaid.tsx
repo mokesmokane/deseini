@@ -40,6 +40,7 @@ export interface Timeline {
 interface DraftPlanMermaidContextType {
   sections: Section[];
   timeline: Timeline | undefined;
+  x0Date: Date | null;
   createPlanFromMarkdown: (markdownPlan: string) => Promise<void>;
   isLoading: boolean;
   streamProgress: number;
@@ -58,6 +59,7 @@ interface DraftPlanMermaidContextType {
 const DraftPlanMermaidContext = createContext<DraftPlanMermaidContextType | undefined>(undefined);
 
 export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [x0Date, setX0Date] = useState<Date | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [timeline, setTimeline] = useState<Timeline|undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -82,6 +84,7 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
   // Track current sections and timeline in refs to avoid closure issues
   const sectionsRef = useRef<Section[]>([]);
   const timelineRef = useRef<Timeline|undefined>(undefined);
+  const x0DateRef = useRef<Date | null>(null);
   
   // Update refs when state changes
   useEffect(() => {
@@ -91,6 +94,10 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
   useEffect(() => {
     timelineRef.current = timeline;
   }, [timeline]);
+  
+  useEffect(() => {
+    x0DateRef.current = x0Date;
+  }, [x0Date]);
   
   // Task dictionary to track all tasks for efficient dependency resolution
   const taskDictionaryRef = useRef<Record<string, Task>>({});
@@ -168,7 +175,7 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
           
           // Process the action
           const { updatedState, updatedTaskDictionary, actionsToQueue } = processAction(
-            { sections: sectionsRef.current, timeline: timelineRef.current },
+            { sections: sectionsRef.current, timeline: timelineRef.current, x0Date: x0DateRef.current },
             actionToProcess,
             taskDictionaryRef.current
           );
@@ -297,7 +304,7 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     // Process each action in the batch using our pure function
     actionsToProcess.forEach(action => {
       const { updatedState, updatedTaskDictionary, actionsToQueue } = processAction(
-        { sections: sectionsRef.current, timeline: timelineRef.current },
+        { sections: sectionsRef.current, timeline: timelineRef.current, x0Date: x0DateRef.current },
         action,
         taskDictionaryRef.current
       );
@@ -432,6 +439,7 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
   const contextValue: DraftPlanMermaidContextType = {
     sections,
     timeline,
+    x0Date,
     createPlanFromMarkdown,
     isLoading,
     streamProgress,
