@@ -11,6 +11,7 @@ interface GenerateNodeData {
 const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
   const { 
     createPlanFromMarkdown: createMermaidPlan, 
+    sections,
     isLoading: isMermaidLoading,
     streamSummary,
     fullSyntax,
@@ -31,6 +32,8 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
   const [detailedSummary, setDetailedSummary] = useState('');
   const prevSummaryRef = useRef('');
   const detailedSummaryRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingFinalPlan, setIsGeneratingFinalPlan] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
   const [debugMode, setDebugMode] = useState<boolean>(false);
   
   // Reset detailed summary when a new summary is received
@@ -82,6 +85,15 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
       }
     } catch (error) {
       console.error('Error generating chart:', error);
+    }
+  };
+
+  const handleGenerateFinalPlan = async () => {
+    try {
+      setIsGeneratingFinalPlan(true);
+      setGenerationProgress('Generating final project plan...');
+    } catch (error) {
+      console.error('Error generating final plan:', error);
     }
   };
 
@@ -325,6 +337,27 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
           <Spinner />
         </div>
       )}
+      {sections.length > 0 && (
+      <div className="flex gap-2">
+              {isGeneratingFinalPlan ? (
+                <div className="flex items-center gap-2 text-blue-500 px-3 py-2 rounded-md text-sm font-medium flex-1">
+                  <div className="spinner w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                  <span>{generationProgress}</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGenerateFinalPlan}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium flex-1 flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                  Generate Final Plan
+                </button>
+              )}
+            </div>
+          )}
     </div>
   );
 };

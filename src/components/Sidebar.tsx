@@ -12,10 +12,8 @@ import {
   CodeBracketIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { useProjectPlan } from '../contexts/ProjectPlanContext';
 import { Section, useDraftPlanMermaidContext } from '../contexts/DraftPlanContextMermaid';
-import toast from 'react-hot-toast';
-import { supabase } from '../lib/supabase';
+import { useFinalPlan } from '../hooks/useFinalPlan';
 
 interface SidebarSection {
   id: string;
@@ -46,8 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   const [jsonContent, setJsonContent] = useState('');
   const [projectJsonContent, setProjectJsonContent] = useState('');
   const [draftPlanJsonContent, setDraftPlanJsonContent] = useState('');
-  const [isGeneratingFinalPlan, setIsGeneratingFinalPlan] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState('');
+  const { generateFinalPlan, isGeneratingFinalPlan, generationProgress } = useFinalPlan();
   
   const navigate = useNavigate();
 
@@ -157,62 +154,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
     }).join('\n');
   };
 
-
-  const handleGenerateFinalPlan = async () => {
-    try {
-      setIsGeneratingFinalPlan(true);
-      setGenerationProgress('Generating final project plan...');
-
-      const projectContext = project;
-      if (!projectContext) throw new Error('No project context available');
-
-      const draftPlanData = JSON.parse(draftPlanJsonContent);
-      const draftPlanMarkdown = createMarkdownFromSections(draftPlanData.sections);
-
-      setGenerationProgress('Calling API to generate final plan...');
-      const response = await fetch('/api/generate-final-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectContext, messages: [], draftPlanMarkdown })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate final plan');
-      }
-
-      setGenerationProgress('Processing response...');
-      const finalPlan = await response.json();
-      console.log(finalPlan);
-      setCurrentChart(finalPlan);
-      setHasUnsavedChanges(true);
-
-      setGenerationProgress('Saving chart to database...');
-      const saved = await saveChart(finalPlan);
-      if (!saved) {
-        toast.error('Failed to save chart');
-      } else if (projectId) {
-        setGenerationProgress('Linking chart to project...');
-        const { error: linkError } = await supabase
-          .from('project_charts')
-          .insert({ project_id: projectId, chart_id: finalPlan.id });
-        if (linkError) {
-          toast.error('Failed to link chart to project');
-        } else {
-          await fetchProjectCharts(projectId);
-          toast.success('Final project plan generated, saved, and linked!');
-        }
-      }
-
-      setActiveSection(null);
-    } catch (error) {
-      console.error('Error generating final plan:', error);
-      toast.error(error instanceof Error ? error.message : 'Unknown error occurred');
-    } finally {
-      setIsGeneratingFinalPlan(false);
-      setGenerationProgress('');
-    }
-  };
 
   const sections: SidebarSection[] = [
     {
@@ -383,7 +324,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
                 </div>
               ) : (
                 <button
-                  onClick={handleGenerateFinalPlan}
+                  onClick={generateFinalPlan}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium flex-1 flex items-center justify-center gap-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
