@@ -3,7 +3,7 @@ import { memo } from 'react';
 interface MilestoneData {
   id: string;
   label: string;
-  date: Date;
+  startDate: Date;
   sectionName: string;
   isVisible: boolean;
   hasDate: boolean;
@@ -22,7 +22,7 @@ const MilestoneNode = ({ data }: { data: MilestoneData }) => {
     });
   };
   
-  const dateStr = formatDate(data.date);
+  const dateStr = formatDate(data.startDate);
   
   return (
     <div style={{ position: 'relative', width: '40px', height: '40px' }}>

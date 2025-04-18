@@ -216,8 +216,7 @@ export const calculateDatesFromDependencies = (
   if (task.type === 'milestone') {
     return {
       ...task,
-      startDate,
-      date: startDate
+      startDate
     };
   }
   

@@ -31,7 +31,7 @@ export const getTaskEndDate = (
     }
     // For milestones, use the date or startDate
     else if (dependencyTask.type === 'milestone') {
-      return dependencyTask.date || dependencyTask.startDate;
+      return dependencyTask.startDate;
     }
   }
   return undefined;
@@ -51,7 +51,7 @@ export const getTaskEndDate = (
 export const createTask = (
   id: string,
   label: string,
-  startDate?: Date,
+  startDate: Date,
   duration?: number,
   endDate?: Date,
   dependencies?: string[],
@@ -75,9 +75,9 @@ export const createTask = (
     task.endDate = endDate;
   }
 
-  // For milestones, set the date field
+  // For milestones, set the startDate field
   if (type === 'milestone' && startDate) {
-    task.date = startDate;
+    task.startDate = startDate;
   }
 
   return task;
@@ -102,8 +102,8 @@ export const checkTimelineBoundaries = (
   newTimeline: Timeline | undefined;
 } => {
   // No need to check if no dates are provided
-  if (!item.startDate && !item.endDate && !item.date) {
-    return {
+  if (!item.startDate && !item.endDate) {
+    return {    
       hasUpdate: false,
       newTimeline: currentTimeline
     };
@@ -125,7 +125,7 @@ export const checkTimelineBoundaries = (
   
   // Check if endDate affects the timeline boundaries
   // For tasks, use endDate, for milestones, use date
-  const effectiveEndDate = item.endDate || item.date;
+  const effectiveEndDate = item.endDate;
   
   if (effectiveEndDate) {
     if (!newTimeline.endDate || effectiveEndDate > newTimeline.endDate) {

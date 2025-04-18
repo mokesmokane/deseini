@@ -235,6 +235,9 @@ export const processMultipleMermaidLines = (lines: string[]): {
     // Update the current section if needed
     if (result.type === 'section') {
       currentSection = result.payload.name;
+      if (!currentSection) {
+        throw new Error('Section name cannot be null or undefined');
+      }
       sections.set(currentSection, true);
     }
     

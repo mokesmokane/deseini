@@ -201,7 +201,6 @@ describe('streamProcessor', () => {
       
       // Check that date was calculated based on dependency
       expect(milestone.startDate).toEqual(new Date('2024-05-01')); // Day after t3 ends
-      expect(milestone.date).toEqual(new Date('2024-05-01')); // Same as start date for milestones
     });
 
     test('should process the end of a mermaid block and trigger dependency resolution', () => {
@@ -457,8 +456,7 @@ gantt
         type: 'milestone',
         label: 'Milestone 1',
         dependencies: ['t3'],
-        startDate: undefined, // Add undefined to satisfy TypeScript
-        date: undefined // Add undefined to satisfy TypeScript
+        startDate: new Date('2024-04-25')
       };
       
       // Execute
@@ -466,7 +464,6 @@ gantt
       
       // Verify
       expect(result.startDate).toEqual(new Date('2024-05-01')); // Day after t3 ends
-      expect(result.date).toEqual(new Date('2024-05-01')); // Same as start date for milestones
     });
     
     test('should not modify tasks that already have start dates', () => {

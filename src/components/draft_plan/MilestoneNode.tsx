@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 
 interface MilestoneData {
   label: string;
-  date: Date;
+  startDate: Date;
   isVisible: boolean;
   hasDate: boolean;
 }
@@ -52,7 +52,7 @@ const MilestoneNode = ({ data }: { data: MilestoneData }) => {
           overflow: 'hidden',
           textOverflow: 'ellipsis'
         }}
-        title={`${data.label}${data.date ? ` (${formatDate(data.date)})` : ''}`}
+        title={`${data.label}${data.startDate ? ` (${formatDate(data.startDate)})` : ''}`}
       >
         {data.label}
       </div>
