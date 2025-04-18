@@ -87,7 +87,11 @@ const nodeTypes = {
 
 function DraftPlanMermaid() {
   const { sections, timeline, updateTaskStartDate, x0Date } = useDraftPlanMermaidContext();
-  const anchorDate = x0Date ? ensureDate(x0Date) : (timeline ? ensureDate(timeline.startDate) : new Date());
+  const anchorDate = useMemo(() => {
+    if (x0Date) return ensureDate(x0Date);
+    if (timeline) return ensureDate(timeline.startDate);
+    return new Date();
+  }, [x0Date, timeline]);
   const [visibleTasks, setVisibleTasks] = useState<string[]>([]);
   const [tasksWithDates, setTasksWithDates] = useState<string[]>([]);
   const [tasksWithDurations, setTasksWithDurations] = useState<string[]>([]);
@@ -101,12 +105,18 @@ function DraftPlanMermaid() {
   const [changedNodeIds, setChangedNodeIds] = useState<string[]>([]);
   
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [storedGenerateNode, setGenerateNode] = useState<Node | null>(null);
 
   // Ref for debouncing drag updates
   const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Handler for node drag operations
   const onNodeDrag: NodeDragHandler = useCallback((_event, node) => {
+    console.log('onNodeDrag', node);
+    if(node.type === 'generate') {
+      setGenerateNode(node);
+      return;
+    }
     if (node.type === 'task' || node.type === 'milestone') {
       const current = nodes.find(n => n.id === node.id);
       if (current) node.position.y = current.position.y;
@@ -305,7 +315,7 @@ function DraftPlanMermaid() {
 
   const nodesMemo = useMemo(() => {
     // Create the generate chart node regardless of whether there are sections or not
-    const generateNode: Node = {
+    const generateNode: Node = storedGenerateNode || {
       id: 'generate_chart',
       type: 'generate',
       data: { 
@@ -321,6 +331,7 @@ function DraftPlanMermaid() {
     
     // If there are no sections, just return the generate node
     if (sections.length === 0) {
+      // console.log('No sections found');
       return [generateNode];
     }
 
@@ -524,11 +535,6 @@ function DraftPlanMermaid() {
       yPosition += 5; // Extra space between sections
     });
 
-    // Position the generate chart node at the bottom
-    const generateNodeIndex = allNodes.findIndex(node => node.id === 'generate_chart');
-    if (generateNodeIndex !== -1) {
-      allNodes[generateNodeIndex].position.y = yPosition;
-    }
 
     return allNodes;
   }, [
@@ -632,18 +638,17 @@ function DraftPlanMermaid() {
             sectionEndDate = new Date(sectionStartDate);
             sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
           }
-        } 
-        // else if (sectionStartDate > sectionEndDate) {
-        //   // Invalid date range, use timeline if available or default
-        //   if (timeline) {
-        //     sectionStartDate = new Date(timeline.startDate);
-        //     sectionEndDate = new Date(timeline.endDate);
-        //   } else {
-        //     sectionStartDate = new Date();
-        //     sectionEndDate = new Date(sectionStartDate);
-        //     sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
-        //   }
-        // }
+        } else if (sectionStartDate > sectionEndDate) {
+          // Invalid date range, use timeline if available or default
+          if (timeline) {
+            sectionStartDate = new Date(timeline.startDate);
+            sectionEndDate = new Date(timeline.endDate);
+          } else {
+            sectionStartDate = new Date();
+            sectionEndDate = new Date(sectionStartDate);
+            sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
+          }
+        }
         
         newSectionStartDates[section.name] = sectionStartDate;
         newSectionEndDates[section.name] = sectionEndDate;
@@ -925,7 +930,7 @@ function DraftPlanMermaid() {
     }
   }, [reactFlowInstance, timelineVisible]);
 
-
+  console.log('nodes', nodes);
   return (
     <div style={{ width: '100%', height: '100%', minHeight: '500px', position: 'relative' }}>
       <ReactFlow
