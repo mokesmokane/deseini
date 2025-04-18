@@ -26,11 +26,10 @@ export interface Task {
   id: string;
   type?: 'task' | 'milestone';
   label: string;
-  startDate: Date | undefined;
+  startDate: Date;
   duration?: number;
   endDate?: Date;
   dependencies?: string[];
-  date?: Date; // For milestone type
 }
 
 export interface Timeline {
@@ -214,9 +213,7 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     // Build full updated task object
     const updatedTask: Task = {
       ...originalTask,
-      ...(originalTask.type === 'milestone'
-        ? { date: newStartDate }
-        : { startDate: newStartDate })
+      startDate: newStartDate
     };
     // Dispatch update with sectionName and full task
     addActionToBuffer('UPDATE_TASK', { sectionName, task: updatedTask });

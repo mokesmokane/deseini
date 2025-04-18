@@ -174,7 +174,6 @@ describe('dependency resolution', () => {
 
     // Check if milestone1 startDate and date are set to task1's endDate
     expect(result[0].tasks[1].startDate).toEqual(new Date('2023-01-11'));
-    expect(result[0].tasks[1].date).toEqual(new Date('2023-01-11'));
 
     // Check if task2 startDate is set to milestone1's date
     expect(result[0].tasks[2].startDate).toEqual(new Date('2023-01-11'));

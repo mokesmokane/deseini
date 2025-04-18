@@ -667,7 +667,6 @@ describe('actionProcessor', () => {
         // Milestone should be added with resolved date
         expect(updatedState.sections[0].tasks.length).toBe(1);
         expect(updatedState.sections[0].tasks[0].startDate).toEqual(new Date('2025-01-11')); // Day after dependency ends
-        expect(updatedState.sections[0].tasks[0].date).toEqual(new Date('2025-01-11')); // Date should equal startDate
         expect(updatedTaskDictionary['milestone1']).toBeDefined();
       });
     });

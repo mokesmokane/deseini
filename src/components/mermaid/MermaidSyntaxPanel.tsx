@@ -287,7 +287,7 @@ export const MermaidSyntaxPanel: React.FC<MermaidSyntaxPanelProps> = ({
                                   </div>
                                   <div className="mt-1 text-gray-600">
                                     {task.type === 'milestone' ? (
-                                      <div>Date: {formatDate(task.date || task.startDate)}</div>
+                                      <div>Date: {formatDate(task.startDate)}</div>
                                     ) : (
                                       <>
                                         <div>Start: {formatDate(task.startDate)}</div>

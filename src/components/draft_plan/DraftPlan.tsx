@@ -220,8 +220,7 @@ function DraftPlan() {
         // Add selected state to JSON data
         selected: task.id === selectedNodeId,
         // Convert dates to strings for better readability in JSON
-        startDate: task.startDate && task.startDate instanceof Date ? task.startDate.toISOString() : undefined,
-        date: task.date && task.date instanceof Date ? task.date.toISOString() : undefined
+        startDate: task.startDate && task.startDate instanceof Date ? task.startDate.toISOString() : undefined
       }))
     };
   }, [tasks, timeline, selectedNodeId]);

@@ -52,9 +52,6 @@ const getWidthBetweenDates = (startDate: Date | string, endDate: Date | string, 
 
 // Helper function to get task date for positioning
 const getTaskDate = (task: Task): Date => {
-  if (task.type === 'milestone' && task.date) {
-    return ensureDate(task.date);
-  }
   return task.startDate ? ensureDate(task.startDate) : new Date(); 
 };
 
@@ -126,7 +123,7 @@ function DraftPlanMermaid() {
         // Compute new date
         const newDate = getDateFromXPosition(snappedRawX, timeline.startDate);
         // Schedule update after drag pause
-        dragUpdateTimers.current[node.id] = setTimeout(() => updateTaskStartDate(node.id, newDate), 200);
+        // dragUpdateTimers.current[node.id] = setTimeout(() => updateTaskStartDate(node.id, newDate), 200);
       }
     }
   }, [nodes, setNodes, timeline, updateTaskStartDate]);
@@ -154,30 +151,24 @@ function DraftPlanMermaid() {
         const movedEnd = node.type === 'milestone'
           ? newDate
           : (() => { const e = new Date(newDate); if (originalDuration) e.setDate(e.getDate() + originalDuration); return e; })();
+        console.log(`Moving task ${node.id} from ${originalStart} to ${movedEnd}`);
         if (newDate.getTime() > originalStart.getTime()) {
-          console.log(`Cascade rightward from ${node.id}: start=${originalStart.toISOString()}, newStart=${newDate.toISOString()}, end=${movedEnd.toISOString()}, duration=${originalDuration}`);
           const processDownstream = (parentId: string, parentEnd: Date) => {
             for (const section of sections) {
               // Iterate dependent tasks and compare against latest start date
               for (const task of section.tasks.filter(task => task.dependencies?.includes(parentId))) {
                 const nodeInfo = nodes.find(n => n.id === task.id);
                 const currentChildStart = nodeInfo
-                  ? (task.type === 'milestone'
-                      ? ensureDate((nodeInfo.data as any).date)
-                      : ensureDate((nodeInfo.data as any).startDate))
-                  : (task.type === 'milestone'
-                      ? ensureDate(task.date!)
-                      : ensureDate(task.startDate!));
+                  ? ensureDate((nodeInfo.data as any).startDate)
+                  : ensureDate(task.startDate!);
                 // Skip if child already starts at or after parent end
                 if (currentChildStart >= parentEnd) continue;
                 const childStart = new Date(parentEnd);
-                console.log(`Updating downstream ${task.id} based on parent ${parentId}: new start ${childStart.toISOString()}, moved end ${movedEnd.toISOString()}, task.startdate ${task.startDate?.toISOString()}`);
                 // Buffer child update
                 pendingUpdates.push({ id: task.id, newStartDate: childStart });
                 const childEnd = task.type === 'milestone' 
                   ? childStart 
                   : (() => { const e = new Date(childStart); if (task.duration) e.setDate(e.getDate() + task.duration); return e; })();
-                console.log(`Downstream ${task.id}: duration=${task.duration}, end=${childEnd.toISOString()}`);
                 // Immediately update visual position for child
                 const rawChildX = getXPositionFromDate(childStart, timeline.startDate);
                 const snappedRawChildX = roundPositionToDay(rawChildX);
@@ -187,9 +178,7 @@ function DraftPlanMermaid() {
                   position: { ...n.position, x: childX },
                   data: {
                     ...n.data,
-                    ...(task.type === 'milestone'
-                      ? { date: childStart }
-                      : { startDate: childStart })
+                    startDate: childStart
                   }
                 } : n));
                 processDownstream(task.id, childEnd);
@@ -198,7 +187,6 @@ function DraftPlanMermaid() {
           };
           processDownstream(node.id, movedEnd);
         } else if (newDate.getTime() < originalStart.getTime()) {
-          console.log(`Cascade leftward from ${node.id}: start ${originalStart.toISOString()} -> ${newDate.toISOString()}`);
           // Traverse actual parent tasks as defined in dependencies
           const processUpstream = (childId: string, childStart: Date) => {
             // Get dependencies (parent IDs) for this task
@@ -212,8 +200,8 @@ function DraftPlanMermaid() {
               // Determine current parent end to skip non-overlapping moves
               const nodeInfo = nodes.find(n => n.id === parentId);
               const currentParentStart = nodeInfo
-                ? ensureDate((nodeInfo.data as any).startDate ?? (nodeInfo.data as any).date)
-                : ensureDate(parentTask.startDate ?? parentTask.date!);
+                ? ensureDate((nodeInfo.data as any).startDate)
+                : ensureDate(parentTask.startDate);
               const currentParentDuration = nodeInfo
                 ? (nodeInfo.data as any).duration
                 : parentTask.duration ?? 0;
@@ -226,7 +214,6 @@ function DraftPlanMermaid() {
               const parentStart = parentTask.duration
                 ? (() => { const s = new Date(parentEnd); s.setDate(s.getDate() - parentTask.duration); return s; })()
                 : parentEnd;
-              console.log(`Updating upstream ${parentId} based on child ${childId}: new end ${parentEnd.toISOString()}, new start ${parentStart.toISOString()}`);
               // Buffer parent update
               pendingUpdates.push({ id: parentId, newStartDate: parentStart });
               // Visual update for parent
@@ -238,9 +225,7 @@ function DraftPlanMermaid() {
                 position: { ...n.position, x: parentX },
                 data: {
                   ...n.data,
-                  ...(parentTask.type === 'milestone'
-                    ? { date: parentStart }
-                    : { startDate: parentStart })
+                  startDate: parentStart
                 }
               } : n));
               // Recurse up the chain
@@ -258,10 +243,9 @@ function DraftPlanMermaid() {
       // Apply all buffered context updates
       pendingUpdates.forEach(({ id, newStartDate }) => updateTaskStartDate(id, newStartDate));
       // Debug: log section spans after drag stop
-      console.log('DragStop: section spans update');
       sections.forEach(section => {
         const spans = section.tasks.map(task => {
-          const sd = ensureDate(task.startDate ?? task.date);
+          const sd = ensureDate(task.startDate);
           const ed = task.type === 'milestone'
             ? sd
             : task.endDate
@@ -275,7 +259,6 @@ function DraftPlanMermaid() {
         const secStart = new Date(Math.min(...times));
         const secEnd = new Date(Math.max(...times));
         const widthPx = getWidthBetweenDates(secStart, secEnd);
-        console.log(`DragStop section_bar_${section.name}: start=${secStart.toISOString()}, end=${secEnd.toISOString()}, width=${widthPx}px`);
       });
     }
   }, [nodes, setNodes, sections, timeline, updateTaskStartDate]);
@@ -323,31 +306,24 @@ function DraftPlanMermaid() {
     let yPosition = 70; // Starting Y position after the timeline
 
     // Process each section and its tasks
-    sections.forEach(section => {
-      // Calculate section width based on all its tasks
-      let sectionStartDate: Date | undefined;
-      let sectionEndDate: Date | undefined;
+    sections.forEach(section => {// Find earliest start and latest end dates in this section
+      const startDates = section.tasks
+        .map(task => task.startDate)
+        .filter(Boolean)
+        .map(date => new Date(date!));
+
+      const endDates = section.tasks
+        .map(task => task.endDate)
+        .filter(Boolean)
+        .map(date => new Date(date!));
+
+      let sectionStartDate = startDates.length > 0 ? startDates.reduce((a, b) => a < b ? a : b) : undefined;
+      let sectionEndDate = endDates.length > 0 ? endDates.reduce((a, b) => a > b ? a : b) : undefined;
+      console.log('section.name', section.name)
+      console.log('taskcount', startDates.length)
       
-      // Find earliest start and latest end dates in this section
-      section.tasks.forEach(task => {
-        const taskDate = getTaskDate(task);
-          
-        const taskEndDate = task.type === 'milestone' 
-          ? taskDate 
-          : task.endDate 
-            ? ensureDate(task.endDate) 
-            : (task.duration && task.startDate)
-              ? new Date(ensureDate(task.startDate).getTime() + task.duration * 24 * 60 * 60 * 1000)
-              : taskDate;
-            
-        if (taskDate && (!sectionStartDate || taskDate < sectionStartDate)) {
-          sectionStartDate = new Date(taskDate);
-        }
-        
-        if (taskEndDate && (!sectionEndDate || taskEndDate > sectionEndDate)) {
-          sectionEndDate = new Date(taskEndDate);
-        }
-      });
+      console.log('sectionStartDate', sectionStartDate)
+      console.log('sectionEndDate', sectionEndDate)
       
       // Default to timeline dates if section has no items
       if (!sectionStartDate || !sectionEndDate) {
@@ -362,12 +338,13 @@ function DraftPlanMermaid() {
             sectionEndDate = new Date(sectionStartDate);
             sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
           }
-        } else {
-          // No timeline available, use default dates
-          sectionStartDate = new Date();
-          sectionEndDate = new Date(sectionStartDate);
-          sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
         }
+        //  else {
+        //   // No timeline available, use default dates
+        //   sectionStartDate = new Date();
+        //   sectionEndDate = new Date(sectionStartDate);
+        //   sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
+        // }
       } else if (sectionStartDate > sectionEndDate) {
         // Invalid date range, use timeline if available or default
         if (timeline) {
@@ -381,13 +358,11 @@ function DraftPlanMermaid() {
       }
       
       // Add section bar node
-      const sectionWidth = getWidthBetweenDates(sectionStartDate, sectionEndDate);
+      const sectionWidth = sectionStartDate && sectionEndDate ? getWidthBetweenDates(sectionStartDate, sectionEndDate) : 0;
       const defaultStartDate = timeline?.startDate ? new Date(timeline.startDate) : new Date();
       const sectionXPosition = getXPositionFromDate(sectionStartDate, defaultStartDate) + 10;
       
       const sectionBarId = `section_bar_${section.name}`;
-      
-      console.log(`SectionBar ${sectionBarId} resized: start=${sectionStartDate.toISOString()}, end=${sectionEndDate.toISOString()}, width=${sectionWidth}px`);
       
       const sectionBarNode: Node = {
         id: sectionBarId,
@@ -429,13 +404,13 @@ function DraftPlanMermaid() {
       
       // Process all tasks in this section chronologically
       // Sort tasks by date for proper ordering
-      const sortedTasks = [...section.tasks].sort((a, b) => {
-        const dateA = getTaskDate(a);
-        const dateB = getTaskDate(b);
-        return dateA.getTime() - dateB.getTime();
-      });
+      // const sortedTasks = [...section.tasks].sort((a, b) => {
+      //   const dateA = getTaskDate(a);
+      //   const dateB = getTaskDate(b);
+      //   return dateA.getTime() - dateB.getTime();
+      // });
       
-      sortedTasks.forEach(task => {
+      section.tasks.forEach(task => {
         const isVisible = visibleTasks.includes(task.id);
         const hasDate = tasksWithDates.includes(task.id);
         const hasDuration = tasksWithDurations.includes(task.id) && task.type !== 'milestone';
@@ -454,7 +429,7 @@ function DraftPlanMermaid() {
             data: {
               id: task.id,
               label: task.label,
-              date: task.date || taskDate,
+              startDate: taskDate,
               isVisible,
               hasDate,
               sectionName: section.name,
@@ -548,13 +523,11 @@ function DraftPlanMermaid() {
     const haveTasksChanged = (oldTask?: Task, newTask?: Task) => {
       if (!oldTask || !newTask) return true;
       
+      // Compare only structural properties, ignore date changes to prevent drag-induced animations
       return (
         oldTask.label !== newTask.label ||
         oldTask.type !== newTask.type ||
         oldTask.duration !== newTask.duration ||
-        !datesEqual(oldTask.startDate, newTask.startDate) ||
-        !datesEqual(oldTask.endDate, newTask.endDate) ||
-        !datesEqual(oldTask.date, newTask.date) ||
         JSON.stringify(oldTask.dependencies) !== JSON.stringify(newTask.dependencies)
       );
     };
@@ -582,28 +555,19 @@ function DraftPlanMermaid() {
       
       sections.forEach(section => {
         // Find earliest start and latest end dates in this section
-        let sectionStartDate: Date | undefined;
-        let sectionEndDate: Date | undefined;
-        
-        section.tasks.forEach(task => {
-          const taskDate = getTaskDate(task);
-          
-          const taskEndDate = task.type === 'milestone' 
-            ? taskDate 
-            : task.endDate 
-              ? ensureDate(task.endDate) 
-              : (task.duration && task.startDate)
-                ? new Date(ensureDate(task.startDate).getTime() + task.duration * 24 * 60 * 60 * 1000)
-                : taskDate;
-                
-          if (taskDate && (!sectionStartDate || taskDate < sectionStartDate)) {
-            sectionStartDate = new Date(taskDate);
-          }
-          
-          if (taskEndDate && (!sectionEndDate || taskEndDate > sectionEndDate)) {
-            sectionEndDate = new Date(taskEndDate);
-          }
-        });
+        const startDates = section.tasks
+          .map(task => task.startDate)
+          .filter(Boolean)
+          .map(date => new Date(date!));
+
+        const endDates = section.tasks
+          .map(task => task.endDate)
+          .filter(Boolean)
+          .map(date => new Date(date!));
+
+        let sectionStartDate = startDates.length > 0 ? startDates.reduce((a, b) => a < b ? a : b) : undefined;
+        let sectionEndDate = endDates.length > 0 ? endDates.reduce((a, b) => a > b ? a : b) : undefined;
+
         
         // Default to timeline dates if section has no items
         if (!sectionStartDate || !sectionEndDate) {
@@ -624,17 +588,18 @@ function DraftPlanMermaid() {
             sectionEndDate = new Date(sectionStartDate);
             sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
           }
-        } else if (sectionStartDate > sectionEndDate) {
-          // Invalid date range, use timeline if available or default
-          if (timeline) {
-            sectionStartDate = new Date(timeline.startDate);
-            sectionEndDate = new Date(timeline.endDate);
-          } else {
-            sectionStartDate = new Date();
-            sectionEndDate = new Date(sectionStartDate);
-            sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
-          }
-        }
+        } 
+        // else if (sectionStartDate > sectionEndDate) {
+        //   // Invalid date range, use timeline if available or default
+        //   if (timeline) {
+        //     sectionStartDate = new Date(timeline.startDate);
+        //     sectionEndDate = new Date(timeline.endDate);
+        //   } else {
+        //     sectionStartDate = new Date();
+        //     sectionEndDate = new Date(sectionStartDate);
+        //     sectionEndDate.setDate(sectionEndDate.getDate() + 30); // Default 30-day width
+        //   }
+        // }
         
         newSectionStartDates[section.name] = sectionStartDate;
         newSectionEndDates[section.name] = sectionEndDate;
@@ -685,31 +650,20 @@ function DraftPlanMermaid() {
     
     // Calculate and track new section start/end dates
     sections.forEach(section => {
-      newSectionNames.add(section.name);
-      
-      // Find earliest start and latest end dates in this section
-      let sectionStartDate: Date | undefined;
-      let sectionEndDate: Date | undefined;
-      
+      newSectionNames.add(section.name);// Find earliest start and latest end dates in this section
+      const startDates = section.tasks
+        .map(task => task.startDate)
+        .filter(Boolean)
+        .map(date => new Date(date!));
+
+      const endDates = section.tasks
+        .map(task => task.endDate)
+        .filter(Boolean)
+        .map(date => new Date(date!));
+
+      let sectionStartDate = startDates.length > 0 ? startDates.reduce((a, b) => a < b ? a : b) : undefined;
+      let sectionEndDate = endDates.length > 0 ? endDates.reduce((a, b) => a > b ? a : b) : undefined;
       section.tasks.forEach(task => {
-        const taskDate = getTaskDate(task);
-        
-        const taskEndDate = task.type === 'milestone' 
-          ? taskDate 
-          : task.endDate 
-            ? ensureDate(task.endDate) 
-            : (task.duration && task.startDate)
-              ? new Date(ensureDate(task.startDate).getTime() + task.duration * 24 * 60 * 60 * 1000)
-              : taskDate;
-              
-        if (taskDate && (!sectionStartDate || taskDate < sectionStartDate)) {
-          sectionStartDate = new Date(taskDate);
-        }
-        
-        if (taskEndDate && (!sectionEndDate || taskEndDate > sectionEndDate)) {
-          sectionEndDate = new Date(taskEndDate);
-        }
-        
         // Also collect tasks for task change detection
         newTasksById[task.id] = task;
         newTaskIds.add(task.id);
@@ -771,16 +725,8 @@ function DraftPlanMermaid() {
       changedIds.push('timeline');
     }
     
-    console.log(`useEffect[sections] detected task changes: [${changedIds.join(', ')}], section changes: [${changedSectionBarIds.join(', ')}]`);
-    // Debug: log computed section spans after context update
-    newSectionNames.forEach(sectionName => {
-      const newStart = newSectionStartDates[sectionName];
-      const newEnd = newSectionEndDates[sectionName];
-      console.log(`useEffect span ${sectionName}: start=${newStart.toISOString()}, end=${newEnd.toISOString()}, width=${getWidthBetweenDates(newStart, newEnd)}px`);
-    });
-    
-    // Update state with changed node IDs - only if there are actual changes
-    if (changedIds.length > 0 || changedSectionBarIds.length > 0) {
+    // Update state only when tasks were added or removed, skip date-only changes
+    if (changedIds.length > 0) {
       setChangedNodeIds([...changedIds, ...changedSectionBarIds]);
     } else {
       setChangedNodeIds([]);
@@ -930,23 +876,6 @@ function DraftPlanMermaid() {
     }
   }, [reactFlowInstance, timelineVisible]);
 
-  useEffect(() => {
-    if (sections && sections.length > 0) {
-      console.log("Sections available:", sections.length);
-      const milestoneCount = sections.reduce((count, section) => 
-        count + section.tasks.filter(task => task.type === 'milestone').length, 0);
-      console.log("Total milestones:", milestoneCount);
-      
-      // Log milestone info for debugging
-      sections.forEach(section => {
-        const milestones = section.tasks.filter(task => task.type === 'milestone');
-        if (milestones.length > 0) {
-          console.log(`Section ${section.name} has ${milestones.length} milestones:`, 
-            milestones.map(m => `${m.id}: ${m.label} (${m.date || m.startDate})`));
-        }
-      });
-    }
-  }, [sections]);
 
   return (
     <div style={{ width: '100%', height: '100%', minHeight: '500px', position: 'relative' }}>

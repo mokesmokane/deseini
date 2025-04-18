@@ -59,7 +59,7 @@ export const MermaidGanttChart: React.FC<MermaidGanttChartProps> = ({
                   
                   // For milestones, we just need a position marker
                   if (task.type === 'milestone') {
-                    const milestoneDate = task.date || task.startDate;
+                    const milestoneDate = task.startDate;  
                     if (!milestoneDate) return null;
                     
                     const milestoneOffset = Math.floor(

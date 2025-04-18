@@ -11,9 +11,9 @@ export function findTaskEndDateById(taskId: string, allSections: Section[]): Dat
     // Search for the task (regular task or milestone) by ID
     const task = section.tasks.find(t => t.id === taskId);
     if (task) {
-      if (task.type === 'milestone' && task.date) {
-        // For milestones, use the date property
-        return new Date(task.date);
+      if (task.type === 'milestone' && task.startDate) {
+        // For milestones, use the startDate property
+        return new Date(task.startDate);
       } else if (task.endDate) {
         // For tasks with explicit end date
         return new Date(task.endDate);
@@ -71,9 +71,9 @@ export function resolveDependencies(sections: Section[]): Section[] {
                 startDate: dependencyEndDate
               };
               
-              // For milestones, also update the date property
+              // For milestones, also update the startDate property
               if (task.type === 'milestone') {
-                updatedTask.date = dependencyEndDate;
+                updatedTask.startDate = dependencyEndDate;
               }
               
               // Recalculate end date if duration is available and it's not a milestone

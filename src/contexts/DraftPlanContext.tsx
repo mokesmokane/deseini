@@ -86,8 +86,7 @@ export const DraftPlanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             type: task.type || 'task',
             label: task.label,
             startDate: task.startDate ? new Date(task.startDate) : new Date(),
-            duration: task.duration,
-            ...(task.date ? { date: new Date(task.date) } : {})
+            duration: task.duration
           };
           
           // Add the main task to our array
@@ -102,8 +101,7 @@ export const DraftPlanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 type: subtask.type || 'task',
                 label: subtask.label,
                 startDate: subtask.startDate ? new Date(subtask.startDate) : new Date(),
-                duration: subtask.duration,
-                ...(subtask.date ? { date: new Date(subtask.date) } : {})
+                duration: subtask.duration
               };
               flattenedTasks.push(processedSubtask);
             });

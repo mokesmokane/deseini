@@ -70,9 +70,6 @@ export const processAction = (
   let updatedState = { ...state };
   const actionsToQueue: BufferedAction[] = [];
 
-  console.log('[ProcessAction] Action:', action);
-  console.log('[ProcessAction] State:', state);
-  console.log('[ProcessAction] Task Dictionary:', taskDictionary);
   
   switch (action.type) {
     case 'ADD_SECTION': {
@@ -90,6 +87,7 @@ export const processAction = (
     case 'ADD_TASK':
     case 'UPDATE_TASK': {
       const { sectionName, task } = action.payload;
+      console.log(`Adding or updating task ${task.id} in section ${sectionName} ${task.startDate}`);
       
       // Add or update the task in the section
       updatedState.sections = updatedState.sections.map(section => {
@@ -101,9 +99,11 @@ export const processAction = (
             // Update existing task
             const updatedTasks = [...section.tasks];
             updatedTasks[existingIndex] = task;
+            console.log(`Updating existing task ${task.id} in section ${sectionName}`);
             return { ...section, tasks: updatedTasks };
           } else {
             // Add new task
+            console.log(`Adding new task ${task.id} to section ${sectionName}`);
             return {
               ...section,
               tasks: [...section.tasks, task]
@@ -121,7 +121,7 @@ export const processAction = (
     case 'ADD_MILESTONE':
     case 'UPDATE_MILESTONE': {
       const { sectionName, milestone } = action.payload;
-      
+      console.log(`Adding or updating milestone ${milestone.id} in section ${sectionName} ${milestone.startDate}`);
       // Add or update the milestone in the section
       updatedState.sections = updatedState.sections.map(section => {
         if (section.name === sectionName) {
@@ -158,6 +158,6 @@ export const processAction = (
     default:
       console.warn(`Unknown action type: ${action.type}`);
   }
-  console.log('[ProcessAction] Updated state:', updatedState);
+  
   return { updatedState, updatedTaskDictionary, actionsToQueue };
 };
