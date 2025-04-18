@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 
 interface MilestoneData {
   id: string;
@@ -23,9 +23,34 @@ const MilestoneNode = ({ data }: { data: MilestoneData }) => {
   };
   
   const dateStr = formatDate(data.startDate);
+  const [hovered, setHovered] = useState(false);
   
   return (
-    <div style={{ position: 'relative', width: '40px', height: '40px' }}>
+    <div
+      style={{ position: 'relative', width: '40px', height: '40px' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {hovered && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-60px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            color: '#fff',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '26px',
+            whiteSpace: 'nowrap',
+            zIndex: 20
+          }}
+        >
+          {data.label}
+        </div>
+      )}
+      
       {/* Diamond shape */}
       <div 
         style={{
