@@ -93,7 +93,6 @@ function DraftPlanMermaid() {
   const [visibleSectionBars, setVisibleSectionBars] = useState<string[]>([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [timelineVisible, setTimelineVisible] = useState(false);
-  const [timelineWidth, setTimelineWidth] = useState(200);
   const [prevSections, setPrevSections] = useState<Section[]>([]);
   const [prevTimeline, setPrevTimeline] = useState<Timeline | undefined>();
   const [prevSectionStartDates, setPrevSectionStartDates] = useState<Record<string, Date>>({});
@@ -263,6 +262,55 @@ function DraftPlanMermaid() {
     }
   }, [nodes, setNodes, sections, timeline, updateTaskStartDate]);
 
+  // Pixels per day for timeline (match with bar/task width logic)
+  const TIMELINE_PIXELS_PER_DAY = 30;
+  // Base X position for timeline
+  const TIMELINE_BASE_X = 10;
+
+  // Find earliest start and latest end among ALL tasks
+  const timelineRange = useMemo(() => {
+    let minDate: Date | undefined = undefined;
+    let maxDate: Date | undefined = undefined;
+    sections.forEach(section => {
+      section.tasks.forEach(task => {
+        const sd = ensureDate(task.startDate);
+        const ed = task.type === 'milestone'
+          ? sd
+          : task.endDate
+            ? ensureDate(task.endDate)
+            : (task.duration
+              ? new Date(sd.getTime() + task.duration * 24 * 60 * 60 * 1000)
+              : sd);
+        if (!minDate || sd < minDate) minDate = sd;
+        if (!maxDate || ed > maxDate) maxDate = ed;
+      });
+    });
+    return {
+      startDate: minDate || (timeline ? new Date(timeline.startDate) : new Date()),
+      endDate: maxDate || (timeline ? new Date(timeline.endDate) : new Date()),
+    };
+  }, [sections, timeline]);
+
+  // Compute offset if timeline startDate shifts relative to computed range
+  const timelineOffsetX = useMemo(() => {
+    if (!timeline) return TIMELINE_BASE_X;
+    const contextStart = ensureDate(timeline.startDate);
+    const compStart = ensureDate(timelineRange.startDate);
+    contextStart.setHours(0,0,0,0);
+    compStart.setHours(0,0,0,0);
+    const daysDiff = Math.round((contextStart.getTime() - compStart.getTime()) / (1000 * 60 * 60 * 24));
+    return TIMELINE_BASE_X + daysDiff * TIMELINE_PIXELS_PER_DAY;
+  }, [timeline?.startDate, timelineRange]);
+
+  // Dynamically compute timeline width based on date range
+  const timelineDynamicWidth = useMemo(() => {
+    const start = timelineRange.startDate;
+    const end = timelineRange.endDate;
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(diffDays * TIMELINE_PIXELS_PER_DAY, 60); // minimum width
+  }, [timelineRange]);
+
   const nodesMemo = useMemo(() => {
     // Create the generate chart node regardless of whether there are sections or not
     const generateNode: Node = {
@@ -287,15 +335,15 @@ function DraftPlanMermaid() {
     const timelineNode: Node | null = timeline ? {
       id: 'timeline',
       type: 'timeline',
-      data: { 
+      data: {
         label: 'Timeline',
-        startDate: timeline.startDate,
-        endDate: timeline.endDate,
-        width: timelineWidth,
+        startDate: timelineRange.startDate,
+        endDate: timelineRange.endDate,
+        width: timelineDynamicWidth,
         isVisible: timelineVisible,
       },
-      position: { x: 10, y: 10 },  // Position timeline with slight padding
-      style: { 
+      position: { x: timelineOffsetX, y: TIMELINE_BASE_X },  // Move timeline if start date shifts
+      style: {
         opacity: timelineVisible ? 1 : 0,
         transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
       },
@@ -492,8 +540,6 @@ function DraftPlanMermaid() {
 
     return allNodes;
   }, [
-    timelineWidth,
-    timelineVisible,
     visibleTasks,
     tasksWithDates,
     tasksWithDurations,
@@ -785,7 +831,7 @@ function DraftPlanMermaid() {
     // Only hide timeline if it's one of the changed nodes
     if (changedNodeIds.includes('timeline')) {
       setTimelineVisible(false);
-      setTimelineWidth(200);
+      // setTimelineWidth(200);
     }
 
     if (sections.length === 0) return;
@@ -798,9 +844,9 @@ function DraftPlanMermaid() {
 
       setTimeout(() => {
         if (timeline) {
-          setTimelineWidth(getWidthBetweenDates(timeline.startDate, timeline.endDate));
+          // setTimelineWidth(getWidthBetweenDates(timeline.startDate, timeline.endDate));
         } else {
-          setTimelineWidth(900);
+          // setTimelineWidth(900);
         }
       }, 600);
     }

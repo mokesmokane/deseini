@@ -12,18 +12,52 @@ const TimelineNode = ({ data }: { data: TimelineData }) => {
   const totalDays = Math.ceil((data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24));
   const tickInterval = 7; // days between dots
   const numDots = Math.ceil(totalDays / tickInterval);
+
+  // Ensure first dot is at 0 and last dot is at width
+  const getDotPos = (i: number) => {
+    if (i === 0) return 0;
+    if (i === numDots) return data.width;
+    return (i * tickInterval * data.width) / totalDays;
+  };
+  // Date label positions
+  const firstDotLeft = getDotPos(0);
+  const lastDotLeft = getDotPos(numDots);
+
   return (
     <div style={{
       position: 'relative',
       width: `${data.width}px`,
-      height: '50px',
+      height: '70px', // increased for bigger labels
       margin: '10px 0'
     }}>
-      {/* Date labels */}
-      <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: '4px', fontSize: '12px', color: 'black' }}>
+      {/* Start Date label - centered above first dot */}
+      <div style={{
+        position: 'absolute',
+        bottom: '100%',
+        left: `${firstDotLeft}px`,
+        marginBottom: '10px',
+        fontSize: '18px',
+        fontWeight: 700,
+        color: 'black',
+        transform: 'translateX(-50%)',
+        textAlign: 'center',
+        whiteSpace: 'nowrap',
+      }}>
         {data.startDate.toLocaleDateString()}
       </div>
-      <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '4px', fontSize: '12px', color: 'black' }}>
+      {/* End Date label - centered above last dot */}
+      <div style={{
+        position: 'absolute',
+        bottom: '100%',
+        left: `${lastDotLeft}px`,
+        marginBottom: '10px',
+        fontSize: '18px',
+        fontWeight: 700,
+        color: 'black',
+        transform: 'translateX(-50%)',
+        textAlign: 'center',
+        whiteSpace: 'nowrap',
+      }}>
         {data.endDate.toLocaleDateString()}
       </div>
       {/* Tube line */}
@@ -39,7 +73,7 @@ const TimelineNode = ({ data }: { data: TimelineData }) => {
       }} />
       {/* Station dots */}
       {Array.from({ length: numDots + 1 }, (_, i) => {
-        const pos = (i * tickInterval * data.width) / totalDays;
+        const pos = getDotPos(i);
         const dotDate = new Date(data.startDate.getTime() + i * tickInterval * 24 * 60 * 60 * 1000);
         return (
           <div
