@@ -30,11 +30,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   const { currentChart, setCurrentChart, setHasUnsavedChanges, loadChartById } = useGantt();
   const { saveChart } = useChartsList();
-  const { 
-    project, 
-    userCharts,
-    fetchProjectCharts
-  } = useProject();
+  const { project, userCharts } = useProject();
   const { sections: draftPlanSections, timeline } = useDraftPlanMermaidContext();
   const { projectId } = useParams<{ projectId: string }>();
   const [isExpanded, setIsExpanded] = useState(false);

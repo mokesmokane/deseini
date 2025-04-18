@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useRef } from 'react';
 import { useDraftPlanMermaidContext } from '../../contexts/DraftPlanContextMermaid';
 import { useProjectPlan } from '../../contexts/ProjectPlanContext';
 import ActionPreview from '../mermaid/ActionPreview';
+import { useFinalPlan } from '../../hooks/useFinalPlan';
 
 interface GenerateNodeData {
   label: string;
@@ -32,9 +33,8 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
   const [detailedSummary, setDetailedSummary] = useState('');
   const prevSummaryRef = useRef('');
   const detailedSummaryRef = useRef<HTMLDivElement>(null);
-  const [isGeneratingFinalPlan, setIsGeneratingFinalPlan] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState('');
   const [debugMode, setDebugMode] = useState<boolean>(false);
+  const { generateFinalPlan, isGeneratingFinalPlan, generationProgress } = useFinalPlan();
   
   // Reset detailed summary when a new summary is received
   useEffect(() => {
@@ -90,8 +90,7 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
 
   const handleGenerateFinalPlan = async () => {
     try {
-      setIsGeneratingFinalPlan(true);
-      setGenerationProgress('Generating final project plan...');
+      generateFinalPlan();
     } catch (error) {
       console.error('Error generating final plan:', error);
     }
