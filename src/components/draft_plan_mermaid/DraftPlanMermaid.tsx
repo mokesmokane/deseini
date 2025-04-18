@@ -264,11 +264,9 @@ function DraftPlanMermaid() {
 
   // Pixels per day for timeline (match with bar/task width logic)
   const TIMELINE_PIXELS_PER_DAY = 30;
-  // Base X position for timeline
-  const TIMELINE_BASE_X = 10;
 
-  // Find earliest start and latest end among ALL tasks
   const timelineRange = useMemo(() => {
+    // Find earliest start and latest end among ALL tasks (not just visible sections)
     let minDate: Date | undefined = undefined;
     let maxDate: Date | undefined = undefined;
     sections.forEach(section => {
@@ -291,25 +289,26 @@ function DraftPlanMermaid() {
     };
   }, [sections, timeline]);
 
-  // Compute offset if timeline startDate shifts relative to computed range
-  const timelineOffsetX = useMemo(() => {
-    if (!timeline) return TIMELINE_BASE_X;
-    const contextStart = ensureDate(timeline.startDate);
-    const compStart = ensureDate(timelineRange.startDate);
-    contextStart.setHours(0,0,0,0);
-    compStart.setHours(0,0,0,0);
-    const daysDiff = Math.round((contextStart.getTime() - compStart.getTime()) / (1000 * 60 * 60 * 24));
-    return TIMELINE_BASE_X + daysDiff * TIMELINE_PIXELS_PER_DAY;
-  }, [timeline?.startDate, timelineRange]);
-
   // Dynamically compute timeline width based on date range
   const timelineDynamicWidth = useMemo(() => {
     const start = timelineRange.startDate;
     const end = timelineRange.endDate;
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(diffDays * TIMELINE_PIXELS_PER_DAY, 60); // minimum width
+    return Math.max(diffDays * TIMELINE_PIXELS_PER_DAY, 60); // minimum width for 1 day
   }, [timelineRange]);
+
+  // Fixed origin for X=0 and compute timeline X position when start date changes
+  const TIMELINE_BASE_X = 10;
+  const originDateRef = useRef<Date | null>(null);
+  useEffect(() => {
+    if (!originDateRef.current) {
+      originDateRef.current = timelineRange.startDate;
+    }
+  }, [timelineRange.startDate]);
+  const timelineX = originDateRef.current
+    ? TIMELINE_BASE_X + getXPositionFromDate(timelineRange.startDate, originDateRef.current, TIMELINE_PIXELS_PER_DAY)
+    : TIMELINE_BASE_X;
 
   const nodesMemo = useMemo(() => {
     // Create the generate chart node regardless of whether there are sections or not
@@ -342,7 +341,7 @@ function DraftPlanMermaid() {
         width: timelineDynamicWidth,
         isVisible: timelineVisible,
       },
-      position: { x: timelineOffsetX, y: TIMELINE_BASE_X },  // Move timeline if start date shifts
+      position: { x: timelineX, y: 10 },  // Position timeline with dynamic X based on start date
       style: {
         opacity: timelineVisible ? 1 : 0,
         transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
