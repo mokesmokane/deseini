@@ -203,6 +203,11 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
   // Function to update a task's start date (for drag functionality)
   const updateTaskStartDate = useCallback((taskId: string, newStartDate: Date) => {
     // Find task and its section for updating
+    const taskDuration = (taskDictionaryRef.current[taskId] as Task)?.duration;
+    const taskEndDate = new Date(newStartDate);
+    if (taskDuration) {
+      taskEndDate.setDate(taskEndDate.getDate() + taskDuration);
+    }
     let sectionName: string | undefined;
     let originalTask: Task | undefined;
     for (const sec of sectionsRef.current) {
@@ -213,8 +218,10 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     // Build full updated task object
     const updatedTask: Task = {
       ...originalTask,
-      startDate: newStartDate
+      startDate: newStartDate,
+      endDate: taskEndDate
     };
+
     // Dispatch update with sectionName and full task
     addActionToBuffer('UPDATE_TASK', { sectionName, task: updatedTask });
     // Process immediately

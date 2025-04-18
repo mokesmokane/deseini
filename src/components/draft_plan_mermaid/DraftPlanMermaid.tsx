@@ -136,7 +136,7 @@ function DraftPlanMermaid() {
       const snappedRawX = roundPositionToDay(rawX);
       const snappedX = snappedRawX + baseX;
       node.position.x = snappedX;
-      const adjustedX = Math.max(0, snappedRawX);
+      const adjustedX = snappedRawX;
       const newDate = getDateFromXPosition(adjustedX, timeline.startDate);
       // Capture original start and duration before updating root
       const currentNode = nodes.find(n => n.id === node.id);
@@ -324,13 +324,6 @@ function DraftPlanMermaid() {
 
       let sectionStartDate = startDates.length > 0 ? startDates.reduce((a, b) => a < b ? a : b) : undefined;
       let sectionEndDate = endDates.length > 0 ? endDates.reduce((a, b) => a > b ? a : b) : undefined;
-      console.log('section.name', section.name)
-      console.log('taskcount', startDates.length)
-      console.log('startDates', startDates)
-      console.log('endDates', endDates)
-      
-      console.log('sectionStartDate', sectionStartDate)
-      console.log('sectionEndDate', sectionEndDate)
       
       // Default to timeline dates if section has no items
       if (!sectionStartDate || !sectionEndDate) {
@@ -567,10 +560,15 @@ function DraftPlanMermaid() {
           .filter(Boolean)
           .map(date => new Date(date!));
 
-        const endDates = section.tasks
-          .map(task => task.endDate)
-          .filter(Boolean)
-          .map(date => new Date(date!));
+          const endDates = section.tasks
+            .map(task => {
+              if (task.type === 'milestone') {
+                return task.startDate;
+              }
+              return task.endDate;
+            })
+            .filter(Boolean)
+            .map(date => new Date(date!));
 
         let sectionStartDate = startDates.length > 0 ? startDates.reduce((a, b) => a < b ? a : b) : undefined;
         let sectionEndDate = endDates.length > 0 ? endDates.reduce((a, b) => a > b ? a : b) : undefined;
@@ -663,10 +661,15 @@ function DraftPlanMermaid() {
         .filter(Boolean)
         .map(date => new Date(date!));
 
-      const endDates = section.tasks
-        .map(task => task.endDate)
-        .filter(Boolean)
-        .map(date => new Date(date!));
+        const endDates = section.tasks
+          .map(task => {
+            if (task.type === 'milestone') {
+              return task.startDate;
+            }
+            return task.endDate;
+          })
+          .filter(Boolean)
+          .map(date => new Date(date!));
 
       let sectionStartDate = startDates.length > 0 ? startDates.reduce((a, b) => a < b ? a : b) : undefined;
       let sectionEndDate = endDates.length > 0 ? endDates.reduce((a, b) => a > b ? a : b) : undefined;
