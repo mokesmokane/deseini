@@ -50,6 +50,8 @@ interface DraftPlanMermaidContextType {
   processingBufferProgress: number;
   startProcessingBuffer: () => void;
   processAllBuffer: () => void;
+  TIMELINE_PIXELS_PER_DAY: number;
+  setTIMELINE_PIXELS_PER_DAY: (newVal: number) => void;
   actionBufferLength: number;
   nextAction: BufferedAction | null;
   actionBuffer: BufferedAction[];
@@ -61,6 +63,7 @@ const DraftPlanMermaidContext = createContext<DraftPlanMermaidContextType | unde
 export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [x0Date, setX0Date] = useState<Date | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
+  const [TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY] = useState<number>(30);
   const [timeline, setTimeline] = useState<Timeline|undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [streamProgress, setStreamProgress] = useState<number>(0);
@@ -452,6 +455,8 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     actionBufferLength,
     nextAction,
     actionBuffer: actionBufferRef.current,
+    TIMELINE_PIXELS_PER_DAY,
+    setTIMELINE_PIXELS_PER_DAY,
     updateTaskStartDate
   };
 

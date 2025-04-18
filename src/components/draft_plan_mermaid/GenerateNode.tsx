@@ -19,7 +19,9 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
     actionBufferLength,
     processingBufferProgress,
     nextAction,
-    actionBuffer
+    actionBuffer,
+    TIMELINE_PIXELS_PER_DAY,
+    setTIMELINE_PIXELS_PER_DAY
   } = useDraftPlanMermaidContext();
   const { 
     currentText,
@@ -29,6 +31,7 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
   const [detailedSummary, setDetailedSummary] = useState('');
   const prevSummaryRef = useRef('');
   const detailedSummaryRef = useRef<HTMLDivElement>(null);
+  const [debugMode, setDebugMode] = useState<boolean>(false);
   
   // Reset detailed summary when a new summary is received
   useEffect(() => {
@@ -60,7 +63,14 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
       element.scrollTop = element.scrollHeight;
     }
   }, [detailedSummary, expanded]);
-  
+
+  // Auto-apply buffered actions when debug mode is off
+  useEffect(() => {
+    if (!debugMode && actionBufferLength > 0) {
+      processAllBuffer();
+    }
+  }, [debugMode, actionBufferLength, processAllBuffer]);
+
   const handleGenerateClick = async () => {
     try {
       // Reset states before starting a new generation
@@ -119,6 +129,29 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
           textAlign: 'center'
         }}
       >
+        {/* Debug Mode Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+          <label style={{ fontSize: '12px', color: '#000000', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input
+              type="checkbox"
+              checked={debugMode}
+              onChange={e => setDebugMode((e.target as HTMLInputElement).checked)}
+            />
+            Debug Mode
+          </label>
+        </div>
+        {/* Day width slider */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <label style={{ fontSize: '12px', color: '#000000' }}>Day Width: {TIMELINE_PIXELS_PER_DAY}px</label>
+          <input
+            type="range"
+            min={30}
+            max={150}
+            step={30}
+            value={TIMELINE_PIXELS_PER_DAY}
+            onChange={e => setTIMELINE_PIXELS_PER_DAY(Number((e.target as HTMLInputElement).value))}
+          />
+        </div>
         <button
           onClick={handleGenerateClick}
           style={{
@@ -158,6 +191,29 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
         textAlign: 'center'
       }}
     >
+      {/* Debug Mode Toggle */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+        <label style={{ fontSize: '12px', color: '#000000', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <input
+            type="checkbox"
+            checked={debugMode}
+            onChange={e => setDebugMode((e.target as HTMLInputElement).checked)}
+          />
+          Debug Mode
+        </label>
+      </div>
+      {/* Day width slider */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <label style={{ fontSize: '12px', color: '#000000' }}>Day Width: {TIMELINE_PIXELS_PER_DAY}px</label>
+        <input
+          type="range"
+          min={30}
+          max={150}
+          step={30}
+          value={TIMELINE_PIXELS_PER_DAY}
+          onChange={e => setTIMELINE_PIXELS_PER_DAY(Number((e.target as HTMLInputElement).value))}
+        />
+      </div>
       {/* Main content area - either shows summary during loading or Generate button when complete */}
       {isMermaidLoading ? (
         <div 
@@ -198,7 +254,7 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
       )}
       
       {/* Process buffer button - only shown when there are items in the buffer */}
-      {actionBufferLength > 0 && (
+      {debugMode && actionBufferLength > 0 && (
         <div style={{ marginTop: '8px', marginBottom: '8px' }}>
           <ActionPreview
             nextAction={nextAction}
