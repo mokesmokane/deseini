@@ -39,7 +39,6 @@ const TaskNode = ({ data }: { data: TaskData }) => {
   // Create formatted date strings for tooltip
   const startDateStr = formatDate(data.startDate);
   const endDateStr = data.endDate ? formatDate(data.endDate) : '';
-  const durationStr = data.duration ? `${data.duration} days` : '';
   
   // Create dependencies string for tooltip
   const dependenciesStr = data.dependencies?.length 
@@ -49,9 +48,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
   // Complete tooltip text
   const tooltipText = `
     ${data.label}
-    Start: ${startDateStr}
-    ${endDateStr ? `End: ${endDateStr}` : ''}
-    ${durationStr ? `Duration: ${durationStr}` : ''}
+    ${startDateStr}${endDateStr ? ` -> ${endDateStr}` : ''}
     ${dependenciesStr}
   `.trim();
 
@@ -59,6 +56,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
     <div
       className="node"
       style={{
+        overflow: 'visible',
         position: 'relative',
         width: `${width}px`,
         height: '60px',
@@ -81,7 +79,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
       onMouseLeave={() => setShowSubMenu(false)}
       onMouseDown={() => setIsDragging(true)}
       onMouseUp={() => setIsDragging(false)}
-      title={tooltipText}
+      aria-label={tooltipText}
     >
       
       <NodeResizeControl 
@@ -118,26 +116,20 @@ const TaskNode = ({ data }: { data: TaskData }) => {
         <div 
           style={{
             position: 'absolute',
-            top: '-160px', // Position it well above the node
+            bottom: 'calc(100% + 8px)',
             left: '50%',
             transform: 'translateX(-50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            background: 'white',
-            border: '1px solid black',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            color: '#fff',
+            padding: '4px 8px',
             borderRadius: '4px',
-            padding: '8px 12px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-            zIndex: 10,
-            minWidth: '160px',
-            textAlign: 'left',
-            fontSize: '12px'
+            fontSize: '26px',
+            whiteSpace: 'nowrap',
+            zIndex: 9999
           }}
         >
           <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{data.label}</div>
-          <div>Start: {startDateStr}</div>
-          {endDateStr && <div>End: {endDateStr}</div>}
-          {durationStr && <div>Duration: {durationStr}</div>}
+          <div>{startDateStr}{endDateStr && ` -> ${endDateStr}`}</div>
           {data.dependencies && data.dependencies.length > 0 && (
             <div style={{ marginTop: '4px' }}>
               <div>Dependencies:</div>
