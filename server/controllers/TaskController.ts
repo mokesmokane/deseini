@@ -408,7 +408,7 @@ export class TaskController {
   // Generates a final project plan in JSON format for the Gantt chart
   async generateFinalPlan(req: express.Request, res: express.Response): Promise<void> {
     try {
-      const { projectContext, messages, draftPlanMarkdown, tasks } = req.body;
+      const { projectContext, messages, draftPlanMarkdown } = req.body;
       
       // Validate required inputs
       if (!projectContext) {
@@ -426,17 +426,12 @@ export class TaskController {
         return;
       }
       
-      if (!tasks || !Array.isArray(tasks)) {
-        res.status(400).json({ error: 'Tasks array is required' });
-        return;
-      }
       
       console.log('Generating final project plan...');
       const finalPlanResult = await this.aiService.generateFinalPlan(
         projectContext,
         messages,
-        draftPlanMarkdown,
-        tasks
+        draftPlanMarkdown
       );
       
       if (finalPlanResult.error) {

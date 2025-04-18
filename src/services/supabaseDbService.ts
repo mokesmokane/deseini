@@ -131,6 +131,14 @@ export const supabaseDbService = {
       // Check if we need to transform the chart data into the database format
       const isGanttDataOnly = !chart.chart_data && (chart.name !== undefined);
       
+        // Get current user
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      
+      if (!userId) {
+        return false;
+      }
+      
       // Convert chart ID to UUID format if needed
       const uuidId = ensureUUID(chart.id);
       
@@ -143,7 +151,7 @@ export const supabaseDbService = {
           ...chart,
           id: uuidId // Update ID in chart_data as well
         },
-        user_id: chart.user_id
+        user_id: userId
       } : {
         ...chart,
         id: uuidId
@@ -175,11 +183,13 @@ export const supabaseDbService = {
       }
       
       if (result.error) {
+        console.error('Error saving chart:', result.error);
         return false;
       }
       
       return true;
     } catch (error) {
+      console.error('Error saving chart:', error);
       return false;
     }
   },

@@ -1328,8 +1328,7 @@ AFTER thinking through your reasoning and immediately BEFORE outputting the Merm
   async generateFinalPlan(
     projectContext: ProjectContext,
     conversationHistory: ChatMessage[],
-    draftPlanMarkdown: string,
-    tasks: ProjectTask[]
+    draftPlanMarkdown: string
   ): Promise<GenerateFinalPlanResponse> {
     try {
       const dateTimePrefix = `Current date and time: ${new Date().toISOString()}\n\n`;
@@ -1426,15 +1425,6 @@ NOTE: Do NOT include any project id fields in your response. The system will gen
         role: 'user',
         content: `Here is the draft project plan in markdown format:\n\n${draftPlanMarkdown}`
       });
-
-      // Add the tasks list if available
-      if (tasks && tasks.length > 0) {
-        const tasksString = JSON.stringify(tasks, null, 2);
-        formattedMessages.push({
-          role: 'user',
-          content: `Here is the current task list structure:\n\n${tasksString}`
-        });
-      }
 
       // Final instruction
       formattedMessages.push({

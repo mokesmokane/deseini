@@ -13,8 +13,9 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useProjectPlan } from '../contexts/ProjectPlanContext';
-import { useDraftPlanContext } from '../contexts/DraftPlanContext';
+import { Section, useDraftPlanMermaidContext } from '../contexts/DraftPlanContextMermaid';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 interface SidebarSection {
   id: string;
@@ -33,9 +34,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   const { saveChart } = useChartsList();
   const { 
     project, 
-    userCharts 
+    userCharts,
+    fetchProjectCharts
   } = useProject();
-  const { tasks, timeline } = useDraftPlanContext();
+  const { sections: draftPlanSections, timeline } = useDraftPlanMermaidContext();
   const { projectId } = useParams<{ projectId: string }>();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -82,17 +84,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
 
   useEffect(() => {
     setDraftPlanJsonContent(getDraftPlanJsonRepresentation());
-  }, [tasks, timeline]);
+  }, [draftPlanSections, timeline]);
 
   const getDraftPlanJsonRepresentation = () => {
     return JSON.stringify({
       timeline,
-      tasks: tasks.map(task => ({
-        ...task,
-        // Convert dates to strings for better readability in JSON
-        startDate: task.startDate && task.startDate instanceof Date ? task.startDate.toISOString() : undefined,
-        date: task.date && task.date instanceof Date ? task.date.toISOString() : undefined
-      }))
+      sections: draftPlanSections
     }, null, 2);
   };
 
@@ -145,55 +142,69 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
     setIsExpanded(false);
   };
 
+  const createMarkdownFromSections = (sections: Section[]) => {
+    return sections.map(section => {
+      const tasks = section.tasks.map(task => {
+        if (task.type === 'milestone') {
+          return `- Milestone: ${task.label} - ${new Date(task.startDate).toLocaleDateString()}`;
+        } else {
+          const startDate = new Date(task.startDate).toLocaleDateString();
+          const durationText = task.duration ? ` (${task.duration} days)` : '';
+          return `- Task: ${task.label} - ${startDate}${durationText}`;
+        }
+      }).join('\n');
+      return `## ${section.name}\n${tasks}`;
+    }).join('\n');
+  };
+
+
   const handleGenerateFinalPlan = async () => {
     try {
       setIsGeneratingFinalPlan(true);
       setGenerationProgress('Generating final project plan...');
 
-      // Use the project from context
       const projectContext = project;
-      
-      if (!projectContext) {
-        throw new Error('No project context available');
-      }
-      
-      // Convert tasks to markdown format
+      if (!projectContext) throw new Error('No project context available');
+
       const draftPlanData = JSON.parse(draftPlanJsonContent);
-      const draftPlanMarkdown = draftPlanData.tasks.map((task: any) => {
-        if (task.type === 'milestone') {
-          return `## ${task.label} - ${new Date(task.date || task.startDate).toLocaleDateString()}`;
-        } else {
-          const startDate = new Date(task.startDate).toLocaleDateString();
-          const durationText = task.duration ? ` (${task.duration} days)` : '';
-          return `- ${task.label} - ${startDate}${durationText}`;
-        }
-      }).join('\n');
-      
+      const draftPlanMarkdown = createMarkdownFromSections(draftPlanData.sections);
+
       setGenerationProgress('Calling API to generate final plan...');
-      // Call the API to generate the final plan
       const response = await fetch('/api/generate-final-plan', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          projectContext,
-          messages: [], // We don't have messages context in the sidebar
-          draftPlanMarkdown,
-          tasks: draftPlanData.tasks
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectContext, messages: [], draftPlanMarkdown })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to generate final plan');
       }
-      
+
       setGenerationProgress('Processing response...');
-      await response.json(); // Process the response even if we don't use it
-      
+      const finalPlan = await response.json();
+      console.log(finalPlan);
+      setCurrentChart(finalPlan);
+      setHasUnsavedChanges(true);
+
+      setGenerationProgress('Saving chart to database...');
+      const saved = await saveChart(finalPlan);
+      if (!saved) {
+        toast.error('Failed to save chart');
+      } else if (projectId) {
+        setGenerationProgress('Linking chart to project...');
+        const { error: linkError } = await supabase
+          .from('project_charts')
+          .insert({ project_id: projectId, chart_id: finalPlan.id });
+        if (linkError) {
+          toast.error('Failed to link chart to project');
+        } else {
+          await fetchProjectCharts(projectId);
+          toast.success('Final project plan generated, saved, and linked!');
+        }
+      }
+
       setActiveSection(null);
-      toast.success('Final project plan generated and saved successfully!');
     } catch (error) {
       console.error('Error generating final plan:', error);
       toast.error(error instanceof Error ? error.message : 'Unknown error occurred');
@@ -356,6 +367,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
               className="flex-grow p-2 bg-gray-100 rounded-md text-xs font-mono mb-2 overflow-auto"
               style={{ resize: 'vertical', minHeight: '150px' }}
             />
+            <h4 className="font-medium mb-2">Sections Markdown</h4>
+            <textarea
+              value={createMarkdownFromSections(draftPlanSections)}
+              readOnly
+              className="flex-grow p-2 bg-gray-100 rounded-md text-xs font-mono mb-2 overflow-auto"
+              style={{ resize: 'vertical', minHeight: '150px' }}
+            />
             
             <div className="flex gap-2">
               {isGeneratingFinalPlan ? (
@@ -404,7 +422,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
     setIsExpanded(false);
   };
 
-  // Log current state on every render
   console.log(`[Sidebar] Rendering: isExpanded=${isExpanded}, activeSection=${activeSection}`);
 
   return (

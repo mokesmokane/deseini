@@ -320,7 +320,7 @@ function DraftPlanMermaid() {
         label: 'Chart Generator',
         isVisible: true,
       },
-      position: { x: 50, y: 50 }, // Position it in a visible area when there's no content
+      position: { x: 50, y: -250 }, // Position it in a visible area when there's no content
       style: { 
         zIndex: 10,
       },
