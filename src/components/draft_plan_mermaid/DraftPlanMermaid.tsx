@@ -307,7 +307,7 @@ function DraftPlanMermaid() {
     }
   }, [timelineRange.startDate]);
   const timelineX = originDateRef.current
-    ? TIMELINE_BASE_X + getXPositionFromDate(timelineRange.startDate, originDateRef.current, TIMELINE_PIXELS_PER_DAY)
+    ? TIMELINE_BASE_X + getXPositionFromDate(timelineRange.startDate, originDateRef.current, TIMELINE_PIXELS_PER_DAY) - 230
     : TIMELINE_BASE_X;
 
   const nodesMemo = useMemo(() => {
