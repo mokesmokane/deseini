@@ -430,7 +430,7 @@ const Canvas: React.FC = () => {
       </div>
 
       {/* Floating Action Button for Draft Plan at bottom left */}
-      <button
+      {/* <button
         onClick={toggleDraftPaneAndGenerate}
         className="fixed left-20 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
         aria-label="Show Draft Plan"
@@ -445,18 +445,12 @@ const Canvas: React.FC = () => {
           stroke="currentColor" 
           strokeWidth="2"
         >
-          {/* Simple timeline container */}
           <rect x="3" y="3" width="18" height="18" rx="1" />
-          
-          {/* Simplified Gantt bars - just 3 bars of different lengths */}
-          <line x1="6" y1="7" x2="15" y2="7" strokeWidth="2" />
-          <line x1="6" y1="12" x2="18" y2="12" strokeWidth="2" />
-          <line x1="6" y1="17" x2="12" y2="17" strokeWidth="2" />
         </svg>
-      </button>
+      </button> */}
       
       {/* Floating Action Button for Mermaid Gantt Syntax */}
-      <button
+      {/* <button
         onClick={handleShowMermaidPaneAndGenerate}
         className="fixed left-36 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
         aria-label="Show Mermaid Gantt Syntax"
@@ -476,7 +470,7 @@ const Canvas: React.FC = () => {
           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
           <polyline points="22,6 12,13 2,6" />
         </svg>
-      </button>
+      </button> */}
 
       {/* Floating Action Button for showing chat */}
       <button
@@ -491,7 +485,7 @@ const Canvas: React.FC = () => {
       </button>
 
       {/* Floating Action Button for Mermaid Plan (Bottom Panel) */}
-      <button
+      {/* <button
         onClick={handleToggleMermaidPlanBottom}
         className="fixed left-52 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
         aria-label="Show Mermaid Plan"
@@ -508,12 +502,11 @@ const Canvas: React.FC = () => {
           strokeLinecap="round" 
           strokeLinejoin="round"
         >
-          {/* Diagram icon */}
           <path d="M3 3v18h18" />
           <path d="M7 17l4-4 4 4 5-5" />
           <circle cx="18" cy="7" r="2" />
-        </svg>
-      </button>
+        </svg> 
+      </button>*/}
 
       {/* Bottom panel for Mermaid Plan */}
       <div 

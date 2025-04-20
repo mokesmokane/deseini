@@ -1,5 +1,6 @@
 import { memo, useState, useEffect } from 'react';
 import { NodeResizeControl } from '@reactflow/node-resizer';
+import { Handle, Position } from 'reactflow';
 import '@reactflow/node-resizer/dist/style.css';
 
 interface TaskData {
@@ -81,7 +82,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
       onMouseUp={() => setIsDragging(false)}
       aria-label={tooltipText}
     >
-      
+      <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
       <NodeResizeControl 
         className="resize-control"
         style={{
@@ -140,6 +141,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
           )}
         </div>
       )}
+      <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { memo, useState } from 'react';
+import { Handle, Position } from 'reactflow';
 
 interface MilestoneData {
   id: string;
@@ -85,6 +86,28 @@ const MilestoneNode = ({ data }: { data: MilestoneData }) => {
           {dateStr}
         </div>
       )}
+      {/* Left handle (target) aligned to diamond tip */}
+      <Handle 
+        type="target"
+        position={Position.Left}
+        style={{ 
+          background: '#555', 
+          top: '-13px', // vertical center of diamond in container
+          left: '-35px', // aligns with diamond's left tip
+          zIndex: 20
+        }} 
+      />
+      {/* Right handle (source) aligned to diamond tip */}
+      <Handle 
+        type="source"
+        position={Position.Right}
+        style={{ 
+          background: '#555', 
+          top: '-13px', // vertical center of diamond in container
+          right: '10px', // aligns with diamond's right tip
+          zIndex: 20
+        }} 
+      />
     </div>
   );
 };
