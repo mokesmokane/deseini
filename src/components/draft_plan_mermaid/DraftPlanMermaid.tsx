@@ -16,12 +16,13 @@ import MilestoneNode from './MilestoneNode';
 import TimelineNode from './TimelineNode';
 import GenerateNode from './GenerateNode';
 import { useNodeEvents } from '../../hooks/useNodeEvents';
+import { MermaidTaskData } from '@/types';
 
 function DraftPlanMermaid() {
   const { TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY } = useDraftPlanMermaidContext();
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const { nodes, edges, setNodes, anchorDate, onNodesChange, timelineVisible, setGenerateNode, setDraggingNodeId } = useDraftPlanFlow();
-  const { onNodeDrag, onNodeDragStop } = useNodeEvents(nodes, setNodes, anchorDate, TIMELINE_PIXELS_PER_DAY, setGenerateNode, setDraggingNodeId);
+  const { onNodeDrag, onNodeDragStop, onResizeEnd } = useNodeEvents(nodes, setNodes, anchorDate, TIMELINE_PIXELS_PER_DAY, setGenerateNode, setDraggingNodeId);
 
   // Track selected node and panel animation state
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -131,7 +132,7 @@ function DraftPlanMermaid() {
         selectNodesOnDrag={false}
         zoomOnScroll={true}
         nodeTypes={useMemo(() => ({
-          task: (props: NodeProps<any>) => <TaskNode {...props} />,
+          task: (props: NodeProps<MermaidTaskData>) => <TaskNode {...props} onResizeEnd={onResizeEnd} />,
           milestone: (props: NodeProps<any>) => <MilestoneNode {...props} />,
           timeline: (props: NodeProps<any>) => <TimelineNode {...props} />,
           generate: GenerateNode,

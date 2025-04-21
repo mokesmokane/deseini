@@ -1,30 +1,24 @@
-import { memo, useState, useEffect } from 'react';
-import { NodeResizeControl } from '@reactflow/node-resizer';
-import { Handle, Position } from 'reactflow';
-import { NodeProps } from 'reactflow';
+import React, { useState, useEffect, memo } from 'react';
+import { Handle, Position, NodeResizeControl, NodeProps } from 'reactflow';
 import '@reactflow/node-resizer/dist/style.css';
+import type { ResizeDragEvent, ResizeParams } from '@reactflow/node-resizer';
+import { useDraftPlanMermaidContext } from '../../contexts/DraftPlanContextMermaid';
+import { MermaidTaskData } from '../../types';
 
-interface TaskData {
-  id: string;
-  label: string;
-  width?: number;
-  startDate: Date;
-  duration?: number;
-  endDate?: Date;
-  dependencies?: string[];
-  sectionName: string;
-  isVisible: boolean;
-  hasDate: boolean;
-  hasDuration: boolean;
+interface TaskNodeProps extends NodeProps<MermaidTaskData> {
+  onResizeEnd: (event: ResizeDragEvent, params: ResizeParams, data: MermaidTaskData) => void;
 }
 
-const TaskNode = ({ data, dragging }: NodeProps<TaskData>) => {
+const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd }) => {
   useEffect(() => { console.log('TaskNode mounted', data.id); }, []);
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const { TIMELINE_PIXELS_PER_DAY, updateTaskDuration } = useDraftPlanMermaidContext();
   
   // Calculate the width based on duration
-  const width = data.hasDuration ? (data.width || 60) : 60; // Default to 60px if no width/duration
+  const initialWidth = data.hasDuration ? (data.width || 60) : 60;
+  const [localWidth, setLocalWidth] = useState(initialWidth);
+  useEffect(() => { setLocalWidth(initialWidth); }, [initialWidth]);
   
   // Format date for display in tooltip
   const formatDate = (date: Date): string => {
@@ -60,7 +54,7 @@ const TaskNode = ({ data, dragging }: NodeProps<TaskData>) => {
       style={{
         overflow: 'visible',
         position: 'relative',
-        width: `${width}px`,
+        width: `${localWidth}px`,
         height: '60px',
         background: 'white',
         border: '2px solid black',
@@ -84,22 +78,18 @@ const TaskNode = ({ data, dragging }: NodeProps<TaskData>) => {
       aria-label={tooltipText}
     >
       <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
-      <NodeResizeControl 
-        className="resize-control"
-        style={{
-          background: '#000',
-          border: '2px solid white',
-          borderRadius: '50%',
-          width: '10px',
-          height: '10px',
-          position: 'absolute',
-          right: '-6px',
-          top: '-6px',
-          opacity: 0,
-          transition: 'opacity 0.3s'
-        }}
-        minWidth={100}
+      <NodeResizeControl
+        nodeId={data.id}
+        position="right"
+        minWidth={TIMELINE_PIXELS_PER_DAY}
         minHeight={60}
+        onResize={(_evt: ResizeDragEvent, { width }: ResizeParams) => setLocalWidth(width)}
+        onResizeEnd={(evnt,params)=>{
+          onResizeEnd(evnt,params,data);
+        }}
+        style={{
+          top: '10px'
+        }}
       />
       
       <div 

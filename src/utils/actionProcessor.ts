@@ -101,6 +101,8 @@ export const processAction = (
           if (existingIndex >= 0) {
             // Update existing task
             const updatedTasks = [...section.tasks];
+            task.duration = task.endDate ? 
+              (task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24) : task.duration;
             updatedTasks[existingIndex] = task;
             console.log(`Updating existing task ${task.id} in section ${sectionName}`);
             return { ...section, tasks: updatedTasks };

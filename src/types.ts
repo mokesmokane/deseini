@@ -120,3 +120,17 @@ export interface TreeTaskNode extends TaskData {
 }
 
 // Add other shared types here as needed (e.g., Task, Dependency, Milestone)
+
+export interface MermaidTaskData {
+  id: string;
+  label: string;
+  width?: number;
+  startDate: Date;
+  duration?: number;
+  endDate?: Date;
+  dependencies?: string[];
+  sectionName: string;
+  isVisible: boolean;
+  hasDate: boolean;
+  hasDuration: boolean;
+}

@@ -1,7 +1,8 @@
 import { useCallback, useRef } from 'react'
 import { useDraftPlanMermaidContext } from '../contexts/DraftPlanContextMermaid'
-import { Node, NodeDragHandler } from 'reactflow';
+import { Node, NodeDragHandler, ResizeDragEvent, ResizeParams } from 'reactflow';
 import { ensureDate, roundPositionToDay, getXPositionFromDate, getWidthBetweenDates, getDateFromXPosition } from '../hooks/utils';
+import { MermaidTaskData } from '@/types';
 
 export function useNodeEvents(nodes: Node[], 
     setNodes:  React.Dispatch<React.SetStateAction<Node<any, string | undefined>[]>>,
@@ -10,7 +11,7 @@ export function useNodeEvents(nodes: Node[],
     setGenerateNode: (node: Node | null) => void,
     setDraggingNodeId: (id: string | null) => void
     ) {
-  const { sections, updateTaskStartDate } = useDraftPlanMermaidContext()
+  const { sections, updateTaskStartDate, updateTaskDuration } = useDraftPlanMermaidContext()
   
 //   const anchor = useMemo(() => ensureDate(x0Date ?? timeline?.startDate), [x0Date, timeline])
     // Ref for debouncing drag updates
@@ -33,7 +34,38 @@ const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
         }
       }
     }, [nodes, setNodes, anchorDate, TIMELINE_PIXELS_PER_DAY]);
-
+    const processDownstream = (parentId: string, parentEnd: Date, anchorDate: Date, baseX: number, pendingUpdates: { id: string; newStartDate: Date }[]) => {
+        for (const section of sections) {
+          // Iterate dependent tasks and compare against latest start date
+          for (const task of section.tasks.filter(task => task.dependencies?.includes(parentId))) {
+            const nodeInfo = nodes.find(n => n.id === task.id);
+            const currentChildStart = nodeInfo
+              ? ensureDate((nodeInfo.data as any).startDate)
+              : ensureDate(task.startDate!);
+            // Skip if child already starts at or after parent end
+            if (currentChildStart >= parentEnd) continue;
+            const childStart = new Date(parentEnd);
+            // Buffer child update
+            pendingUpdates.push({ id: task.id, newStartDate: childStart });
+            const childEnd = task.type === 'milestone' 
+              ? childStart 
+              : (() => { const e = new Date(childStart); if (task.duration) e.setDate(e.getDate() + task.duration); return e; })();
+            // Immediately update visual position for child
+            const rawChildX = getXPositionFromDate(childStart, anchorDate, TIMELINE_PIXELS_PER_DAY);
+            const snappedRawChildX = roundPositionToDay(rawChildX, TIMELINE_PIXELS_PER_DAY);
+            const childX = snappedRawChildX + baseX;
+            setNodes(nds => nds.map(n => n.id === task.id ? {
+              ...n,
+              position: { ...n.position, x: childX },
+              data: {
+                ...n.data,
+                startDate: childStart
+              }
+            } : n));
+            processDownstream(task.id, childEnd, anchorDate, baseX, pendingUpdates);
+          }
+        }
+      };
   const onNodeDragStop: NodeDragHandler = useCallback((_event, node) => {
       if ((node.type === 'task' || node.type === 'milestone') && anchorDate) {
         setDraggingNodeId(null);
@@ -59,39 +91,7 @@ const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
             : (() => { const e = new Date(newDate); if (originalDuration) e.setDate(e.getDate() + originalDuration); return e; })();
           console.log(`Moving task ${node.id} from ${originalStart} to ${movedEnd}`);
           if (newDate.getTime() > originalStart.getTime()) {
-            const processDownstream = (parentId: string, parentEnd: Date) => {
-              for (const section of sections) {
-                // Iterate dependent tasks and compare against latest start date
-                for (const task of section.tasks.filter(task => task.dependencies?.includes(parentId))) {
-                  const nodeInfo = nodes.find(n => n.id === task.id);
-                  const currentChildStart = nodeInfo
-                    ? ensureDate((nodeInfo.data as any).startDate)
-                    : ensureDate(task.startDate!);
-                  // Skip if child already starts at or after parent end
-                  if (currentChildStart >= parentEnd) continue;
-                  const childStart = new Date(parentEnd);
-                  // Buffer child update
-                  pendingUpdates.push({ id: task.id, newStartDate: childStart });
-                  const childEnd = task.type === 'milestone' 
-                    ? childStart 
-                    : (() => { const e = new Date(childStart); if (task.duration) e.setDate(e.getDate() + task.duration); return e; })();
-                  // Immediately update visual position for child
-                  const rawChildX = getXPositionFromDate(childStart, anchorDate, TIMELINE_PIXELS_PER_DAY);
-                  const snappedRawChildX = roundPositionToDay(rawChildX, TIMELINE_PIXELS_PER_DAY);
-                  const childX = snappedRawChildX + baseX;
-                  setNodes(nds => nds.map(n => n.id === task.id ? {
-                    ...n,
-                    position: { ...n.position, x: childX },
-                    data: {
-                      ...n.data,
-                      startDate: childStart
-                    }
-                  } : n));
-                  processDownstream(task.id, childEnd);
-                }
-              }
-            };
-            processDownstream(node.id, movedEnd);
+            processDownstream(node.id, movedEnd, anchorDate, baseX, pendingUpdates);
           } else if (newDate.getTime() < originalStart.getTime()) {
             // Traverse actual parent tasks as defined in dependencies
             const processUpstream = (childId: string, childStart: Date) => {
@@ -169,5 +169,16 @@ const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
       }
     }, [nodes, setNodes, sections, anchorDate, updateTaskStartDate, TIMELINE_PIXELS_PER_DAY]);
 
-    return { onNodeDrag, onNodeDragStop };
+    const onResizeEnd = (_evt: ResizeDragEvent, { width }: ResizeParams, data: MermaidTaskData) => {
+      const newDuration = Math.max(1, Math.round(width / TIMELINE_PIXELS_PER_DAY));
+      const newEndDate = new Date(data.startDate);
+      newEndDate.setDate(newEndDate.getDate() + newDuration);
+      const currentNode = nodes.find(n => n.id === data.id);
+      const pendingUpdates: { id: string; newStartDate: Date }[] = [];
+      processDownstream(data.id.toString(), newEndDate, anchorDate!, 10, pendingUpdates);
+      updateTaskDuration(data.id.toString(), newDuration);
+      pendingUpdates.forEach(({ id, newStartDate }) => updateTaskStartDate(id, newStartDate));
+    };
+
+    return { onNodeDrag, onNodeDragStop, onResizeEnd };
 }

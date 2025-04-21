@@ -56,6 +56,7 @@ interface DraftPlanMermaidContextType {
   nextAction: BufferedAction | null;
   actionBuffer: BufferedAction[];
   updateTaskStartDate: (taskId: string, newStartDate: Date) => void;
+  updateTaskDuration: (taskId: string, newDuration: number) => void;
 }
 
 const DraftPlanMermaidContext = createContext<DraftPlanMermaidContextType | undefined>(undefined);
@@ -222,7 +223,12 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     let originalTask: Task | undefined;
     for (const sec of sectionsRef.current) {
       const t = sec.tasks.find(task => task.id === taskId);
-      if (t) { sectionName = sec.name; originalTask = t; break; }
+      if (t) {
+        console.log(`Found task ${taskId} in section ${sec.name}`);
+        sectionName = sec.name;
+        originalTask = t;
+        break;
+      }
     }
     if (!sectionName || !originalTask) return;
     // Build full updated task object
@@ -235,6 +241,34 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     // Dispatch update with sectionName and full task
     addActionToBuffer('UPDATE_TASK', { sectionName, task: updatedTask });
     // Process immediately
+    processAllBuffer();
+  }, [addActionToBuffer, processAllBuffer]);
+
+  // Function to update a task's duration (for resize functionality)
+  const updateTaskDuration = useCallback((taskId: string, newDuration: number) => {
+    // Find task and its section for updating
+    let sectionName: string | undefined;
+    let originalTask: Task | undefined;
+    for (const sec of sectionsRef.current) {
+      const t = sec.tasks.find(task => task.id === taskId);
+      if (t) {
+        console.log(`Found task ${taskId} in section ${sec.name}`);
+        sectionName = sec.name;
+        originalTask = t;
+        break;
+      }
+    }
+    if (!sectionName || !originalTask) return;
+    const startDate = originalTask.startDate;
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + newDuration);
+    const updatedTask: Task = {
+      ...originalTask,
+      startDate,
+      // duration: newDuration,
+      endDate
+    };
+    addActionToBuffer('UPDATE_TASK', { sectionName, task: updatedTask });
     processAllBuffer();
   }, [addActionToBuffer, processAllBuffer]);
 
@@ -457,7 +491,8 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     actionBuffer: actionBufferRef.current,
     TIMELINE_PIXELS_PER_DAY,
     setTIMELINE_PIXELS_PER_DAY,
-    updateTaskStartDate
+    updateTaskStartDate,
+    updateTaskDuration
   };
 
   return (

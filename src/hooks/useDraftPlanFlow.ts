@@ -75,8 +75,6 @@ export function useDraftPlanFlow() {
 
 
   const nodesMemo = useMemo(() => {
-      // Create the generate chart node regardless of whether there are sections or not
-      console.log('Generating nodesMemo', TIMELINE_PIXELS_PER_DAY);
       const generateNode: Node = storedGenerateNode || {
         id: 'generate_chart',
         type: 'generate',
@@ -479,7 +477,6 @@ export function useDraftPlanFlow() {
       return (
         oldTask.label !== newTask.label ||
         oldTask.type !== newTask.type ||
-        oldTask.duration !== newTask.duration ||
         JSON.stringify(oldTask.dependencies) !== JSON.stringify(newTask.dependencies)
       );
     };
