@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, NodeProps } from 'reactflow';
 
 interface MilestoneData {
   id: string;
@@ -10,7 +10,7 @@ interface MilestoneData {
   hasDate: boolean;
 }
 
-const MilestoneNode = ({ data }: { data: MilestoneData }) => {
+const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
   // Format date for display
   const formatDate = (date: Date): string => {
     if (!(date instanceof Date)) {
@@ -28,11 +28,11 @@ const MilestoneNode = ({ data }: { data: MilestoneData }) => {
   
   return (
     <div
-      style={{ position: 'relative', width: '40px', height: '40px' }}
-      onMouseEnter={() => setHovered(true)}
+      style={{ position: 'relative', width: '40px', height: '40px', transition: dragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
+      onMouseEnter={() => !dragging && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {hovered && (
+      {hovered && !dragging && (
         <div
           style={{
             position: 'absolute',
@@ -66,7 +66,7 @@ const MilestoneNode = ({ data }: { data: MilestoneData }) => {
           borderRadius: '8px',
           zIndex: 10
         }}
-        title={`${data.label}\nDate: ${dateStr}`}
+        title={!dragging ? `${data.label}\nDate: ${dateStr}` : undefined}
       />
       
       {/* Date display */}

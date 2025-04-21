@@ -25,6 +25,7 @@ export function useDraftPlanFlow() {
   const [prevTimeline, setPrevTimeline] = useState<Timeline | undefined>();
   const [prevSectionStartDates, setPrevSectionStartDates] = useState<Record<string, Date>>({});
   const [prevSectionEndDates, setPrevSectionEndDates] = useState<Record<string, Date>>({});
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
 
     const anchorDate = useMemo(() => {
         if (x0Date) return ensureDate(x0Date);
@@ -246,7 +247,7 @@ export function useDraftPlanFlow() {
               },
               style: {
                 opacity: isVisible ? 1 : 0,
-                transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: draggingNodeId === task.id ? 'none' : 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
                 zIndex: 10, // Ensure milestones are on top
               },
               draggable: true, // Allow dragging of milestone nodes
@@ -276,7 +277,7 @@ export function useDraftPlanFlow() {
               },
               style: {
                 opacity: isVisible ? 1 : 0,
-                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: draggingNodeId === task.id ? 'none' : 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
                 zIndex: 2,
               },
               draggable: true, // Allow tasks to be dragged
@@ -297,6 +298,7 @@ export function useDraftPlanFlow() {
       tasksWithDates,
       tasksWithDurations,
       visibleSectionBars,
+      draggingNodeId,
       sections,
       timeline,
       TIMELINE_PIXELS_PER_DAY,
@@ -698,5 +700,5 @@ export function useDraftPlanFlow() {
     setPrevSectionEndDates(newSectionEndDates);
   }, [sections, timeline, TIMELINE_PIXELS_PER_DAY]);
 
-  return { nodes, edges, onNodesChange, setNodes, storedGenerateNode, setGenerateNode, changedNodeIds, setChangedNodeIds, prevSections, prevTimeline, prevSectionStartDates, prevSectionEndDates, setPrevSections, setPrevTimeline, setPrevSectionStartDates, setPrevSectionEndDates, anchorDate, TIMELINE_PIXELS_PER_DAY, setTimelineVisible, timelineVisible }
+  return { nodes, edges, onNodesChange, setNodes, storedGenerateNode, setGenerateNode, draggingNodeId, setDraggingNodeId, changedNodeIds, setChangedNodeIds, prevSections, prevTimeline, prevSectionStartDates, prevSectionEndDates, setPrevSections, setPrevTimeline, setPrevSectionStartDates, setPrevSectionEndDates, anchorDate, TIMELINE_PIXELS_PER_DAY, setTimelineVisible, timelineVisible }
 }

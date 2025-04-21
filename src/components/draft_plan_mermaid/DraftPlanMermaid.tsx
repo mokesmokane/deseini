@@ -5,6 +5,7 @@ import ReactFlow, {
   ReactFlowInstance,
   Node,
   NodeMouseHandler,
+  NodeProps,
 } from 'reactflow';
 import { useDraftPlanFlow } from '../../hooks/useDraftPlanFlow';
 import "react-datepicker/dist/react-datepicker.css";
@@ -16,35 +17,60 @@ import TimelineNode from './TimelineNode';
 import GenerateNode from './GenerateNode';
 import { useNodeEvents } from '../../hooks/useNodeEvents';
 
-// Helper to ensure we're working with Date objects
-
-const nodeTypes = {
-  task: TaskNode,
-  milestone: MilestoneNode,
-  timeline: TimelineNode,
-  generate: GenerateNode,
-};
-
 function DraftPlanMermaid() {
   const { TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY } = useDraftPlanMermaidContext();
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
-  const { nodes, edges, setNodes, anchorDate, onNodesChange, timelineVisible, setGenerateNode } = useDraftPlanFlow();
-  const { onNodeDrag, onNodeDragStop } = useNodeEvents(nodes, setNodes, anchorDate, TIMELINE_PIXELS_PER_DAY, setGenerateNode);
+  const { nodes, edges, setNodes, anchorDate, onNodesChange, timelineVisible, setGenerateNode, setDraggingNodeId } = useDraftPlanFlow();
+  const { onNodeDrag, onNodeDragStop } = useNodeEvents(nodes, setNodes, anchorDate, TIMELINE_PIXELS_PER_DAY, setGenerateNode, setDraggingNodeId);
 
   // Track selected node and panel animation state
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [pendingNode, setPendingNode] = useState<Node | null>(null);
   const [isPanelVisible, setIsPanelVisible] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const animationTimeout = useRef<NodeJS.Timeout | null>(null);
   const ANIMATION_DURATION = 300; // ms, match CSS duration
 
-  // --- SETTINGS FAB AND PANEL STATE ---
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Helper: Open settings panel and close node panel if open
+  const handleOpenSettings = () => {
+    if (isPanelVisible) {
+      setIsPanelVisible(false);
+      if (animationTimeout.current) clearTimeout(animationTimeout.current);
+      animationTimeout.current = setTimeout(() => {
+        setSelectedNode(null);
+        setPendingNode(null);
+        setSettingsOpen(true);
+      }, ANIMATION_DURATION);
+    } else {
+      setSettingsOpen(true);
+    }
+  };
 
-  // Handle node click with animated switch
+  // Helper: Open node panel and close settings if open
   const handleNodeClick: NodeMouseHandler = (_event, node) => {
+    if (node.type === 'generate') return; // Do not open panel for generator node
+    if (settingsOpen) {
+      setSettingsOpen(false);
+      if (animationTimeout.current) clearTimeout(animationTimeout.current);
+      animationTimeout.current = setTimeout(() => {
+        // Now open node panel
+        if (selectedNode && node.id !== selectedNode.id) {
+          setIsPanelVisible(false);
+          setPendingNode(node);
+          if (animationTimeout.current) clearTimeout(animationTimeout.current);
+          animationTimeout.current = setTimeout(() => {
+            setSelectedNode(node);
+            setIsPanelVisible(true);
+            setPendingNode(null);
+          }, ANIMATION_DURATION);
+        } else if (!selectedNode) {
+          setSelectedNode(node);
+          setIsPanelVisible(true);
+        }
+      }, ANIMATION_DURATION);
+      return;
+    }
     if (selectedNode && node.id !== selectedNode.id) {
-      // Animate out, then switch node, then animate in
       setIsPanelVisible(false);
       setPendingNode(node);
       if (animationTimeout.current) clearTimeout(animationTimeout.current);
@@ -87,7 +113,7 @@ function DraftPlanMermaid() {
     return () => {
       if (animationTimeout.current) clearTimeout(animationTimeout.current);
     };
-  }, [reactFlowInstance, timelineVisible, TIMELINE_PIXELS_PER_DAY]);
+  }, [reactFlowInstance, timelineVisible]);
 
   console.log('nodes', nodes);
   return (
@@ -96,15 +122,20 @@ function DraftPlanMermaid() {
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
-        onNodeDrag={onNodeDrag}
-        onNodeDragStop={onNodeDragStop}
+        onNodeDrag={(...args) => { onNodeDrag(...args); }}
+        onNodeDragStop={(...args) => { onNodeDragStop(...args); }}
         nodesDraggable={true}
         elementsSelectable={true}
         panOnScroll={false}
         selectionOnDrag={false}
         selectNodesOnDrag={false}
         zoomOnScroll={true}
-        nodeTypes={nodeTypes}
+        nodeTypes={useMemo(() => ({
+          task: (props: NodeProps<any>) => <TaskNode {...props} />,
+          milestone: (props: NodeProps<any>) => <MilestoneNode {...props} />,
+          timeline: (props: NodeProps<any>) => <TimelineNode {...props} />,
+          generate: GenerateNode,
+        }), [])}
         onInit={setReactFlowInstance}
         fitView
         onNodeClick={handleNodeClick}
@@ -114,7 +145,7 @@ function DraftPlanMermaid() {
         <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20 }}>
           <button
             aria-label="Open settings"
-            onClick={() => setSettingsOpen(true)}
+            onClick={handleOpenSettings}
             style={{
               width: 56,
               height: 56,
@@ -142,46 +173,35 @@ function DraftPlanMermaid() {
             </svg>
           </button>
         </div>
-        {/* Settings Panel (portal style, still overlays full screen) */}
-        {settingsOpen && (
+        {/* Settings Panel - right-side sliding panel, matches node panel */}
+        <div
+          className={`fixed top-0 right-0 h-screen z-50 transition-transform duration-300 ease-in-out transform ${settingsOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          style={{
+            width: '400px',
+            maxWidth: '95vw',
+            padding: '24px 24px 0px 24px',
+            height: 'calc(100vh - 16px)',
+            pointerEvents: settingsOpen ? 'auto' : 'none',
+          }}
+        >
           <div
+            className="h-full bg-white rounded-2xl border border-gray-200 overflow-hidden"
             style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              background: 'rgba(0,0,0,0.2)',
-              zIndex: 100,
               display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'flex-end',
+              flexDirection: 'column'
             }}
-            onClick={() => setSettingsOpen(false)}
           >
-            <div
-              style={{
-                background: '#fff',
-                borderRadius: '16px 16px 0 0',
-                boxShadow: '0 0 24px rgba(0,0,0,0.09)',
-                padding: '32px 24px 24px 24px',
-                minWidth: 320,
-                maxWidth: '90vw',
-                margin: 0,
-                position: 'relative',
-                bottom: 0,
-              }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-                <h2 style={{margin:0,fontWeight:600,fontSize:20,color:'#111'}}>Settings</h2>
-                <button
-                  aria-label="Close settings"
-                  onClick={() => setSettingsOpen(false)}
-                  style={{background:'none',border:'none',fontSize:28,color:'#111',cursor:'pointer'}}>
-                  ×
-                </button>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem' }}>
+              <button
+                aria-label="Close settings"
+                onClick={() => setSettingsOpen(false)}
+                style={{ background: 'none', border: 'none', fontSize: '2rem', color: '#222', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+            <div style={{ padding: '2rem', flex: 1, overflowY: 'auto', color: '#111' }}>
+              <h2 style={{ fontWeight: 700, fontSize: '1.5rem', marginBottom: '1.5rem' }}>Settings</h2>
               {/* Day Width Slider */}
               <div style={{marginBottom:24}}>
                 <label style={{fontSize:14,color:'#111',marginBottom:8,display:'block'}}>Day Width: {TIMELINE_PIXELS_PER_DAY}px</label>
@@ -197,7 +217,7 @@ function DraftPlanMermaid() {
               </div>
             </div>
           </div>
-        )}
+        </div>
       </ReactFlow>
       {/* Right-side panel for node details */}
       <div 

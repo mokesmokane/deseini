@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { NodeProps } from 'reactflow';
 
 interface TimelineData {
   label: string;
@@ -8,7 +9,7 @@ interface TimelineData {
   isVisible: boolean;
 }
 
-const TimelineNode = ({ data }: { data: TimelineData }) => {
+const TimelineNode = ({ data, dragging }: NodeProps<TimelineData>) => {
   const totalDays = Math.ceil((data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24));
   const tickInterval = 7; // days between dots
   const numDots = Math.ceil(totalDays / tickInterval);
@@ -28,7 +29,8 @@ const TimelineNode = ({ data }: { data: TimelineData }) => {
       position: 'relative',
       width: `${data.width}px`,
       height: '70px', // increased for bigger labels
-      margin: '10px 0'
+      margin: '10px 0',
+      transition: dragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
       {/* Start Date label - centered above first dot */}
       <div style={{
@@ -78,7 +80,7 @@ const TimelineNode = ({ data }: { data: TimelineData }) => {
         return (
           <div
             key={i}
-            title={dotDate.toLocaleDateString()}
+            title={!dragging ? dotDate.toLocaleDateString() : undefined}
             style={{
               pointerEvents: 'auto',
               position: 'absolute',

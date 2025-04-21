@@ -8,6 +8,7 @@ export function useNodeEvents(nodes: Node[],
     anchorDate: Date | undefined,
     TIMELINE_PIXELS_PER_DAY: number,
     setGenerateNode: (node: Node | null) => void,
+    setDraggingNodeId: (id: string | null) => void
     ) {
   const { sections, updateTaskStartDate } = useDraftPlanMermaidContext()
   
@@ -22,13 +23,9 @@ const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
       }
       if (node.type === 'task' || node.type === 'milestone') {
         const current = nodes.find(n => n.id === node.id);
+        setDraggingNodeId(node.id);
         if (current) node.position.y = current.position.y;
-        const baseX = 10;
-        const rawX = node.position.x - baseX;
-        const snappedRawX = roundPositionToDay(rawX, TIMELINE_PIXELS_PER_DAY);
-        const snappedX = snappedRawX + baseX;
-        node.position.x = snappedX;
-        setNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { ...n.position, x: snappedX } } : n));
+        setNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { ...n.position, x: node.position.x } } : n));
         // Debounce context update for root task
         if (anchorDate) {
           // Clear existing timer
@@ -39,6 +36,7 @@ const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   const onNodeDragStop: NodeDragHandler = useCallback((_event, node) => {
       if ((node.type === 'task' || node.type === 'milestone') && anchorDate) {
+        setDraggingNodeId(null);
         const baseX = 10;
         const rawX = node.position.x - baseX;
         const snappedRawX = roundPositionToDay(rawX, TIMELINE_PIXELS_PER_DAY); 

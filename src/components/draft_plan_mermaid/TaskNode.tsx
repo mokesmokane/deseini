@@ -1,6 +1,7 @@
 import { memo, useState, useEffect } from 'react';
 import { NodeResizeControl } from '@reactflow/node-resizer';
 import { Handle, Position } from 'reactflow';
+import { NodeProps } from 'reactflow';
 import '@reactflow/node-resizer/dist/style.css';
 
 interface TaskData {
@@ -17,7 +18,7 @@ interface TaskData {
   hasDuration: boolean;
 }
 
-const TaskNode = ({ data }: { data: TaskData }) => {
+const TaskNode = ({ data, dragging }: NodeProps<TaskData>) => {
   useEffect(() => { console.log('TaskNode mounted', data.id); }, []);
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -68,7 +69,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
         fontFamily: 'sans-serif',
         fontSize: '16px',
         textAlign: 'center',
-        // transition: isDragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        // transition: dragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -76,7 +77,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
         cursor: 'grab',
         boxShadow: isDragging ? '0 4px 8px rgba(0,0,0,0.3)' : 'none',
       }}
-      onMouseEnter={() => setShowSubMenu(true)}
+      onMouseEnter={() => !dragging && setShowSubMenu(true)}
       onMouseLeave={() => setShowSubMenu(false)}
       onMouseDown={() => setIsDragging(true)}
       onMouseUp={() => setIsDragging(false)}
@@ -113,7 +114,7 @@ const TaskNode = ({ data }: { data: TaskData }) => {
       </div>
       
       {/* Task details panel that appears on hover (but not when dragging) */}
-      {showSubMenu && !isDragging && (
+      {showSubMenu && !dragging && (
         <div 
           style={{
             position: 'absolute',
