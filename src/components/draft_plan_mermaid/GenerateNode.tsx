@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useRef } from 'react';
-import { useDraftPlanMermaidContext } from '../../contexts/DraftPlanContextMermaid';
+import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useProjectPlan } from '../../contexts/ProjectPlanContext';
 import ActionPreview from '../mermaid/ActionPreview';
 import { useFinalPlan } from '../../hooks/useFinalPlan';
@@ -140,29 +140,6 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
           textAlign: 'center'
         }}
       >
-        {/* Debug Mode Toggle */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-          <label style={{ fontSize: '12px', color: '#000000', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <input
-              type="checkbox"
-              checked={debugMode}
-              onChange={e => setDebugMode((e.target as HTMLInputElement).checked)}
-            />
-            Debug Mode
-          </label>
-        </div>
-        {/* Day width slider */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <label style={{ fontSize: '12px', color: '#000000' }}>Day Width: {TIMELINE_PIXELS_PER_DAY}px</label>
-          <input
-            type="range"
-            min={30}
-            max={150}
-            step={30}
-            value={TIMELINE_PIXELS_PER_DAY}
-            onChange={e => setTIMELINE_PIXELS_PER_DAY(Number((e.target as HTMLInputElement).value))}
-          />
-        </div>
         <button
           onClick={handleGenerateClick}
           style={{
@@ -195,36 +172,13 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
         transition: 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1)',
         padding: '15px',
         backgroundColor: '#ffffff',
-        border: '2px solid #000000',
+        border: '1px solid gray',
         borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+        boxShadow: '10 2px 10px rgba(0, 0, 0, 0.05)',
         width: '440px', 
         textAlign: 'center'
       }}
     >
-      {/* Debug Mode Toggle */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-        <label style={{ fontSize: '12px', color: '#000000', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <input
-            type="checkbox"
-            checked={debugMode}
-            onChange={e => setDebugMode((e.target as HTMLInputElement).checked)}
-          />
-          Debug Mode
-        </label>
-      </div>
-      {/* Day width slider */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <label style={{ fontSize: '12px', color: '#000000' }}>Day Width: {TIMELINE_PIXELS_PER_DAY}px</label>
-        <input
-          type="range"
-          min={30}
-          max={150}
-          step={30}
-          value={TIMELINE_PIXELS_PER_DAY}
-          onChange={e => setTIMELINE_PIXELS_PER_DAY(Number((e.target as HTMLInputElement).value))}
-        />
-      </div>
       {/* Main content area - either shows summary during loading or Generate button when complete */}
       {isMermaidLoading ? (
         <div 
@@ -264,7 +218,7 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
         </button>
       )}
       
-      {/* Process buffer button - only shown when there are items in the buffer */}
+      {/* Process buffer button - only shown when there are items in the buffer
       {debugMode && actionBufferLength > 0 && (
         <div style={{ marginTop: '8px', marginBottom: '8px' }}>
           <ActionPreview
@@ -276,7 +230,7 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
             actionBuffer={actionBuffer}
           />
         </div>
-      )}
+      )} */}
       
       {/* View process section - shown if there's stream data, regardless of loading state */}
       {hasStreamData && (
@@ -339,14 +293,15 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
       {sections.length > 0 && (
       <div className="flex gap-2">
               {isGeneratingFinalPlan ? (
-                <div className="flex items-center gap-2 text-blue-500 px-3 py-2 rounded-md text-sm font-medium flex-1">
-                  <div className="spinner w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                <div className="flex items-center gap-2 text-bblack px-3 py-2 rounded-md text-sm font-medium flex-1">
+                  <div className="spinner w-5 h-5 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
                   <span>{generationProgress}</span>
                 </div>
+
               ) : (
                 <button
                   onClick={handleGenerateFinalPlan}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium flex-1 flex items-center justify-center gap-2"
+                  className="bg-black hover:bg-black text-white px-3 py-2 rounded-md text-sm font-medium flex-1 flex items-center justify-center gap-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>

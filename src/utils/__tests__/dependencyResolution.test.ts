@@ -1,7 +1,7 @@
 // Tests for dependency resolution in mermaid gantt parsing
 
 import { resolveDependencies } from '../dependencyResolution';
-import { Section } from '../../contexts/DraftPlanContextMermaid';
+import { Section } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 
 describe('dependency resolution', () => {
   test('should resolve direct dependencies', () => {

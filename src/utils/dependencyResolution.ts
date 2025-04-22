@@ -1,4 +1,4 @@
-import { Section } from '../contexts/DraftPlanContextMermaid';
+import { Section } from '../contexts/DraftPlan/types';
 
 /**
  * Find a task's end date by its ID across all sections

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { Database } from '../types/supabase';
 import { GanttData } from '../types';
 
 // Helper function to get environment variables from either Vite or Node.js
@@ -20,15 +21,4 @@ function getEnvVariable(key: string): string {
 const supabaseUrl = getEnvVariable('VITE_SUPABASE_URL');
 const supabaseAnonKey = getEnvVariable('VITE_SUPABASE_ANON_KEY');
 
-// Check if the environment variables are defined
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase URL and Anon Key must be defined in .env file');
-}
-
-// Create a single instance of the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Custom type for Supabase tables
-export type Tables = {
-  charts: GanttData;
-};
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);

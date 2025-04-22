@@ -2,7 +2,7 @@ import React, { useState, useEffect, memo } from 'react';
 import { Handle, Position, NodeResizeControl, NodeProps } from 'reactflow';
 import '@reactflow/node-resizer/dist/style.css';
 import type { ResizeDragEvent, ResizeParams } from '@reactflow/node-resizer';
-import { useDraftPlanMermaidContext } from '../../contexts/DraftPlanContextMermaid';
+import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { MermaidTaskData } from '../../types';
 
 interface TaskNodeProps extends NodeProps<MermaidTaskData> {
@@ -10,7 +10,6 @@ interface TaskNodeProps extends NodeProps<MermaidTaskData> {
 }
 
 const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd }) => {
-  useEffect(() => { console.log('TaskNode mounted', data.id); }, []);
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const { TIMELINE_PIXELS_PER_DAY, updateTaskDuration } = useDraftPlanMermaidContext();
@@ -78,19 +77,28 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd }) => {
       aria-label={tooltipText}
     >
       <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
-      <NodeResizeControl
-        nodeId={data.id}
-        position="right"
-        minWidth={TIMELINE_PIXELS_PER_DAY}
-        minHeight={60}
-        onResize={(_evt: ResizeDragEvent, { width }: ResizeParams) => setLocalWidth(width)}
-        onResizeEnd={(evnt,params)=>{
-          onResizeEnd(evnt,params,data);
-        }}
-        style={{
-          top: '10px'
-        }}
-      />
+      {showSubMenu && !dragging && (
+        <NodeResizeControl
+          nodeId={data.id}
+          position="right"
+          minWidth={TIMELINE_PIXELS_PER_DAY}
+          minHeight={60}
+          onResize={(_evt: ResizeDragEvent, { width }: ResizeParams) => setLocalWidth(width)}
+          onResizeEnd={(evnt,params)=>{
+            onResizeEnd(evnt,params,data);
+          }}
+          style={{
+            top: '10px',
+            width: '12px',
+            height: '40px',
+            background: 'gray',
+            borderRadius: '4px',
+            border: '1px solid #fff',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            opacity: 0.8
+          }}
+        />
+      )}
       
       <div 
         style={{

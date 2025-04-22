@@ -1,4 +1,4 @@
-import { Task } from '../../types';
+import { Task } from '../../../types';
 
 /**
  * Recursively find a task by id in a nested task array.

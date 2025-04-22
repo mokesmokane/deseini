@@ -1,4 +1,4 @@
-import { Task, Timeline } from '../contexts/DraftPlanContextMermaid';
+import { Task, Timeline } from '../contexts/DraftPlan/types';
 
 /**
  * Returns a task by its ID from the dictionary

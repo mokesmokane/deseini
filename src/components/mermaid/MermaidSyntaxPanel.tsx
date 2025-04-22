@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useDraftPlanMermaidContext } from '../../contexts/DraftPlanContextMermaid';
+import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { toast } from 'react-hot-toast';
 import DraftPlanMermaid from '../draft_plan_mermaid/DraftPlanMermaid';
 import ActionPreview from './ActionPreview';

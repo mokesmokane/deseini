@@ -8,7 +8,9 @@ export type ActionType =
   | 'UPDATE_MILESTONE'
   | 'UPDATE_TIMELINE'
   | 'RESOLVE_DEPENDENCY'
-  | 'PROCESS_DEPENDENCIES';
+  | 'PROCESS_DEPENDENCIES'
+  | 'UPDATE_TASK_STARTDATE'
+  | 'UPDATE_TASK_DURATION';
 
 // Define the structure of a buffered action
 export interface BufferedAction {

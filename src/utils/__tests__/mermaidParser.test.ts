@@ -31,13 +31,13 @@ describe('mermaidParser', () => {
 
   describe('createMilestoneWithDependency', () => {
     test('should create a milestone with dependency', () => {
-      const result = createMilestoneWithDependency('Project Launch', 'task1');
+      const result = createMilestoneWithDependency('Project Launch', 'task1', new Date('2025-06-30'));
       
       expect(result).toEqual({
         id: 'project_launch',
         type: 'milestone',
         label: 'Project Launch',
-        startDate: undefined, // Will be resolved later
+        startDate: new Date('2025-06-30'),
         dependencies: ['task1']
       });
     });
@@ -45,7 +45,7 @@ describe('mermaidParser', () => {
 
   describe('parseMermaidLine', () => {
     test('should parse a section line', () => {
-      const result = parseMermaidLine('section Phase 1', null);
+      const result = parseMermaidLine('section Phase 1', null, new Date('2025-06-30'));
       
       expect(result).toEqual({
         type: 'section',
@@ -287,6 +287,50 @@ gantt
       // 1 for gantt line, 1 for title, 1 for dateFormat, 4 for sections, 5 for tasks, 3 for milestones
       const nonSkipResults = results.parsedResults.filter(r => r.type !== 'skip');
       expect(nonSkipResults.length).toBe(4 + 5 + 3); // Sections + Tasks + Milestones
+    });
+
+    test('should parse the Piëch GT 2+2 Concept Design Project Timeline with correct milestone dates', () => {
+      const mermaidSyntax = `
+  gantt
+      title Piëch GT 2+2 GT Concept Design Project Timeline
+      dateFormat  YYYY-MM-DD
+
+      section Concept Design Development
+      Generate initial sketches and concepts: cdd1, 2025-04-22, 7d
+      Refine design proposal toward final theme: cdd2, after cdd1, 10d
+      Finalised Design Theme: milestone, after cdd2
+
+      section Scale Model Creation
+      Develop digital model(s): smc1, after cdd1, 14d
+      Construct 25% physical scale model: smc2, after smc1, 21d
+      Proportion Model completed: milestone, after smc2
+      Scale Model completed: milestone, after smc2
+
+      section Digital Visualisation
+      Produce outdoor environment renders: dv1, 2025-05-06, 10d
+      Produce studio renders: dv2, after dv1, 5d
+      Produce turntable studio animation: dv3, after dv2, 6d
+      Visualisation outputs delivered: milestone, after dv3
+
+      section Full-size Model Preparation
+      Finalise surface design for scale-up: fmp1, after cdd2, 7d
+      Prepare data for full size model production: fmp2, after fmp1, 5d
+      Surface sign-off: milestone, after fmp1
+  `;
+      const lines = mermaidSyntax.trim().split('\n');
+      const result = processMultipleMermaidLines(lines);
+
+      // Verify initial task cdd1
+      expect(result.tasks['cdd1'].startDate).toEqual(new Date('2025-04-22'));
+      expect(result.tasks['cdd1'].endDate).toEqual(new Date('2025-04-29'));
+
+      // Verify dependent task cdd2
+      expect(result.tasks['cdd2'].startDate).toEqual(new Date('2025-04-29'));
+      expect(result.tasks['cdd2'].endDate).toEqual(new Date('2025-05-09'));
+
+      // Verify milestone Finalised Design Theme
+      expect(result.tasks['finalised_design_theme'].dependencies).toEqual(['cdd2']);
+      expect(result.tasks['finalised_design_theme'].startDate).toEqual(new Date('2025-05-09'));
     });
   });
 });

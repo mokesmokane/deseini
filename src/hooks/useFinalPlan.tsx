@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useProject } from '../contexts/ProjectContext';
-import { useDraftPlanMermaidContext, Section } from '../contexts/DraftPlanContextMermaid';
+import { useDraftPlanMermaidContext } from '../contexts/DraftPlan/DraftPlanContextMermaid';
+import { Section } from '../contexts/DraftPlan/types';
 import { useGantt } from '../contexts/GanttContext';
 import { useChartsList } from '../contexts/ChartsListContext';
 import toast from 'react-hot-toast';
@@ -21,9 +22,9 @@ export const useFinalPlan = () => {
     return sections.map(section => {
       const tasks = section.tasks.map(task => {
         if (task.type === 'milestone') {
-          return `- Milestone: ${task.label} - ${new Date(task.startDate).toLocaleDateString()}`;
+          return `- Milestone: ${task.label} - ${task.startDate ? new Date(task.startDate).toLocaleDateString() : ''}`;
         } else {
-          const startDate = new Date(task.startDate).toLocaleDateString();
+          const startDate = task.startDate ? new Date(task.startDate).toLocaleDateString() : '';
           const durationText = task.duration ? ` (${task.duration} days)` : '';
           return `- Task: ${task.label} - ${startDate}${durationText}`;
         }

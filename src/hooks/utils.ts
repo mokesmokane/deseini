@@ -1,4 +1,4 @@
-import { Task } from '../contexts/DraftPlanContextMermaid'
+import { Task } from '../contexts/DraftPlan/types'
 
 // Helper to ensure we're working with Date objects
 export const ensureDate = (date: Date | string | undefined): Date => {
@@ -61,3 +61,7 @@ export const roundPositionToDay = (position: number, pixelsPerDay: number) => {
     return Math.round(position / pixelsPerDay) * pixelsPerDay;
 };
 
+
+/**
+ * Pure logic to calculate section resize updates.
+ */

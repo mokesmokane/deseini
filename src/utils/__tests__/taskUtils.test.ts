@@ -1,5 +1,5 @@
 import { findTaskById, getTaskEndDate, createTask, checkTimelineBoundaries } from '../taskUtils';
-import { Task, Timeline } from '../../contexts/DraftPlanContextMermaid';
+import { Task, Timeline } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 
 describe('taskUtils', () => {
   describe('findTaskById', () => {

@@ -130,7 +130,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     const completeTask = findTask(task.id, currentChart.tasks);
 
     if (completeTask) {
-      setSelectedTask(completeTask);
+      setSelectedTask(completeTask.task);
     } else {
       setSelectedTask(task);
     }
@@ -184,7 +184,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
 
       const updatedChart = { ...currentChart };
       
-      updateTaskRecursive(updatedChart.tasks, taskId, updates);
+      updateTaskRecursive(taskId, updates, updatedChart.tasks);
 
       setCurrentChart(updatedChart);
       setHasUnsavedChanges(true);
@@ -450,8 +450,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       if (!parent || index === -1) return;
       
       // Deep clone the task and generate a new ID
-      const clonedTask: Task = cloneTask(sourceTask);
-      clonedTask.id = generateTaskId();
+      const clonedTask: Task = cloneTask(sourceTask, generateTaskId());
       
       // Clear any subtasks from the clone (we're just cloning the parent)
       clonedTask.tasks = [];
@@ -559,8 +558,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
       if (!parent || index === -1) return;
       
       // Deep clone the task and generate a new ID
-      const clonedTask: Task = cloneTask(sourceTask);
-      clonedTask.id = generateTaskId();
+      const clonedTask: Task = cloneTask(sourceTask, generateTaskId());
       
       // Clear any subtasks from the clone (we're just cloning the parent)
       clonedTask.tasks = [];

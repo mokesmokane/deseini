@@ -1,5 +1,6 @@
-import { Section, Task, Timeline } from '../contexts/DraftPlanContextMermaid';
+import { Section, Task, Timeline } from '../contexts/DraftPlan/types';
 import { BufferedAction } from './types';
+import { ensureDate } from '../hooks/utils';
 
 /**
  * Interface for application state relevant to action processing
@@ -88,7 +89,8 @@ export const processAction = (
     case 'ADD_TASK':
     case 'UPDATE_TASK': {
       const { sectionName, task } = action.payload;
-      console.log(`Adding or updating task ${task.id} in section ${sectionName} ${task.startDate}`);
+      console.log('action.payload', action.payload);
+
       if (!state.x0Date) {
         updatedState.x0Date = task.startDate;
       }
@@ -100,15 +102,14 @@ export const processAction = (
 
           if (existingIndex >= 0) {
             // Update existing task
+            console.log('existing task', section.tasks[existingIndex]);
             const updatedTasks = [...section.tasks];
             task.duration = task.endDate ? 
               (task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24) : task.duration;
             updatedTasks[existingIndex] = task;
-            console.log(`Updating existing task ${task.id} in section ${sectionName}`);
             return { ...section, tasks: updatedTasks };
           } else {
             // Add new task
-            console.log(`Adding new task ${task.id} to section ${sectionName}`);
             return {
               ...section,
               tasks: [...section.tasks, task]
@@ -119,14 +120,74 @@ export const processAction = (
       });
       
       // Update the task dictionary
+      console.log('updated task', task);
       updatedTaskDictionary[task.id] = task;
       break;
     }
-    
+    case 'UPDATE_TASK_STARTDATE':
+      let { sectionName, taskId, startDate } = action.payload;
+      // Update the task dictionaryconsole.log('action.payload', action.payload);
+
+      if (!state.x0Date) {
+        updatedState.x0Date = startDate;
+      }
+      // Add or update the task in the section
+      updatedState.sections = updatedState.sections.map(section => {
+        if (section.name === sectionName) {
+          // Check if task already exists
+          const existingIndex = section.tasks.findIndex(t => t.id === taskId);
+          const task = section.tasks[existingIndex];
+
+          if (existingIndex >= 0) {
+            const updatedTasks = [...section.tasks];
+            const duration = task.endDate ? 
+              (ensureDate(task.endDate).getTime() - ensureDate(task.startDate).getTime()) / (1000 * 60 * 60 * 24) : task.duration;
+            if (task.type === 'milestone') {
+              task.startDate = startDate;
+              updatedTasks[existingIndex] = task;
+              return { ...section, tasks: updatedTasks };
+            } else if (duration) {
+              task.startDate = startDate;
+              task.endDate = new Date(ensureDate(task.startDate).getTime() + duration * 1000 * 60 * 60 * 24);
+              updatedTasks[existingIndex] = task;
+              return { ...section, tasks: updatedTasks };
+            }
+          } 
+          updatedTaskDictionary[taskId] = task;
+        }
+        return section;
+      });
+      break;
+    case 'UPDATE_TASK_DURATION':
+      const {sectionName:sn, taskId:ti, newDuration, endDate } = action.payload;
+      // Update the task dictionary
+      console.log('mokes action.payload', action.payload);
+
+      // Add or update the task in the section
+      updatedState.sections = updatedState.sections.map(section => {
+        if (section.name === sn) {
+          // Check if task already exists
+          const existingIndex = section.tasks.findIndex(t => t.id === ti);
+          const task = section.tasks[existingIndex];
+          console.log('mokes existing task', task);
+          if (existingIndex >= 0) {
+            // Update existing task
+            console.log('existing task', task);
+            const updatedTasks = [...section.tasks];
+            task.duration = newDuration ? newDuration : endDate ? (endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24) : task.duration;
+            task.endDate = endDate ? endDate : newDuration ? new Date(task.startDate.getTime() + newDuration * 1000 * 60 * 60 * 24) : task.endDate;
+            updatedTasks[existingIndex] = task;
+            console.log('mokes updated task', task);
+            return { ...section, tasks: updatedTasks };
+          } 
+          updatedTaskDictionary[ti] = task;
+        }
+        return section;
+      });
+      break;
     case 'ADD_MILESTONE':
     case 'UPDATE_MILESTONE': {
       const { sectionName, milestone } = action.payload;
-      console.log(`Adding or updating milestone ${milestone.id} in section ${sectionName} ${milestone.startDate}`);
       // Add or update the milestone in the section
       updatedState.sections = updatedState.sections.map(section => {
         if (section.name === sectionName) {
@@ -136,6 +197,7 @@ export const processAction = (
           
           if (existingIndex >= 0) {
             // Update existing milestone
+            console.log('existing milestone', milestone);
             const updatedTasks = [...section.tasks];
             updatedTasks[existingIndex] = milestone;
             return { ...section, tasks: updatedTasks };

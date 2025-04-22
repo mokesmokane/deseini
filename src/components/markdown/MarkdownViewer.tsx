@@ -16,7 +16,7 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
   const { 
     currentText, 
     isStreaming, 
-    setCurrentText, 
+    saveText, 
     isLineLocked, 
     toggleLock, 
     unlockSection, 
@@ -37,16 +37,6 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
   const buttonRefs = useRef<Map<number, React.RefObject<HTMLButtonElement>>>(new Map());
   const chatButtonRefs = useRef<Map<number, React.RefObject<HTMLButtonElement>>>(new Map());
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Initialize markdown text
-  useEffect(() => {
-    if (currentText) {
-      if (!isStreaming && !currentText) {
-        setCurrentText(initialMarkdown);
-      }
-    }
-  }, [currentText, initialMarkdown, isStreaming, setCurrentText]);
-
   // Handle clicks outside of dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -175,7 +165,7 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
 
     const lines = getAllLines();
     const updatedLines = lines.filter((_, index) => !linesToDelete.includes(index));
-    setCurrentText(updatedLines.join('\n'));
+    saveText(updatedLines.join('\n'));
     
     setActiveLines(new Set());
     setLineHovered(null);
@@ -183,7 +173,7 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
     // Unlock the section we're deleting
     unlockSection(sectionIdToDelete);
     
-  }, [setCurrentText, unlockSection, getSectionId, findListItemRange, getAllLines, getLineInfo]);
+  }, [saveText, unlockSection, getSectionId, findListItemRange, getAllLines, getLineInfo]);
 
   // Handle dropdown option selection
   const handleOptionSelect = useCallback(async (
@@ -361,9 +351,9 @@ export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, o
       newText = editedContent;
     }
     
-    setCurrentText(newText);
+    saveText(newText);
     setDirectEditingSection(null);
-  }, [directEditingSection, setCurrentText, getAllLines, currentText]);
+  }, [directEditingSection, saveText, getAllLines, currentText]);
 
   // Cancel direct edits
   const cancelDirectEdit = useCallback(() => {

@@ -12,7 +12,8 @@ import {
   CodeBracketIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { Section, useDraftPlanMermaidContext } from '../contexts/DraftPlanContextMermaid';
+import { useDraftPlanMermaidContext } from '../contexts/DraftPlan/DraftPlanContextMermaid';
+import { Section } from '../contexts/DraftPlan/types';
 import { useFinalPlan } from '../hooks/useFinalPlan';
 
 interface SidebarSection {
@@ -359,7 +360,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
     setIsExpanded(false);
   };
 
-  console.log(`[Sidebar] Rendering: isExpanded=${isExpanded}, activeSection=${activeSection}`);
 
   return (
     <div

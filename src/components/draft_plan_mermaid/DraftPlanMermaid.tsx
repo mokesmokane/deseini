@@ -1,28 +1,29 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import React from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ReactFlow, {
   Background,
   ReactFlowInstance,
   Node,
   NodeMouseHandler,
   NodeProps,
+  ResizeDragEvent,
+  ResizeParams,
 } from 'reactflow';
 import { useDraftPlanFlow } from '../../hooks/useDraftPlanFlow';
 import "react-datepicker/dist/react-datepicker.css";
 import 'reactflow/dist/style.css';
-import { useDraftPlanMermaidContext} from '../../contexts/DraftPlanContextMermaid';
+import { useDraftPlanMermaidContext} from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import TaskNode from './TaskNode';
 import MilestoneNode from './MilestoneNode';
 import TimelineNode from './TimelineNode';
 import GenerateNode from './GenerateNode';
-import { useNodeEvents } from '../../hooks/useNodeEvents';
 import { MermaidTaskData } from '@/types';
+import SectionNode , { SectionNodeData } from './SectionNode';
 
 function DraftPlanMermaid() {
-  const { TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY } = useDraftPlanMermaidContext();
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
-  const { nodes, edges, setNodes, anchorDate, onNodesChange, timelineVisible, setGenerateNode, setDraggingNodeId } = useDraftPlanFlow();
-  const { onNodeDrag, onNodeDragStop, onResizeEnd } = useNodeEvents(nodes, setNodes, anchorDate, TIMELINE_PIXELS_PER_DAY, setGenerateNode, setDraggingNodeId);
+  const { TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY} = useDraftPlanMermaidContext();
+  const [ reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const { nodes, edges, onNodesChange, timelineVisible, onResizeEnd, onNodeDrag, onNodeDragStop } = useDraftPlanFlow();
+
 
   // Track selected node and panel animation state
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -116,7 +117,6 @@ function DraftPlanMermaid() {
     };
   }, [reactFlowInstance, timelineVisible]);
 
-  console.log('nodes', nodes);
   return (
     <div style={{ width: '100%', height: '100%', minHeight: '500px', position: 'relative' }}>
       <ReactFlow
@@ -132,6 +132,7 @@ function DraftPlanMermaid() {
         selectNodesOnDrag={false}
         zoomOnScroll={true}
         nodeTypes={useMemo(() => ({
+          section: (props: NodeProps<SectionNodeData>) => <SectionNode {...props} />,
           task: (props: NodeProps<MermaidTaskData>) => <TaskNode {...props} onResizeEnd={onResizeEnd} />,
           milestone: (props: NodeProps<any>) => <MilestoneNode {...props} />,
           timeline: (props: NodeProps<any>) => <TimelineNode {...props} />,

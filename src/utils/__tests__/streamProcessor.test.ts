@@ -1,6 +1,6 @@
 import { processStreamData, StreamState, calculateDatesFromDependencies } from '../streamProcessor';
 import { BufferedAction } from '../types';
-import { Task } from '../../contexts/DraftPlanContextMermaid';
+import { Task } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 
 describe('streamProcessor', () => {
   // Initial test state setup

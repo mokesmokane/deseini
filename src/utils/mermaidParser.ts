@@ -1,6 +1,32 @@
-import { Task } from '../contexts/DraftPlanContextMermaid';
+import { Task, Timeline } from '../contexts/DraftPlan/types';
 import { createTask } from './taskUtils';
-
+/**
+ * Find a task's end date by its ID across all sections
+ * @param taskId ID of the task to find
+ * @param tasks All tasks to search in
+ * @returns The end date of the task, or undefined if not found
+ */
+export function findTaskEndDateById(taskId: string, tasks: Record<string, Task>): Date | undefined {
+  const task = tasks[taskId];
+  if (task) {
+    if (task.type === 'milestone' && task.startDate) {
+      // For milestones, use the startDate property
+      return new Date(task.startDate);
+    } else if (task.endDate) {
+      // For tasks with explicit end date
+      return new Date(task.endDate);
+    } else if (task.duration && task.startDate) {
+      // For tasks with duration and start date, calculate end date
+      const endDate = new Date(task.startDate);
+      endDate.setDate(endDate.getDate() + task.duration);
+      return endDate;
+    } else if (task.startDate) {
+      // For tasks with only start date (no duration)
+      return new Date(task.startDate);
+    }
+  }
+  return undefined;
+}
 /**
  * Creates a milestone ID from the milestone name
  * @param name Milestone name
@@ -28,8 +54,7 @@ export const createMilestone = (name: string, dateStr: string): Task => {
     id: milestoneId,
     type: 'milestone',
     label: name,
-    startDate: milestoneDate,
-    date: milestoneDate
+    startDate: milestoneDate
   };
 };
 
@@ -39,14 +64,14 @@ export const createMilestone = (name: string, dateStr: string): Task => {
  * @param dependencyId The ID of the task this milestone depends on
  * @returns Milestone task object with dependencies
  */
-export const createMilestoneWithDependency = (name: string, dependencyId: string): Task => {
+export const createMilestoneWithDependency = (name: string, dependencyId: string, date: Date): Task => {
   const milestoneId = createMilestoneId(name);
   
   return {
     id: milestoneId,
     type: 'milestone',
     label: name,
-    startDate: undefined, // Will be resolved in dependency resolution
+    startDate: date,
     dependencies: [dependencyId]
   };
 };
@@ -57,7 +82,7 @@ export const createMilestoneWithDependency = (name: string, dependencyId: string
  * @param currentSection The name of the current section
  * @returns Object containing parsed information or null if line should be skipped
  */
-export const parseMermaidLine = (line: string, currentSection: string | null): {
+export const parseMermaidLine = (line: string, currentSection: string | null, tasks: Record<string, Task>): {
   type: 'section' | 'task' | 'milestone' | 'skip';
   payload: any;
 } => {
@@ -109,12 +134,15 @@ export const parseMermaidLine = (line: string, currentSection: string | null): {
   if (milestoneDependencyMatch) {
     const milestoneName = milestoneDependencyMatch[1].trim();
     const dependencyId = milestoneDependencyMatch[2].trim();
-    
+    const dependencyEndDate = findTaskEndDateById(dependencyId, tasks);
+    if (!dependencyEndDate) {
+      throw new Error(`Dependency task ${dependencyId} not found`);
+    }
     return {
       type: 'milestone',
       payload: {
         sectionName: currentSection,
-        milestone: createMilestoneWithDependency(milestoneName, dependencyId)
+        milestone: createMilestoneWithDependency(milestoneName, dependencyId, dependencyEndDate)
       }
     };
   }
@@ -153,6 +181,10 @@ export const parseMermaidLine = (line: string, currentSection: string | null): {
     const dependencyId = dependencyMatch[3].trim();
     const durationDays = parseInt(dependencyMatch[4], 10);
     
+    const dependencyEndDate = findTaskEndDateById(dependencyId, tasks);
+    if (!dependencyEndDate) {
+      throw new Error(`Dependency task ${dependencyId} not found`);
+    }
     return {
       type: 'task',
       payload: {
@@ -160,7 +192,7 @@ export const parseMermaidLine = (line: string, currentSection: string | null): {
         task: createTask(
           taskId,
           taskName,
-          undefined,
+          dependencyEndDate,
           durationDays,
           undefined,
           [dependencyId]
@@ -187,6 +219,11 @@ export const parseMermaidLine = (line: string, currentSection: string | null): {
     } else if (startInfo.startsWith('after')) {
       const depId = startInfo.replace('after', '').trim();
       dependencies = [depId];
+      const dependencyEndDate = findTaskEndDateById(depId, tasks);
+      if (!dependencyEndDate) {
+        throw new Error(`Dependency task ${depId} not found`);
+      }
+      startDate = dependencyEndDate;
     }
     
     // Parse duration
@@ -202,7 +239,7 @@ export const parseMermaidLine = (line: string, currentSection: string | null): {
         task: createTask(
           taskId,
           taskName,
-          startDate,
+          startDate!,
           duration,
           undefined,
           dependencies
@@ -230,7 +267,7 @@ export const processMultipleMermaidLines = (lines: string[]): {
   let currentSection: string | null = null;
   
   const parsedResults = lines.map(line => {
-    const result = parseMermaidLine(line, currentSection);
+    const result = parseMermaidLine(line, currentSection, tasks);
     
     // Update the current section if needed
     if (result.type === 'section') {

@@ -2,40 +2,25 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import { 
   processStreamData, 
   StreamState 
-} from '../utils/streamProcessor';
+} from '../../utils/streamProcessor';
 import { 
   processAction 
-} from '../utils/actionProcessor';
+} from '../../utils/actionProcessor';
 import {
   processStreamResponse
-} from '../utils/streamHandler';
-import { BufferedAction, ActionType } from '../utils/types';
-
+} from '../../utils/streamHandler';
+import { BufferedAction, ActionType } from '../../utils/types';
+import { Section, Timeline, Task } from './types';
+import { projectDraftChartService } from '../../services/projectDraftChartService';
+import { debounce } from 'lodash';
+import { useProject } from '../ProjectContext';
+import { ensureDate } from '../../hooks/utils';
 // gantt
 //     section Phase 1
 //     Task 1:t1, 2025-01-01, 10d
 //     Task 2:t2, after t1, 5d
 //     Milestone 1: milestone, 2025-02-15
 
-export interface Section {
-  name: string;
-  tasks: Task[];
-}
-
-export interface Task {
-  id: string;
-  type?: 'task' | 'milestone';
-  label: string;
-  startDate: Date;
-  duration?: number;
-  endDate?: Date;
-  dependencies?: string[];
-}
-
-export interface Timeline {
-  startDate: Date;
-  endDate: Date;
-}
 
 interface DraftPlanMermaidContextType {
   sections: Section[];
@@ -49,7 +34,7 @@ interface DraftPlanMermaidContextType {
   streamSummary: string;
   processingBufferProgress: number;
   startProcessingBuffer: () => void;
-  processAllBuffer: () => void;
+  processAllBuffer: () => Promise<void>;
   TIMELINE_PIXELS_PER_DAY: number;
   setTIMELINE_PIXELS_PER_DAY: (newVal: number) => void;
   actionBufferLength: number;
@@ -59,9 +44,13 @@ interface DraftPlanMermaidContextType {
   updateTaskDuration: (taskId: string, newDuration: number) => void;
 }
 
+interface DraftPlanMermaidProviderProps {
+  children: React.ReactNode;
+  projectId: string | null;
+}
 const DraftPlanMermaidContext = createContext<DraftPlanMermaidContextType | undefined>(undefined);
 
-export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function DraftPlanMermaidProvider({ children, projectId }: DraftPlanMermaidProviderProps) {
   const [x0Date, setX0Date] = useState<Date | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY] = useState<number>(30);
@@ -74,6 +63,20 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
   const [processingBufferProgress, setProcessingBufferProgress] = useState<number>(0);
   const [actionBufferLength, setActionBufferLength] = useState<number>(0);
   const [nextAction, setNextAction] = useState<BufferedAction | null>(null);
+  const projectIdRef = useRef(projectId);
+
+  // Update refs when props change
+  React.useEffect(() => {
+    projectIdRef.current = projectId;
+    if (projectId) {
+      projectDraftChartService.getDraftChart(projectId).then((draftPlan) => {
+        if (draftPlan) {
+          setSections(draftPlan.sections);
+          setTimeline(draftPlan.timeline);
+        }
+      });
+    }
+  }, [projectId]);
 
   // References for streaming data handling
   const streamStateRef = useRef<StreamState>({
@@ -134,144 +137,6 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     addActionToBuffer('PROCESS_DEPENDENCIES', {});
   }, [addActionToBuffer]);
 
-  // Helper function to start processing the buffer if not already processing
-  const startProcessingBuffer = useCallback(() => {
-    if (!isProcessingBufferRef.current && actionBufferRef.current.length > 0) {
-      isProcessingBufferRef.current = true;
-      processNextBatchFromBuffer();
-    }
-  }, []);
-
-  // Process all actions in the buffer at once
-  const processAllBuffer = useCallback(() => {
-    if (!isProcessingBufferRef.current && actionBufferRef.current.length > 0) {
-      isProcessingBufferRef.current = true;
-      
-      // Process all actions one after another
-      const processAllActions = () => {
-        const totalActions = actionBufferRef.current.length;
-        let processedCount = 0;
-        
-        // Process actions until buffer is empty
-        const processNextAction = () => {
-          if (actionBufferRef.current.length === 0) {
-            // All done
-            isProcessingBufferRef.current = false;
-            setProcessingBufferProgress(100);
-            setNextAction(null);
-            return;
-          }
-          
-          // Take the next action
-          const actionToProcess = actionBufferRef.current[0];
-          actionBufferRef.current = actionBufferRef.current.slice(1);
-          
-          // Update the buffer length state
-          setActionBufferLength(actionBufferRef.current.length);
-          
-          // Update next action
-          setNextAction(actionBufferRef.current.length > 0 ? actionBufferRef.current[0] : null);
-          
-          // Track progress
-          processedCount++;
-          const progress = Math.floor((processedCount / Math.max(totalActions, 1)) * 100);
-          setProcessingBufferProgress(progress);
-          
-          // Process the action
-          const { updatedState, updatedTaskDictionary, actionsToQueue } = processAction(
-            { sections: sectionsRef.current, timeline: timelineRef.current, x0Date: x0DateRef.current },
-            actionToProcess,
-            taskDictionaryRef.current
-          );
-          
-          // Update the application state
-          setSections(updatedState.sections);
-          if (updatedState.timeline) {
-            setTimeline(updatedState.timeline);
-          }
-          
-          // Update the task dictionary
-          taskDictionaryRef.current = updatedTaskDictionary;
-          
-          // Add any new actions to the queue
-          actionsToQueue.forEach(newAction => {
-            actionBufferRef.current.push(newAction);
-          });
-          
-          // Process next action after a small delay to allow UI updates
-          setTimeout(processNextAction, 50);
-        };
-        
-        // Start processing
-        processNextAction();
-      };
-      
-      // Begin processing all actions
-      processAllActions();
-    }
-  }, []);
-
-  // Function to update a task's start date (for drag functionality)
-  const updateTaskStartDate = useCallback((taskId: string, newStartDate: Date) => {
-    // Find task and its section for updating
-    const taskDuration = (taskDictionaryRef.current[taskId] as Task)?.duration;
-    const taskEndDate = new Date(newStartDate);
-    if (taskDuration) {
-      taskEndDate.setDate(taskEndDate.getDate() + taskDuration);
-    }
-    let sectionName: string | undefined;
-    let originalTask: Task | undefined;
-    for (const sec of sectionsRef.current) {
-      const t = sec.tasks.find(task => task.id === taskId);
-      if (t) {
-        console.log(`Found task ${taskId} in section ${sec.name}`);
-        sectionName = sec.name;
-        originalTask = t;
-        break;
-      }
-    }
-    if (!sectionName || !originalTask) return;
-    // Build full updated task object
-    const updatedTask: Task = {
-      ...originalTask,
-      startDate: newStartDate,
-      endDate: taskEndDate
-    };
-
-    // Dispatch update with sectionName and full task
-    addActionToBuffer('UPDATE_TASK', { sectionName, task: updatedTask });
-    // Process immediately
-    processAllBuffer();
-  }, [addActionToBuffer, processAllBuffer]);
-
-  // Function to update a task's duration (for resize functionality)
-  const updateTaskDuration = useCallback((taskId: string, newDuration: number) => {
-    // Find task and its section for updating
-    let sectionName: string | undefined;
-    let originalTask: Task | undefined;
-    for (const sec of sectionsRef.current) {
-      const t = sec.tasks.find(task => task.id === taskId);
-      if (t) {
-        console.log(`Found task ${taskId} in section ${sec.name}`);
-        sectionName = sec.name;
-        originalTask = t;
-        break;
-      }
-    }
-    if (!sectionName || !originalTask) return;
-    const startDate = originalTask.startDate;
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + newDuration);
-    const updatedTask: Task = {
-      ...originalTask,
-      startDate,
-      // duration: newDuration,
-      endDate
-    };
-    addActionToBuffer('UPDATE_TASK', { sectionName, task: updatedTask });
-    processAllBuffer();
-  }, [addActionToBuffer, processAllBuffer]);
-
   // Handle streaming data from the server
   const handleStreamData = useCallback((content: string) => {
     // Append the new content to our accumulated data
@@ -312,8 +177,164 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     }
   }, []);
 
+  // Helper function to start processing the buffer if not already processing
+  const startProcessingBuffer = useCallback(() => {
+    if (!isProcessingBufferRef.current && actionBufferRef.current.length > 0) {
+      isProcessingBufferRef.current = true;
+      processNextBatchFromBuffer();
+    }
+  }, []);
+
+  // Process all actions in the buffer at once
+  const processAllBuffer = useCallback(() => {
+    return new Promise<void>((resolve) => {
+      if (!isProcessingBufferRef.current && actionBufferRef.current.length > 0) {
+        isProcessingBufferRef.current = true;
+        
+        // Process all actions one after another
+        const processAllActions = async () => {
+          const totalActions = actionBufferRef.current.length;
+          let processedCount = 0;
+          
+          // Process actions until buffer is empty
+          const processNextAction = async () => {
+            if (actionBufferRef.current.length === 0) {
+              // All done
+              isProcessingBufferRef.current = false;
+              setProcessingBufferProgress(100);
+              setNextAction(null);
+              resolve(); // Resolve the promise when all actions are processed
+              return;
+            }
+            
+            // Take the next action
+            const actionToProcess = actionBufferRef.current[0];
+            actionBufferRef.current = actionBufferRef.current.slice(1);
+            
+            // Update the buffer length state
+            setActionBufferLength(actionBufferRef.current.length);
+            
+            // Update next action
+            setNextAction(actionBufferRef.current.length > 0 ? actionBufferRef.current[0] : null);
+            
+            // Track progress
+            processedCount++;
+            const progress = Math.floor((processedCount / Math.max(totalActions, 1)) * 100);
+            setProcessingBufferProgress(progress);
+            
+            // Process the action
+            const { updatedState, updatedTaskDictionary, actionsToQueue } = processAction(
+              { sections: sectionsRef.current, timeline: timelineRef.current, x0Date: x0DateRef.current },
+              actionToProcess,
+              taskDictionaryRef.current
+            );
+            
+            // Update the application state
+            console.log('MOKES updatedState', updatedState);
+            setSections(updatedState.sections);
+            if (updatedState.timeline) {
+              setTimeline(updatedState.timeline);
+            }
+            
+            // Update the task dictionary
+            taskDictionaryRef.current = updatedTaskDictionary;
+            
+            // Add any new actions to the queue
+            if (actionsToQueue.length > 0) {
+              actionBufferRef.current = [...actionBufferRef.current, ...actionsToQueue];
+            }
+            
+            // Process next action asynchronously but sequentially using a promise
+            return new Promise<void>(nextResolve => {
+              // Small delay to allow UI updates but wrapped in a Promise to maintain sequence
+              setTimeout(() => {
+                processNextAction().then(nextResolve);
+              }, 50);
+            });
+          };
+          
+          // Start processing
+          await processNextAction();
+        };
+        
+        // Begin processing all actions
+        processAllActions();
+      } else {
+        // If no actions to process or already processing, resolve immediately
+        if (actionBufferRef.current.length === 0) {
+          setProcessingBufferProgress(100);
+        }
+        resolve();
+      }
+    });
+  }, []);
+
+  // Function to update a task's start date (for drag functionality)
+  const updateTaskStartDate = useCallback(async (taskId: string, newStartDate: Date) => {
+    // Find task and its section for updating
+    const taskDuration = (taskDictionaryRef.current[taskId] as Task)?.duration;
+    const taskEndDate = new Date(newStartDate);
+    if (taskDuration) {
+      taskEndDate.setDate(taskEndDate.getDate() + taskDuration);
+    }
+    let sectionName: string | undefined;
+    let originalTask: Task | undefined;
+    for (const sec of sectionsRef.current) {
+      const t = sec.tasks.find(task => task.id === taskId);
+      if (t) {
+        console.log(`Found task ${taskId} in section ${sec.name}`);
+        sectionName = sec.name;
+        originalTask = t;
+        break;
+      }
+    }
+    if (!sectionName || !originalTask) return;
+    // Build full updated task object
+    const updatedTask: Task = {
+      ...originalTask,
+      startDate: newStartDate, 
+      endDate: taskEndDate
+    };
+
+    // Dispatch update with sectionName and full task
+    console.log('updateTaskStartDate', updatedTask);
+    addActionToBuffer('UPDATE_TASK_STARTDATE', { sectionName, taskId, startDate: newStartDate });
+    // Process immediately
+    await processAllBuffer();
+    debouncedSave();
+  }, [addActionToBuffer, processAllBuffer]);
+
+  // Function to update a task's duration (for resize functionality)
+  const updateTaskDuration = useCallback(async (taskId: string, newDuration: number) => {
+    // Find task and its section for updating
+    let sectionName: string | undefined;
+    let originalTask: Task | undefined;
+    for (const sec of sectionsRef.current) {
+      const t = sec.tasks.find(task => task.id === taskId);
+      if (t) {
+        sectionName = sec.name;
+        originalTask = t;
+        break;
+      }
+    }
+    if (!sectionName || !originalTask) return;
+    const startDate = ensureDate(originalTask.startDate);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + newDuration);
+    const updatedTask: Task = {
+      ...originalTask,
+      startDate,
+      duration: newDuration,
+      endDate
+    };
+    console.log('updateTaskDuration', updatedTask);
+    addActionToBuffer('UPDATE_TASK_DURATION', { sectionName, taskId, newDuration, endDate });
+    await processAllBuffer();
+    debouncedSave();
+  }, [addActionToBuffer, processAllBuffer]);
+
   // Process a batch of actions from the buffer
-  const processNextBatchFromBuffer = useCallback(() => {
+  const processNextBatchFromBuffer = useCallback(async () => {
     if (actionBufferRef.current.length === 0) {
       isProcessingBufferRef.current = false;
       setProcessingBufferProgress(100);
@@ -339,7 +360,7 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
     setProcessingBufferProgress(progress);
 
     // Process each action in the batch using our pure function
-    actionsToProcess.forEach(action => {
+    for (const action of actionsToProcess) {
       const { updatedState, updatedTaskDictionary, actionsToQueue } = processAction(
         { sections: sectionsRef.current, timeline: timelineRef.current, x0Date: x0DateRef.current },
         action,
@@ -356,15 +377,44 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
       taskDictionaryRef.current = updatedTaskDictionary;
       
       // Add any new actions to the queue
-      actionsToQueue.forEach(newAction => {
-        actionBufferRef.current.push(newAction);
-      });
-    });
+      if (actionsToQueue.length > 0) {
+        actionBufferRef.current = [...actionBufferRef.current, ...actionsToQueue];
+      }
+    }
 
-
-    // Schedule the next batch processing - REMOVED automatic scheduling for manual control
+    // Set not processing to allow next batch
     isProcessingBufferRef.current = false;
   }, []);
+
+  // Debounced save function (1.5s after last change)
+  const debouncedSave = useRef(
+    debounce(async () => {
+      console.log('Saving draft chart...');
+      if (!projectIdRef.current) return;
+      
+      // Filter out any empty sections before saving
+      const currentSections = sectionsRef.current.filter(section => 
+        section.tasks && section.tasks.length > 0
+      );
+      
+      if (currentSections.length === 0) {
+        console.log('No sections with tasks to save, skipping save');
+        return;
+      }
+      
+      await projectDraftChartService.saveChart(projectIdRef.current, { 
+        sections: currentSections, 
+        timeline: timelineRef.current 
+      });
+    }, 1500)
+  ).current;
+
+
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
 
   // Clean up any intervals when the component unmounts
   useEffect(() => {
@@ -439,26 +489,20 @@ export const DraftPlanMermaidProvider: React.FC<{ children: React.ReactNode }> =
           setStreamProgress(prev => Math.min(99, prev + 1));
         },
         // On complete callback
-        () => {
+        async () => {
           // Final dependency resolution after all content is processed
           processDependencies();
           setStreamProgress(100);
           
-          // Set up an interval to check if buffer processing is complete
-          const checkBufferInterval = setInterval(() => {
-            if (actionBufferRef.current.length === 0 && !isProcessingBufferRef.current) {
-              setIsLoading(false);
-              clearInterval(checkBufferInterval);
-            }
-          }, 200);
-          
-          // Set a timeout to ensure we don't keep loading forever if something goes wrong
-          setTimeout(() => {
-            if (isLoading) {
-              setIsLoading(false);
-              clearInterval(checkBufferInterval);
-            }
-          }, 10000);
+          // Process all actions in the buffer and wait for completion
+          try {
+            await processAllBuffer();
+            debouncedSave();
+            setIsLoading(false);
+          } catch (error) {
+            console.error('Error processing buffer:', error);
+            setIsLoading(false);
+          }
         },
         // On error callback
         (error: Error) => {

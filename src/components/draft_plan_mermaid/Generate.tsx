@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useRef } from 'react';
-import { useDraftPlanMermaidContext } from '../../contexts/DraftPlanContextMermaid';
+import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useProjectPlan } from '../../contexts/ProjectPlanContext';
 import ActionPreview from '../mermaid/ActionPreview';
 

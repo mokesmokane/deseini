@@ -78,10 +78,10 @@ export const supabaseDbService = {
       return data?.map(record => {
         // If this is the new structure with chart_data JSON blob
         if (record.chart_data) {
-          return record.chart_data as GanttData;
+          return record.chart_data as unknown as GanttData;
         }
         // Fallback to treating the whole record as a GanttData object (legacy format)
-        return record as GanttData;
+        return record as unknown as GanttData;
       }) || [];
     } catch (error) {
       return [];
@@ -112,11 +112,11 @@ export const supabaseDbService = {
       
       // Check if we have the new structure with chart_data or old direct format
       if (data.chart_data) {
-        return data.chart_data as GanttData;
+        return data.chart_data as unknown as GanttData;
       }
       
       // Fallback to treating the whole record as a GanttData object (legacy format)
-      return data as GanttData;
+      return data as unknown as GanttData;
     } catch (error) {
       return null;
     }

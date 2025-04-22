@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useRef, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, ReactNode, useCallback, useMemo } from 'react';
 import { ChatMessage, Project, Chart } from '../types';
 import { toast } from 'react-hot-toast';
 import { MarkdownSectionAnalyzer } from '../components/markdown/MarkdownSections';
+import { projectMarkdownService } from '../services/projectMarkdownService';
 
 // Define the steps in the generation process
 export type PlanGenerationStep = 'idle' | 'generating' | 'reviewing' | 'finalizing';
@@ -19,7 +20,7 @@ export interface DiffSegment {
 interface ProjectPlanContextProps {
   currentText: string | null;
   previousText: string | null;
-  setCurrentText: (text: string | null) => void;
+  saveText: (text: string) => Promise<void>;
   isStreaming: boolean;
   
   setIsStreaming: (streaming: boolean) => void;
@@ -161,7 +162,6 @@ export function ProjectPlanProvider({
   const [currentLineNumber, setCurrentLineNumber] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [lockedSections, setLockedSections] = useState<Set<string>>(new Set());
-  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
 
   // Global static flag to track if initialization has happened across all instances
   // This ensures createPlanIfMissing only runs once globally regardless of how many times
@@ -172,7 +172,6 @@ export function ProjectPlanProvider({
   const projectRef = useRef(project);
   const userChartsRef = useRef(userCharts);
   const previousPlanRef = useRef<string | null>(null); // Store previous plan for diffing
-  const analyzerRef = useRef<MarkdownSectionAnalyzer | null>(null);
 
   // Update refs when props change
   React.useEffect(() => {
@@ -188,14 +187,8 @@ export function ProjectPlanProvider({
     }
   }, [currentText, isStreaming]);
 
-  // Update analyzer when text changes
-  React.useEffect(() => {
-    if (currentText) {
-      analyzerRef.current = new MarkdownSectionAnalyzer(currentText);
-    } else {
-      analyzerRef.current = null;
-    }
-  }, [currentText]);
+  // Analyzer derived from currentText
+  const analyzer = useMemo(() => currentText ? new MarkdownSectionAnalyzer(currentText) : null, [currentText]);
 
   const getProjectJsonRepresentation = () => {
     const currentProject = projectRef.current;
@@ -221,29 +214,33 @@ export function ProjectPlanProvider({
   };
 
   const createPlanIfMissing = async (project: Project) => {
-    // Check if global initialization has already happened
     if (hasInitialized.current) {
       console.log('[ProjectPlanContext] createPlanIfMissing: Already initialized globally');
       return;
     }
-
+    hasInitialized.current = true;
+    // Attempt to load existing markdown from DB
+    if (projectIdRef.current) {
+      const dbMarkdown = await projectMarkdownService.getMarkdown(projectIdRef.current);
+      if (dbMarkdown) {
+        console.log('[ProjectPlanContext] createPlanIfMissing: Loaded markdown from DB');
+        setCurrentText(dbMarkdown);
+        setPreviousText(dbMarkdown);
+        return;
+      }
+    }
     // Check if creation is already in progress or if text already exists
-    if (isCreatingPlan || currentText || isStreaming) {
+    if (currentText || isStreaming) {
       console.log('[ProjectPlanContext] createPlanIfMissing: Already in progress or plan exists');
       return;
     }
-    
     try {
-      setIsCreatingPlan(true);
       console.log('[ProjectPlanContext] createPlanIfMissing: Starting creation');
-      hasInitialized.current = true; // Mark as initialized before the async call
       await generateProjectPlan([], project);
     } catch (error) {
       console.error('[ProjectPlanContext] createPlanIfMissing: Error', error);
-      // If there's an error, we should reset the initialization flag to allow retrying
       hasInitialized.current = false;
     } finally {
-      setIsCreatingPlan(false);
       console.log('[ProjectPlanContext] createPlanIfMissing: Creation completed');
     }
   };
@@ -321,6 +318,13 @@ export function ProjectPlanProvider({
     } finally {
       console.log('[ProjectPlanContext] generateProjectPlan: FINALLY - setting isGeneratingProjectPlan to false');
       setIsStreaming(false);
+      if (projectIdRef.current && currentText) {
+        console.log('[ProjectPlanContext] generateProjectPlan: Saving markdown to DB');
+        const saved = await projectMarkdownService.saveMarkdown(projectIdRef.current, currentText);
+        if (!saved) {
+          console.error('[ProjectPlanContext] generateProjectPlan: Failed to save markdown to DB');
+        }
+      }
     }
   };
 
@@ -390,6 +394,10 @@ export function ProjectPlanProvider({
       if (data.editedMarkdown) {
         setCurrentText(data.editedMarkdown);
         toast.success('Section updated successfully');
+        if (projectIdRef.current) {
+          console.log('[ProjectPlanContext] editMarkdownSection: Saving markdown to DB');
+          await projectMarkdownService.saveMarkdown(projectIdRef.current, data.editedMarkdown);
+        }
         return true;
       } else {
         throw new Error('No edited content returned');
@@ -407,60 +415,37 @@ export function ProjectPlanProvider({
   };
 
   // MarkdownSectionAnalyzer methods
-  const getLineInfo = (lineNumber: number) => {
-    if (!analyzerRef.current) {
-      return { 
-        sections: [],
-        isHeader: false,
-        isContent: false,
-        isList: false
-      };
+  const getLineInfo = useCallback((lineNumber: number) => {
+    if (!analyzer) {
+      return { sections: [], isHeader: false, isContent: false, isList: false };
     }
-    return analyzerRef.current.getLineInfo(lineNumber);
-  };
+    return analyzer.getLineInfo(lineNumber);
+  }, [analyzer]);
 
-  const getAllLines = () => {
-    if (!analyzerRef.current) {
-      return [];
-    }
-    return analyzerRef.current.getAllLines();
-  };
+  const getAllLines = useCallback(() => analyzer ? analyzer.getAllLines() : [], [analyzer]);
 
-  const getSectionContent = (section: any) => {
-    if (!analyzerRef.current) {
-      return [];
-    }
-    return analyzerRef.current.getSectionContent(section);
-  };
+  const getSectionContent = useCallback((section: any) => analyzer ? analyzer.getSectionContent(section) : [], [analyzer]);
 
-  const getSectionFromId = (id: string) => {
-    if (!analyzerRef.current) {
-      return undefined;
-    }
-    return analyzerRef.current.getSectionById(id);
-  };
+  const getSectionFromId = useCallback((id: string) => analyzer ? analyzer.getSectionById(id) : undefined, [analyzer]);
 
   const getSectionIdForLine = useCallback((lineNumber: number) => {
     const info = getLineInfo(lineNumber);
     return info.sections.length > 0 
       ? info.sections[info.sections.length - 1].id 
       : null;
-  }, []);
+  }, [analyzer]);
 
-  const findListItemRange = (startLine: number) => {
-    if (!analyzerRef.current) {
-      return null;
-    }
-    
-    const lines = getAllLines();
-    const startInfo = getLineInfo(startLine);
+  const findListItemRange = useCallback((startLine: number) => {
+    if (!analyzer) return null;
+    const lines = analyzer.getAllLines();
+    const startInfo = analyzer.getLineInfo(startLine);
     if (!startInfo.isList) return null;
 
     const startLevel = startInfo.listLevel || 0;
     let end = startLine;
 
     for (let i = startLine + 1; i < lines.length; i++) {
-      const info = getLineInfo(i);
+      const info = analyzer.getLineInfo(i);
       
       if (!info.isList || 
           info.listLevel! <= startLevel ||
@@ -471,13 +456,13 @@ export function ProjectPlanProvider({
     }
 
     return { start: startLine, end };
-  };
+  }, [analyzer]);
 
   // Locking functionality
   const isLineLocked = useCallback((lineNumber: number) => {
-    if (!analyzerRef.current) return false;
+    if (!analyzer) return false;
     
-    const info = getLineInfo(lineNumber);
+    const info = analyzer.getLineInfo(lineNumber);
     
     for (const section of info.sections) {
       if (lockedSections.has(section.id)) {
@@ -486,7 +471,7 @@ export function ProjectPlanProvider({
     }
     
     return lockedSections.has(`line-${lineNumber}`);
-  }, [lockedSections]);
+  }, [lockedSections, analyzer]);
 
   const toggleLock = useCallback((lineNumber: number) => {
     const sectionId = getSectionIdForLine(lineNumber) || `line-${lineNumber}`;
@@ -510,12 +495,19 @@ export function ProjectPlanProvider({
     }
   }, [lockedSections]);
 
+  const saveText = async (text: string) => {
+    setCurrentText(text);
+    if (projectIdRef.current) {
+      await projectMarkdownService.saveMarkdown(projectIdRef.current, text);
+    }
+  };
+
   return (
     <ProjectPlanContext.Provider
       value={{
         currentText,
         previousText,
-        setCurrentText,
+        saveText,
         isStreaming,
         setIsStreaming,
         currentLineNumber,

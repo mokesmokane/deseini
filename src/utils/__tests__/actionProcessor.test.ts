@@ -1,5 +1,5 @@
 import { processAction, createDependencyResolutionRetryAction, AppState } from '../actionProcessor';
-import { Section, Task, Timeline } from '../../contexts/DraftPlanContextMermaid';
+import { Section, Task, Timeline } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { BufferedAction } from '../types';
 const example_actions = [
   {

@@ -88,7 +88,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       const projects = projectsData?.map(project => ({
         id: project.id,
         projectName: project.project_name,
-        description: project.description,
+        description: project.description || undefined,
         bannerImage: project.banner_image || '',
         attachments: [],
         roles: []
@@ -129,7 +129,11 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
       if (chartsError) throw chartsError;
 
-      setUserCharts(chartsData || []);
+      setUserCharts(chartsData?.map(c => ({
+        id: c.id,
+        name: c.name,
+        description: c.description || undefined
+      })) || []);
     } catch (error) {
       console.error('Error fetching project charts:', error);
       toast.error('Failed to load charts for this project');
@@ -191,7 +195,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           endDate: role.end_date,
           paymentBy: role.payment_by,
           hourlyRate: role.hourly_rate,
-          description: role.description,
+          description: role.description || '',
           deliverables: role.deliverables?.map((d: any): Deliverable => ({
             id: d.id,
             deliverableName: d.deliverable_name,
@@ -213,7 +217,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       setProject({
         id: projectData.id,
         projectName: projectData.project_name,
-        description: projectData.description,
+        description: projectData.description || undefined,
         bannerImage: projectData.banner_image || '',
         attachments,
         roles

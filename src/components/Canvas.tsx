@@ -12,7 +12,7 @@ import { useDraftPlanContext } from '../contexts/DraftPlanContext';
 import { toast } from 'react-hot-toast';
 import { useEditedSection } from '../contexts/EditedSectionContext';
 import { useProject } from '../contexts/ProjectContext';
-import { useDraftPlanMermaidContext } from '../contexts/DraftPlanContextMermaid';
+import { useDraftPlanMermaidContext } from '../contexts/DraftPlan/DraftPlanContextMermaid';
 
 import { SectionDiffPanel } from './SectionDiffPanel';
 import { MermaidSyntaxPanel } from './mermaid/MermaidSyntaxPanel';
@@ -353,7 +353,7 @@ const Canvas: React.FC = () => {
         </div>
 
       {/* Draft Plan Pane */}
-      <div 
+      {/* <div 
         className={`fixed top-0 right-0 h-screen z-50 transition-transform duration-300 ease-in-out transform ${showDraftPane ? 'translate-x-0' : 'translate-x-full'}`}
         style={{ 
           width: '825px',
@@ -371,7 +371,7 @@ const Canvas: React.FC = () => {
         >
           <DraftPlan />
         </div>
-      </div>
+      </div> */}
 
       {/* Mermaid Gantt Syntax Pane */}
       <MermaidSyntaxPanel 
@@ -450,7 +450,7 @@ const Canvas: React.FC = () => {
       </button> */}
       
       {/* Floating Action Button for Mermaid Gantt Syntax */}
-      {/* <button
+      <button
         onClick={handleShowMermaidPaneAndGenerate}
         className="fixed left-36 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
         aria-label="Show Mermaid Gantt Syntax"
@@ -470,7 +470,7 @@ const Canvas: React.FC = () => {
           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
           <polyline points="22,6 12,13 2,6" />
         </svg>
-      </button> */}
+      </button>
 
       {/* Floating Action Button for showing chat */}
       <button

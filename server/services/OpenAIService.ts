@@ -1250,7 +1250,7 @@ Follow these rules:
 
 THINK THROUGH YOUR REASONING OUTLOUD STEP BY STEP 
 1. First, parse the markdown plan to extract the high level tasks (sections)
-2. Then, break down each task into subtasks give an esitmate in days for how long each subtask will take
+2. Then, break down each task into subtasks give an esitmate in days for how long each subtask will take. Use any explicit dates for guidance on how long tasks/phases should take
 3. Next, explain any dependencies between tasks
 4. Then, you can list the milestones related to the high level tasks with relation to the dependencies
 5. Given all of this you can now restate the sections with subtasks(with dependencies), milestones. Dates must be included based on your estimates and dependencies
@@ -1279,8 +1279,6 @@ gantt
 
 Important:
 - CUSTOM RULE: Tasks are always defined as <taskname>: <id>, <startdate|"after <taskid>">, <duration|enddate>
-- CUSTOM RULE: Milestones are always defined as <milestonename>: milestone, <"after <taskid>">
-- CUSTOM RULE: Milestones are ALWAYS dependent on a task within the same section (Explicit dates for milestones are not valid in this implementation and will break the chart)
 - CUSTOM RULE: Start dates are ALWAYS defined as <date> or "after <taskid>" - there are no other options. ie "Task 1: t1, 2025-01-01, 10d" or "Task 2: t2, after t1, 5d"
 - Sections are always defined as "section <sectionname>"
 - DO NOT write it in any other way

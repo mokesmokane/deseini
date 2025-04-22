@@ -1,6 +1,6 @@
 import { parseMermaidLine } from './mermaidParser';
 import { ActionType, BufferedAction } from './types';
-import { Task, Timeline } from '../contexts/DraftPlanContextMermaid';
+import { Task, Timeline } from '../contexts/DraftPlan/types';
 
 /**
  * Interface for tracking the state of streaming data processing
@@ -96,7 +96,7 @@ export const processStreamData = (
         if (!updatedStreamState.completeLines.includes(line)) {
           updatedStreamState.completeLines.push(line);
           
-          const parseResult = parseMermaidLine(line, updatedStreamState.currentSection);
+          const parseResult = parseMermaidLine(line, updatedStreamState.currentSection, updatedTaskDictionary);
           
           // If it's a section, update the current section
           if (parseResult.type === 'section') {
