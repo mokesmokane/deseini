@@ -10,6 +10,7 @@ import { ProjectPlanProvider } from '../contexts/ProjectPlanContext';
 import { DraftPlanMermaidProvider } from '../contexts/DraftPlan/DraftPlanContextMermaid.tsx';
 // import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
 import { DraftPlanProvider } from '../contexts/DraftPlanContext';
+import { DraftPlanFlowProvider } from '@/contexts/useDraftPlanFlow.tsx';
 
 const ProjectView = () => {
   const { projectId, chartId } = useParams<{ projectId: string; chartId?: string }>();
@@ -54,7 +55,7 @@ const ProjectView = () => {
       <DraftPlanProvider>
       <DraftPlanMermaidProvider
       projectId={projectId || null}
-      >
+      ><DraftPlanFlowProvider>
     <MessagesProvider
       // Conditionally pass projectId only when it's valid and not 'new'
       projectId={(projectId && projectId !== 'new') ? projectId : ''} 
@@ -90,6 +91,7 @@ const ProjectView = () => {
       </div>
       
     </MessagesProvider>
+    </DraftPlanFlowProvider>
     </DraftPlanMermaidProvider>
     </DraftPlanProvider>
   );
