@@ -206,7 +206,7 @@ function useDraftPlanFlowInternal() {
             // overflow: 'hidden',
             // textOverflow: 'ellipsis',
           },
-          draggable: false, // Prevent dragging
+          draggable: true, // Allow dragging of section nodes
         };
         allNodes.push(sectionBarNode);
         
@@ -708,6 +708,26 @@ function useDraftPlanFlowInternal() {
         setGenerateNode(node);
         return;
       }
+      if (node.type === 'section') {
+        // Handle dragging of section: adjust its position and its child tasks visually
+        setDraggingNodeId(node.id);
+        const currentSec = nodes.find(n => n.id === node.id);
+        if (currentSec) node.position.y = currentSec.position.y;
+        setNodes(nds => {
+          const offsetX = node.position.x - (currentSec?.position.x ?? 0);
+          return nds.map(n => {
+            if (n.id === node.id) {
+              return { ...n, position: { ...n.position, x: node.position.x } };
+            }
+            const dataAny: any = n.data;
+            if (dataAny.sectionName === node.id.replace('section_bar_', '')) {
+              return { ...n, position: { ...n.position, x: n.position.x + offsetX } };
+            }
+            return n;
+          });
+        });
+        return;
+      }
       if (node.type === 'task' || node.type === 'milestone') {
         const current = nodes.find(n => n.id === node.id);
         setDraggingNodeId(node.id);
@@ -720,10 +740,10 @@ function useDraftPlanFlowInternal() {
         }
       }
     }, [nodes, setNodes, anchorDate, TIMELINE_PIXELS_PER_DAY]);
-    const processDownstream = (parentId: string, parentEnd: Date, anchorDate: Date, baseX: number, pendingUpdates: { id: string; newStartDate: Date }[]) => {
+    const processDownstream = (parentId: string, parentEnd: Date, anchorDate: Date, baseX: number, pendingUpdates: { id: string; newStartDate: Date }[], excludeIds: string[] = []) => {
         for (const section of sections) {
           // Iterate dependent tasks and compare against latest start date
-          for (const task of section.tasks.filter(task => task.dependencies?.includes(parentId))) {
+          for (const task of section.tasks.filter(task => task.dependencies?.includes(parentId) && !excludeIds.includes(task.id))) {
             const nodeInfo = nodes.find(n => n.id === task.id);
             const currentChildStart = nodeInfo
               ? ensureDate((nodeInfo.data as any).startDate)
@@ -748,16 +768,16 @@ function useDraftPlanFlowInternal() {
                 startDate: childStart
               }
             } : n));
-            processDownstream(task.id, childEnd, anchorDate, baseX, pendingUpdates);
+            processDownstream(task.id, childEnd, anchorDate, baseX, pendingUpdates, excludeIds);
           }
         }
       };
 
-      const processUpstream = (childId: string, childStart: Date, anchorDate: Date, baseX: number, pendingUpdates: { id: string; newStartDate: Date }[]) => {
+      const processUpstream = (childId: string, childStart: Date, anchorDate: Date, baseX: number, pendingUpdates: { id: string; newStartDate: Date }[], excludeIds: string[] = []) => {
         // Get dependencies (parent IDs) for this task
         const parentIds = sections.flatMap(section =>
           section.tasks.find(task => task.id === childId)?.dependencies ?? []
-        );
+        ).filter(id => !excludeIds.includes(id));
         for (const parentId of parentIds) {
           // Find the parent task object
           const parentTask = sections.flatMap(sec => sec.tasks).find(task => task.id === parentId);
@@ -799,6 +819,49 @@ function useDraftPlanFlowInternal() {
       };
 
     const onNodeDragStop: NodeDragHandler = useCallback((_event, node) => {
+      if (node.type === 'section' && anchorDate) {
+        // On drag stop for section: snap and update all child task dates
+        setDraggingNodeId(null);
+        const baseX = 10;
+        const rawX = node.position.x - baseX;
+        const snappedRawX = roundPositionToDay(rawX, TIMELINE_PIXELS_PER_DAY);
+        const snappedX = snappedRawX + baseX;
+        node.position.x = snappedX;
+        // Snap section visual
+        setNodes(nds => nds.map(n => n.id === node.id
+          ? { ...n, position: { ...n.position, x: snappedX } }
+          : n
+        ));
+        // Compute context updates for tasks
+        const sectionName = node.id.replace('section_bar_', '');
+        const sec = sections.find(s => s.name === sectionName);
+        if (!sec) return;
+        const ms = 1000 * 60 * 60 * 24;
+        const origTimes = sec.tasks.map(t => ensureDate(t.startDate).getTime());
+        const origMin = Math.min(...origTimes);
+        // New section start date
+        const newSectionDate = getDateFromXPosition(snappedRawX, anchorDate, TIMELINE_PIXELS_PER_DAY);
+        const sectionMoveDays = Math.round((newSectionDate.getTime() - origMin) / ms);
+        const excludeIds = sec.tasks.map(task => task.id);
+        const pendingUpdates: { id: string; newStartDate: Date }[] = [];
+        sec.tasks.forEach(task => {
+          const offsetDays = Math.round((ensureDate(task.startDate).getTime() - origMin) / ms);
+          const newDate = new Date(newSectionDate);
+          newDate.setDate(newDate.getDate() + offsetDays);
+          if(sectionMoveDays > 0) {
+            //figureout new end date of task
+            const newEndDate = new Date(newDate);
+            if (task.duration) newEndDate.setDate(newEndDate.getDate() + task.duration);
+            processDownstream(task.id, newEndDate, anchorDate, 10, pendingUpdates, excludeIds);
+          }
+          if(sectionMoveDays < 0) {
+            processUpstream(task.id, newDate, anchorDate, 10, pendingUpdates, excludeIds);
+          }
+          updateTaskStartDate(task.id, newDate);
+        });
+        pendingUpdates.forEach(({ id, newStartDate }) => updateTaskStartDate(id, newStartDate));
+        return;
+      }
       if ((node.type === 'task' || node.type === 'milestone') && anchorDate) {
         setDraggingNodeId(null);
         const baseX = 10;
