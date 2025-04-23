@@ -182,12 +182,10 @@ const Canvas: React.FC = () => {
             border: '1px solid #e5e7eb',
             padding: '2rem',
             margin: '0 auto 1.5rem auto',
-            maxWidth: '1600px',
             overflowX: 'auto'
           }}>
             <div style={{
               width: '100%',
-              minWidth: '1400px',
               height: '100%',
               display: 'flex',
               justifyContent: 'center',
@@ -456,7 +454,7 @@ const Canvas: React.FC = () => {
       </button> */}
       
       {/* Floating Action Button for Mermaid Gantt Syntax */}
-      <button
+      {/* <button
         onClick={handleShowMermaidPaneAndGenerate}
         className="fixed left-36 bottom-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow duration-200 focus:outline-none"
         aria-label="Show Mermaid Gantt Syntax"
@@ -476,7 +474,7 @@ const Canvas: React.FC = () => {
           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
           <polyline points="22,6 12,13 2,6" />
         </svg>
-      </button>
+      </button> */}
 
       {/* Floating Action Button for showing chat */}
       <button

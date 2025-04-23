@@ -124,16 +124,41 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       // 2. Fetch the actual chart details using the obtained IDs
       const { data: chartsData, error: chartsError } = await supabase
         .from('charts')
-        .select('id, name, description')
+        .select('id, name, description, created_at, updated_at, chart_data')
+        .order('updated_at', { ascending: false })
         .in('id', chartIds);
 
       if (chartsError) throw chartsError;
 
-      setUserCharts(chartsData?.map(c => ({
-        id: c.id,
-        name: c.name,
-        description: c.description || undefined
-      })) || []);
+      setUserCharts(chartsData?.map(c => {
+        // Calculate task count from chart_data if available
+        let taskCount = 0;
+        if (c.chart_data) {
+          try {
+            const chartData = c.chart_data as any;
+            if (chartData.tasks && Array.isArray(chartData.tasks)) {
+              // Count all tasks including nested ones
+              const countTasks = (tasks: any[]): number => {
+                return tasks.reduce((count, task) => {
+                  return count + 1 + (task.tasks && Array.isArray(task.tasks) ? countTasks(task.tasks) : 0);
+                }, 0);
+              };
+              taskCount = countTasks(chartData.tasks);
+            }
+          } catch (e) {
+            console.error('Error parsing chart data:', e);
+          }
+        }
+        
+        return {
+          id: c.id,
+          name: c.name,
+          description: c.description || undefined,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          task_count: taskCount
+        };
+      }) || []);
     } catch (error) {
       console.error('Error fetching project charts:', error);
       toast.error('Failed to load charts for this project');

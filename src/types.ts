@@ -96,6 +96,9 @@ export interface Chart {
     tasks?: Task[]; // Define Task type if needed
     dependencies?: any[]; // Define Dependency type if needed
     milestones?: any[]; // Define Milestone type if needed
+    created_at?: string;
+    updated_at?: string;
+    task_count?: number;
 }
 
 // Interface for chat messages

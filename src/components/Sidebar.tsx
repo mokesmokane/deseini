@@ -139,20 +139,48 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange, section }) => 
         <div className="p-4 h-full flex flex-col">
           <h3 className="font-bold text-lg mb-4">Project Charts</h3>
           
-          <div className="flex-grow overflow-y-auto">
+          <div className="flex-grow overflow-y-auto hide-scrollbar">
             {userCharts && userCharts.length > 0 ? (
               <div className="space-y-3 pb-4">
-                {userCharts.map((chart: { id: string; name: string; description?: string }) => (
+                {userCharts.map((chart: { 
+                  id: string; 
+                  name: string; 
+                  description?: string;
+                  updated_at?: string;
+                  created_at?: string;
+                  task_count?: number;
+                }) => (
                   <div
                     key={chart.id}
                     className={`p-3 rounded-md border cursor-pointer transition-all hover:bg-gray-100 ${currentChart?.id === chart.id ? 'border-neutral-400 bg-neutral-100' : 'border-gray-200'
                       }`}
                     onClick={() => handleChartSelect(chart.id)}
                   >
-                    <div className="font-medium">{chart.name}</div>
+                    <div className="flex justify-between items-center">
+                      <div className="font-medium">{chart.name}</div>
+                      {chart.task_count !== undefined && (
+                        <div className="flex items-center text-xs text-gray-500">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <span>{chart.task_count}</span>
+                        </div>
+                      )}
+                    </div>
                     {chart.description && (
                       <div className="text-sm text-gray-600 mt-1 line-clamp-2">{chart.description}</div>
                     )}
+                    
+                    <div className="flex flex-wrap mt-2 text-xs text-gray-500">
+                      {chart.updated_at && (
+                        <div className="flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>Updated: {new Date(chart.updated_at).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

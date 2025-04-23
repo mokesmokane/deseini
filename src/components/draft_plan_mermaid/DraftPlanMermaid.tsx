@@ -33,6 +33,11 @@ function DraftPlanMermaid() {
   const animationTimeout = useRef<NodeJS.Timeout | null>(null);
   const ANIMATION_DURATION = 300; // ms, match CSS duration
 
+  // Ref for the main container to get its size
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Ref to ensure we only center once per load
+  const hasCentered = useRef(false);
+
   // Helper: Open settings panel and close node panel if open
   const handleOpenSettings = () => {
     if (isPanelVisible) {
@@ -99,26 +104,54 @@ function DraftPlanMermaid() {
   };
 
   useEffect(() => {
-    if (reactFlowInstance) {
-      // Define consistent insets for the viewport
-      const INSET_LEFT = 50;  // Left inset in pixels
-      const INSET_TOP = 30;   // Top inset in pixels
-      
-      // Calculate viewport position to place timeline start at top-left with insets
+    if (
+      reactFlowInstance &&
+      nodes.length > 0 &&
+      !hasCentered.current
+    ) {
+      // Get bounding box of all nodes
+      const xs = nodes.map(n => n.position.x);
+      const ys = nodes.map(n => n.position.y);
+      const widths = nodes.map(n => n.width || 0);
+      const heights = nodes.map(n => n.height || 0);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs.map((x, i) => x + widths[i]));
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys.map((y, i) => y + heights[i]));
+      const chartWidth = maxX - minX;
+      const chartHeight = maxY - minY;
+
+      // Use container size from ref
+      const container = containerRef.current;
+      const containerWidth = container?.clientWidth || window.innerWidth;
+      const containerHeight = container?.clientHeight || window.innerHeight;
+
+      // Calculate center offset
+      const zoom = 0.7; // You can adjust this
+      const centerX = minX + chartWidth / 2;
+      const centerY = minY + chartHeight / 2;
+      const viewportX = containerWidth / 2 - centerX * zoom;
+      const viewportY = containerHeight / 2 - centerY * zoom;
+
       reactFlowInstance.setViewport({
-        x: INSET_LEFT,
-        y: INSET_TOP,
-        zoom: 0.7  // Set a fixed initial zoom level that works well for most screens
+        x: viewportX,
+        y: viewportY,
+        zoom,
       });
+      hasCentered.current = true;
     }
-    // Cleanup on unmount
     return () => {
       if (animationTimeout.current) clearTimeout(animationTimeout.current);
     };
   }, [reactFlowInstance, timelineVisible]);
 
+  // Reset centering flag if timelineVisible changes (e.g., new chart loaded)
+  useEffect(() => {
+    hasCentered.current = false;
+  }, [timelineVisible]);
+
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: '500px', position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: '500px', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

@@ -159,7 +159,7 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
             gap: '8px'
           }}
         >
-          {sections.length > 0 ? 'Regenerate Chart' : 'Generate Chart'}
+          {sections.length > 0 ? 'Regenerate Draft Plan' : 'Generate Draft Plan'}
         </button>
         {sections.length > 0 && (
         <div className="flex gap-2 mt-2">
@@ -178,7 +178,7 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                       <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
-                    Generate Final Plan
+                    Create Plan
                   </button>
                 )}
               </div>
