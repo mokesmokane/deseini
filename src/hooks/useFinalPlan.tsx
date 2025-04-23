@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, createContext, useContext, ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useProject } from '../contexts/ProjectContext';
 import { useDraftPlanMermaidContext } from '../contexts/DraftPlan/DraftPlanContextMermaid';
@@ -8,7 +8,23 @@ import { useChartsList } from '../contexts/ChartsListContext';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 
-export const useFinalPlan = () => {
+// Define the context type
+interface FinalPlanContextType {
+  generateFinalPlan: () => Promise<void>;
+  isGeneratingFinalPlan: boolean;
+  generationProgress: string;
+}
+
+// Create the context with a default value
+const FinalPlanContext = createContext<FinalPlanContextType | undefined>(undefined);
+
+// Provider props interface
+interface FinalPlanProviderProps {
+  children: ReactNode;
+}
+
+// Create the provider component
+export const FinalPlanProvider = ({ children }: FinalPlanProviderProps) => {
   const { project, fetchProjectCharts } = useProject();
   const { sections: draftPlanSections } = useDraftPlanMermaidContext();
   const { setCurrentChart, setHasUnsavedChanges } = useGantt();
@@ -43,7 +59,7 @@ export const useFinalPlan = () => {
 
       const draftPlanMarkdown = createMarkdownFromSections(draftPlanSections);
 
-      setGenerationProgress('Calling API to generate final plan...');
+      setGenerationProgress('Generating plan...');
       const response = await fetch('/api/generate-final-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,5 +102,25 @@ export const useFinalPlan = () => {
     }
   };
 
-  return { generateFinalPlan, isGeneratingFinalPlan, generationProgress };
+  // Provide the context value
+  const contextValue: FinalPlanContextType = {
+    generateFinalPlan,
+    isGeneratingFinalPlan,
+    generationProgress
+  };
+
+  return (
+    <FinalPlanContext.Provider value={contextValue}>
+      {children}
+    </FinalPlanContext.Provider>
+  );
+};
+
+// Custom hook to use the context
+export const useFinalPlan = (): FinalPlanContextType => {
+  const context = useContext(FinalPlanContext);
+  if (context === undefined) {
+    throw new Error('useFinalPlan must be used within a FinalPlanProvider');
+  }
+  return context;
 };

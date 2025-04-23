@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useProjectPlan } from '../contexts/ProjectPlanContext';
-// import { StreamingDiff } from './StreamingDiff';  
-import DraftPlan from './draft_plan/DraftPlan';
 import DraftPlanMermaid from './draft_plan_mermaid/DraftPlanMermaid';
 import { ChartCreationChat } from './ChartCreationChat';
-// import ProjectPlanTrigger from './ProjectPlanTrigger';
 import ViewSelector, { ViewMode } from './ViewSelector';
 import { MarkdownViewer } from './markdown/MarkdownViewer';
 import GridView from './GridView';
@@ -13,10 +10,11 @@ import { toast } from 'react-hot-toast';
 import { useEditedSection } from '../contexts/EditedSectionContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useDraftPlanMermaidContext } from '../contexts/DraftPlan/DraftPlanContextMermaid';
-
 import { SectionDiffPanel } from './SectionDiffPanel';
 import { MermaidSyntaxPanel } from './mermaid/MermaidSyntaxPanel';
-// import { EditedSectionProvider } from '../contexts/EditedSectionContext';
+import { useFinalPlan } from '@/hooks/useFinalPlan';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useGantt } from '../contexts/GanttContext';
 
 const Canvas: React.FC = () => {
   // Use the streaming context from ProjectPlanContext
@@ -44,7 +42,11 @@ const Canvas: React.FC = () => {
     range: {start: number, end: number} | null,
     instruction: string
   }>({ range: null, instruction: '' });
-
+  const { isGeneratingFinalPlan, generationProgress } = useFinalPlan();
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+  const { currentChart } = useGantt();
+  const [showFinalPlanModal, setShowFinalPlanModal] = useState(false);
 
   // Get createPlanFromMarkdown from DraftPlanContext
   const { createPlanFromMarkdown } = useDraftPlanContext();
@@ -64,15 +66,6 @@ const Canvas: React.FC = () => {
     setShowMermaidPane(false);
     setShowMermaidPlanBottom(false);
   };
-
-  // Add function to show/hide the draft plan pane and generate plan
-  const toggleDraftPaneAndGenerate = () => {
-    toggleDraftPane();
-    if (currentText) {
-      handleCreatePlan();
-    }
-  };
-
   // Add function to show/hide the draft plan pane
   const toggleDraftPane = () => {
     setShowDraftPane(!showDraftPane);
@@ -233,6 +226,19 @@ const Canvas: React.FC = () => {
       console.log('Canvas: skipping duplicate createPlanIfMissing call');
     }
   }, []);
+
+  useEffect(() => {
+    if (isGeneratingFinalPlan) {
+      setShowFinalPlanModal(true);
+    }
+  }, [isGeneratingFinalPlan]);
+
+  const handleGoToChart = () => {
+    setShowFinalPlanModal(false);
+    if (projectId && currentChart?.id) {
+      navigate(`/projects/${projectId}/chart/${currentChart.id}`);
+    }
+  };
 
   return (
     <div className="flex h-full overflow-hidden bg-gray-100">
@@ -541,6 +547,29 @@ const Canvas: React.FC = () => {
 
       {/* Floating Action Button for triggering new plan generation */}
       {/* <ProjectPlanTrigger /> */}
+
+      {showFinalPlanModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-lg w-11/12 max-w-md">
+            {isGeneratingFinalPlan ? (
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-8 h-8 border-4 border-gray-200 border-t-black rounded-full animate-spin"></div>
+                <div>{generationProgress}</div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-lg font-medium">Final plan is ready!</div>
+                <button
+                  onClick={handleGoToChart}
+                  className="bg-black text-white px-4 py-2 rounded"
+                >
+                  Go to Chart
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

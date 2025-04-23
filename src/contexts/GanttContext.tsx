@@ -52,6 +52,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
   // Load a specific chart by ID
   const loadChartById = useCallback(async (id: string) => {
     try {
+      setCurrentChart(null);
       setIsLoading(true);
       setError(null);
       

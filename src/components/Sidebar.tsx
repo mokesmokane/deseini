@@ -12,9 +12,7 @@ import {
   CodeBracketIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { useDraftPlanMermaidContext } from '../contexts/DraftPlan/DraftPlanContextMermaid';
 import { Section } from '../contexts/DraftPlan/types';
-import { useFinalPlan } from '../hooks/useFinalPlan';
 
 interface SidebarSection {
   id: string;
@@ -26,23 +24,20 @@ interface SidebarSection {
 
 interface SidebarProps {
   onActiveSectionChange?: (sectionId: string | null) => void;
+  section?: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange, section }) => {
   const { currentChart, setCurrentChart, setHasUnsavedChanges, loadChartById } = useGantt();
   const { saveChart } = useChartsList();
   const { project, userCharts } = useProject();
-  const { sections: draftPlanSections, timeline } = useDraftPlanMermaidContext();
   const { projectId } = useParams<{ projectId: string }>();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string | null>(section || null);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [projectJsonError, setProjectJsonError] = useState<string | null>(null);
   const [jsonContent, setJsonContent] = useState('');
   const [projectJsonContent, setProjectJsonContent] = useState('');
-  const [draftPlanJsonContent, setDraftPlanJsonContent] = useState('');
-  const { generateFinalPlan, isGeneratingFinalPlan, generationProgress } = useFinalPlan();
-  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -75,17 +70,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   useEffect(() => {
     setProjectJsonContent(getProjectJsonRepresentation());
   }, [projectId, userCharts, project]);
-
-  useEffect(() => {
-    setDraftPlanJsonContent(getDraftPlanJsonRepresentation());
-  }, [draftPlanSections, timeline]);
-
-  const getDraftPlanJsonRepresentation = () => {
-    return JSON.stringify({
-      timeline,
-      sections: draftPlanSections
-    }, null, 2);
-  };
 
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setJsonContent(e.target.value);
@@ -130,27 +114,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   };
 
   const handleChartSelect = (chartId: string) => {
-    loadChartById(chartId);
-    navigate(`/projects/${projectId}/chart/${chartId}`);
+
+    // loadChartById(chartId);
+    navigate(`/projects/${projectId}/chart/${chartId}`, { replace: activeSection === 'plans' });
     setActiveSection('plans');
-    setIsExpanded(false);
+    //after a delay of 2 seconds, collapse the sidebar
+    setTimeout(() => {
+      setIsExpanded(false);
+    }, 2000);
   };
-
-  const createMarkdownFromSections = (sections: Section[]) => {
-    return sections.map(section => {
-      const tasks = section.tasks.map(task => {
-        if (task.type === 'milestone') {
-          return `- Milestone: ${task.label} - ${new Date(task.startDate).toLocaleDateString()}`;
-        } else {
-          const startDate = new Date(task.startDate).toLocaleDateString();
-          const durationText = task.duration ? ` (${task.duration} days)` : '';
-          return `- Task: ${task.label} - ${startDate}${durationText}`;
-        }
-      }).join('\n');
-      return `## ${section.name}\n${tasks}`;
-    }).join('\n');
-  };
-
 
   const sections: SidebarSection[] = [
     {
@@ -298,40 +270,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
               </button>
             </div>
             
-            <h4 className="font-medium mb-2">Draft Plan JSON</h4>
-            <textarea
-              value={draftPlanJsonContent}
-              readOnly
-              className="flex-grow p-2 bg-gray-100 rounded-md text-xs font-mono mb-2 overflow-auto"
-              style={{ resize: 'vertical', minHeight: '150px' }}
-            />
-            <h4 className="font-medium mb-2">Sections Markdown</h4>
-            <textarea
-              value={createMarkdownFromSections(draftPlanSections)}
-              readOnly
-              className="flex-grow p-2 bg-gray-100 rounded-md text-xs font-mono mb-2 overflow-auto"
-              style={{ resize: 'vertical', minHeight: '150px' }}
-            />
-            
-            <div className="flex gap-2">
-              {isGeneratingFinalPlan ? (
-                <div className="flex items-center gap-2 text-blue-500 px-3 py-2 rounded-md text-sm font-medium flex-1">
-                  <div className="spinner w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                  <span>{generationProgress}</span>
-                </div>
-              ) : (
-                <button
-                  onClick={generateFinalPlan}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium flex-1 flex items-center justify-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                  </svg>
-                  Generate Final Plan
-                </button>
-              )}
-            </div>
           </div>
           <style>
             {`
@@ -347,12 +285,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange }) => {
   ];
 
   const toggleSection = (id: string) => {
-    const newActiveSection = activeSection === id ? null : id;
-    setActiveSection(newActiveSection);
-    if (newActiveSection && newActiveSection !== 'project' && newActiveSection !== 'create') {
-      setIsExpanded(true);
+    setActiveSection(id);
+    if (id == 'create') {
+      navigate(`/projects/${projectId}/canvas`);
+    } else if (id == 'project') {
+      navigate(`/projects/${projectId}`);
     } else {
-      setIsExpanded(false);
+      setIsExpanded(true);
     }
   };
 

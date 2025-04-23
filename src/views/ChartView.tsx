@@ -50,16 +50,13 @@ const ChartView = () => {
       setIsLoading(false);
     }
   }, [currentChart, isLoading]);
-  
-  if (isLoading) {
-    return <div className="p-8 text-center">Loading chart...</div>;
-  }
+
   
   return (
     <div className="h-full flex">
-      <Sidebar />
+      <Sidebar section="plans"/>
       <div className="flex-1">
-        <GanttChart />
+        {isLoading ? <div className="p-8 text-center">Loading chart...</div> : <GanttChart />}
       </div>
     </div>
   );

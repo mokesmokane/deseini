@@ -1,19 +1,15 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { GanttChart } from '../components/chart/GanttChart';
 import { useEffect, useState } from 'react';
 import { useProject } from '../contexts/ProjectContext';
 import Sidebar from '../components/Sidebar';
-import ProjectForm from '../components/ProjectForm';
 import Canvas from '../components/Canvas.tsx';
 import { MessagesProvider } from '../contexts/MessagesContext';
-import { ProjectPlanProvider } from '../contexts/ProjectPlanContext';
 import { DraftPlanMermaidProvider } from '../contexts/DraftPlan/DraftPlanContextMermaid.tsx';
-// import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
-import { DraftPlanProvider } from '../contexts/DraftPlanContext';
 import { DraftPlanFlowProvider } from '@/contexts/useDraftPlanFlow.tsx';
+import { DraftPlanProvider } from '@/contexts/DraftPlanContext.tsx';
 import { FinalPlanProvider } from '../hooks/useFinalPlan';
 
-const ProjectView = () => {
+const CanvasView = () => {
   const { projectId, chartId } = useParams<{ projectId: string; chartId?: string }>();
   const { 
     project, 
@@ -24,7 +20,6 @@ const ProjectView = () => {
     userCharts,
     fetchProjectCharts
   } = useProject();
-  const [activeSidebarSection, setActiveSidebarSection] = useState<string | null>(null);
 
   // Only handle project loading via useEffect
   useEffect(() => {
@@ -43,21 +38,16 @@ const ProjectView = () => {
     }
   }, [projectId, fetchProjectCharts]); // Added fetchProjectCharts dependency
 
-  // Log when activeSidebarSection changes
-  useEffect(() => {
-    console.log(`[ProjectView] useEffect: activeSidebarSection updated to: ${activeSidebarSection}`);
-  }, [activeSidebarSection]);
-
-  console.log(`[ProjectView] Rendering: activeSidebarSection=${activeSidebarSection}, isLoadingProject=${isLoadingProject}, projectExists=${!!project}`);
+  console.log(`[ProjectView] Rendering: isLoadingProject=${isLoadingProject}, projectExists=${!!project}`);
 
   // Always render the main layout structure
   // Wrap the entire view content with MessagesProvider
   return (
-      <DraftPlanProvider>
+        <DraftPlanProvider>
       <DraftPlanMermaidProvider
       projectId={projectId || null}
       ><DraftPlanFlowProvider>
-    <FinalPlanProvider>
+<FinalPlanProvider>
     <MessagesProvider
       // Conditionally pass projectId only when it's valid and not 'new'
       projectId={(projectId && projectId !== 'new') ? projectId : ''} 
@@ -69,22 +59,10 @@ const ProjectView = () => {
 
       <div className="h-full flex">
         {/* Sidebar is now always inside the provider */} 
-        <Sidebar section="project"/>
+        <Sidebar section="create"/>
         
         <div className="flex-1 overflow-auto">
-          {/* Conditional rendering of the main content area */}
-          {isLoadingProject ? (
-            <div className="p-8 text-center">Loading project...</div>
-          ) : errorMessage ? (
-            <div className="p-8 text-center">
-              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md inline-block">
-                <p className="font-medium">Error loading project</p>
-                <p className="text-sm">{errorMessage}</p>
-              </div>
-            </div>
-          ) : (
-            <ProjectForm />
-          )}
+          <Canvas /> // Canvas reads from MessagesContext
         </div>
       </div>
       
@@ -96,4 +74,4 @@ const ProjectView = () => {
   );
 };
 
-export default ProjectView;
+export default CanvasView;

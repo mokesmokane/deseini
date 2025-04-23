@@ -3,7 +3,7 @@ import App from './App';
 import ProjectView from './views/ProjectView';
 import ChartView from './views/ChartView';
 import LandingPage from './components/LandingPage';
-import Canvas from './components/Canvas';
+import CanvasView from './views/CanvasView';
 
 const router = createBrowserRouter([
   {
@@ -20,7 +20,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'projects/:projectId/chart/:chartId',
-        element: <ProjectView />
+        element: <ChartView />
       },
       {
         path: 'projects/:projectId/charts/new',
@@ -28,7 +28,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'projects/:projectId/canvas',
-        element: <Canvas />
+        element: <CanvasView />
       }
     ]
   }
