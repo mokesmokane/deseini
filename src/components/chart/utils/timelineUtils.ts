@@ -1,7 +1,6 @@
 import { parseISO, addDays, differenceInDays, format, eachMonthOfInterval, eachWeekOfInterval, endOfWeek } from 'date-fns';
 import { Node } from 'reactflow';
-import { DAY_WIDTH, TIMELINE_HEIGHT, NODE_HEIGHT, VERTICAL_SPACING } from '../GanttChart';
-import { Task } from '../../types';
+import { DAY_WIDTH } from '../GanttChart';
 
 /**
  * Create timeline (month/week) nodes for the Gantt chart.

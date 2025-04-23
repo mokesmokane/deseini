@@ -101,11 +101,6 @@ const roles: Role[] = [
 ];
 
 import { findTask, updateTaskRecursive, cloneTask, insertTask } from './utils/taskUtils';
-import { generateTaskId } from './utils/idUtils';
-import { validateTaskDates } from './utils/ganttValidation';
-import { getNextColor } from './utils/colorUtils';
-import { createTimelineNodes, createDayGridLines, updateNodeDates } from './utils/timelineUtils';
-
 export const GanttChart: React.FC<GanttChartProps> = () => {
   const { currentChart, setHoveredNodes, setCurrentChart } = useGantt();
   const { saveChart } = useChartsList();
@@ -803,7 +798,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
   }, [currentChart, setEdges, setCurrentChart, checkForViolations]);
 
   // Modified drag handlers with isDragging state
-  const onNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
+    const onNodeDrag = useCallback((_: React.MouseEvent, node: Node) => {
     if (!currentChart) return;
     setIsDragging(true);
 

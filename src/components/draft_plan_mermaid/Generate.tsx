@@ -1,7 +1,6 @@
 import { memo, useState, useEffect, useRef } from 'react';
 import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useProjectPlan } from '../../contexts/ProjectPlanContext';
-import ActionPreview from '../mermaid/ActionPreview';
 
 
 const GenerateNode = () => {
@@ -9,13 +8,7 @@ const GenerateNode = () => {
     createPlanFromMarkdown: createMermaidPlan, 
     isLoading: isMermaidLoading,
     streamSummary,
-    fullSyntax,
-    startProcessingBuffer,
-    processAllBuffer,
-    actionBufferLength,
-    processingBufferProgress,
-    nextAction,
-    actionBuffer
+    fullSyntax
   } = useDraftPlanMermaidContext();
   const { 
     currentText,
@@ -193,19 +186,6 @@ const GenerateNode = () => {
         </button>
       )}
       
-      {/* Process buffer button - only shown when there are items in the buffer */}
-      {actionBufferLength > 0 && (
-        <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-          <ActionPreview
-            nextAction={nextAction}
-            actionBufferLength={actionBufferLength}
-            processingBufferProgress={processingBufferProgress}
-            startProcessingBuffer={startProcessingBuffer}
-            processAllBuffer={processAllBuffer}
-            actionBuffer={actionBuffer}
-          />
-        </div>
-      )}
       
       {/* View process section - shown if there's stream data, regardless of loading state */}
       {hasStreamData && (

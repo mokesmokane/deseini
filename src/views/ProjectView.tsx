@@ -1,12 +1,9 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { GanttChart } from '../components/chart/GanttChart';
-import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useProject } from '../contexts/ProjectContext';
 import Sidebar from '../components/Sidebar';
 import ProjectForm from '../components/ProjectForm';
-import Canvas from '../components/Canvas.tsx';
 import { MessagesProvider } from '../contexts/MessagesContext';
-import { ProjectPlanProvider } from '../contexts/ProjectPlanContext';
 import { DraftPlanMermaidProvider } from '../contexts/DraftPlan/DraftPlanContextMermaid.tsx';
 // import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
 import { DraftPlanProvider } from '../contexts/DraftPlanContext';
@@ -14,7 +11,7 @@ import { DraftPlanFlowProvider } from '@/contexts/useDraftPlanFlow.tsx';
 import { FinalPlanProvider } from '../hooks/useFinalPlan';
 
 const ProjectView = () => {
-  const { projectId, chartId } = useParams<{ projectId: string; chartId?: string }>();
+  const { projectId } = useParams<{ projectId: string; chartId?: string }>();
   const { 
     project, 
     isLoading: isLoadingProject,
@@ -24,7 +21,6 @@ const ProjectView = () => {
     userCharts,
     fetchProjectCharts
   } = useProject();
-  const [activeSidebarSection, setActiveSidebarSection] = useState<string | null>(null);
 
   // Only handle project loading via useEffect
   useEffect(() => {
@@ -42,13 +38,6 @@ const ProjectView = () => {
       fetchProjectCharts(projectId);
     }
   }, [projectId, fetchProjectCharts]); // Added fetchProjectCharts dependency
-
-  // Log when activeSidebarSection changes
-  useEffect(() => {
-    console.log(`[ProjectView] useEffect: activeSidebarSection updated to: ${activeSidebarSection}`);
-  }, [activeSidebarSection]);
-
-  console.log(`[ProjectView] Rendering: activeSidebarSection=${activeSidebarSection}, isLoadingProject=${isLoadingProject}, projectExists=${!!project}`);
 
   // Always render the main layout structure
   // Wrap the entire view content with MessagesProvider

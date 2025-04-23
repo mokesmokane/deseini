@@ -11,7 +11,7 @@ export interface RoleListProps {
   onCloneRole?: (index: number) => void;
   onDeleteDeliverable?: (deliverableId: string) => void;
   displayMode?: 'full' | 'card';
-  onSelectRole?: (role: Role, index: number) => void;
+  onSelectRole?: (index: number) => void;
   selectedRoleIndex?: number;
 }
 
@@ -403,7 +403,7 @@ export default function RoleList({
     
     return (
       <div 
-        onClick={() => onSelectRole && onSelectRole(role, index)}
+        onClick={() => onSelectRole && onSelectRole(index)}
         className={`cursor-pointer p-3 rounded-lg shadow-sm border transition-all h-32 flex flex-col justify-between ${
           isSelected 
             ? 'border-neutral-600 bg-neutral-100' 

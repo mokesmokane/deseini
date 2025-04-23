@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { toast } from 'react-hot-toast';
 import DraftPlanMermaid from '../draft_plan_mermaid/DraftPlanMermaid';
-import ActionPreview from './ActionPreview';
 
 interface MermaidSyntaxPanelProps {
   currentText: string | null;
@@ -22,12 +21,7 @@ export const MermaidSyntaxPanel: React.FC<MermaidSyntaxPanelProps> = ({
     isLoading: isMermaidLoading,
     sections,
     timeline,
-    startProcessingBuffer,
-    processAllBuffer,
-    actionBufferLength,
-    processingBufferProgress,
-    nextAction,
-    actionBuffer
+    actionBufferLength
   } = useDraftPlanMermaidContext();
 
   // Handle creating a Mermaid Gantt chart from the current project plan markdown
@@ -195,14 +189,6 @@ export const MermaidSyntaxPanel: React.FC<MermaidSyntaxPanelProps> = ({
           {actionBufferLength > 0 && (
             <div className="p-4 border-b border-gray-200">
               <h3 className="text-lg font-medium mb-2">Update Preview</h3>
-              <ActionPreview 
-                nextAction={nextAction}
-                actionBufferLength={actionBufferLength}
-                processingBufferProgress={processingBufferProgress}
-                startProcessingBuffer={startProcessingBuffer}
-                processAllBuffer={processAllBuffer}
-                actionBuffer={actionBuffer}
-              />
             </div>
           )}
           

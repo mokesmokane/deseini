@@ -1,5 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useProject } from '../contexts/ProjectContext';
 import Sidebar from '../components/Sidebar';
 import Canvas from '../components/Canvas.tsx';
@@ -10,11 +10,10 @@ import { DraftPlanProvider } from '@/contexts/DraftPlanContext.tsx';
 import { FinalPlanProvider } from '../hooks/useFinalPlan';
 
 const CanvasView = () => {
-  const { projectId, chartId } = useParams<{ projectId: string; chartId?: string }>();
+  const { projectId } = useParams<{ projectId: string; chartId?: string }>();
   const { 
     project, 
     isLoading: isLoadingProject,
-    errorMessage,
     fetchProject, 
     handleInitiateTaskGeneration,
     userCharts,

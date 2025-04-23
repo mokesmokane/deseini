@@ -13,7 +13,6 @@ import { BufferedAction, ActionType } from '../../utils/types';
 import { Section, Timeline, Task } from './types';
 import { projectDraftChartService } from '../../services/projectDraftChartService';
 import { debounce } from 'lodash';
-import { useProject } from '../ProjectContext';
 import { ensureDate } from '../../hooks/utils';
 // gantt
 //     section Phase 1
@@ -51,7 +50,7 @@ interface DraftPlanMermaidProviderProps {
 const DraftPlanMermaidContext = createContext<DraftPlanMermaidContextType | undefined>(undefined);
 
 export function DraftPlanMermaidProvider({ children, projectId }: DraftPlanMermaidProviderProps) {
-  const [x0Date, setX0Date] = useState<Date | null>(null);
+  const [x0Date] = useState<Date | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY] = useState<number>(30);
   const [timeline, setTimeline] = useState<Timeline|undefined>();

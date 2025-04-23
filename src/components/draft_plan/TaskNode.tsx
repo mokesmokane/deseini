@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { NodeResizeControl } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
 

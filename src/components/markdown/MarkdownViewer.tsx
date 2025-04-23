@@ -12,15 +12,14 @@ interface Props {
   onShowSectionDiff?: (range: {start: number, end: number}, instruction: string) => void;
 }
 
-export const MarkdownViewer: React.FC<Props> = ({ initialMarkdown, onShowChat, onShowSectionDiff }) => {
+export const MarkdownViewer: React.FC<Props> = ({ onShowChat, onShowSectionDiff }) => {
   const { 
     currentText, 
-    isStreaming, 
     saveText, 
     isLineLocked, 
     toggleLock, 
     unlockSection, 
-    getLineInfo, 
+    getLineInfo,  
     findListItemRange, 
     getAllLines, 
     editMarkdownSection 

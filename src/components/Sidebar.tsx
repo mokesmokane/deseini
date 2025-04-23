@@ -12,7 +12,6 @@ import {
   CodeBracketIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { Section } from '../contexts/DraftPlan/types';
 
 interface SidebarSection {
   id: string;
@@ -28,7 +27,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange, section }) => {
-  const { currentChart, setCurrentChart, setHasUnsavedChanges, loadChartById } = useGantt();
+  const { currentChart, setCurrentChart, setHasUnsavedChanges } = useGantt();
   const { saveChart } = useChartsList();
   const { project, userCharts } = useProject();
   const { projectId } = useParams<{ projectId: string }>();

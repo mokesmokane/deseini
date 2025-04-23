@@ -6,7 +6,7 @@ import LogoCarousel from './components/LogoCarousel';
 import toast, { Toaster } from 'react-hot-toast';
 import { GanttProvider } from './contexts/GanttContext';
 import { Session } from '@supabase/supabase-js';
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { DependencyViolationsProvider } from './contexts/DependencyViolationsContext';
 import { ChartsListProvider } from './contexts/ChartsListContext';
 import { ProjectProvider } from './contexts/ProjectContext';
@@ -16,7 +16,6 @@ import { ProjectPlanProvider } from './contexts/ProjectPlanContext';
 export default function App() {
   const [projects, setProjects] = useState<Array<{ id: string; projectName: string }>>([]);
   const [session, setSession] = useState<Session | null>(null);
-  const location = useLocation();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId?: string }>(); // Get projectId from URL params
   

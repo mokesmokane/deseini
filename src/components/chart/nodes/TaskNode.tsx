@@ -191,7 +191,7 @@ export const TaskNode = ({ data, id, selected }: TaskNodeProps) => {
     }, 100);
   }, [id]);
 
-  const handleResizeEnd = useCallback((event: any, params: any)  => {
+  const handleResizeEnd = useCallback((_: any, params: any)  => {
     const newWidth = Math.max(DAY_WIDTH, params.width);
     
     const days = Math.round(newWidth / DAY_WIDTH);

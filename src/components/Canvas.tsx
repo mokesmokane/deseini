@@ -5,7 +5,6 @@ import { ChartCreationChat } from './ChartCreationChat';
 import ViewSelector, { ViewMode } from './ViewSelector';
 import { MarkdownViewer } from './markdown/MarkdownViewer';
 import GridView from './GridView';
-import { useDraftPlanContext } from '../contexts/DraftPlanContext';
 import { toast } from 'react-hot-toast';
 import { useEditedSection } from '../contexts/EditedSectionContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -33,7 +32,6 @@ const Canvas: React.FC = () => {
       streamProgress
     } = useDraftPlanMermaidContext();
   const [showChat, setShowChat] = useState(false); // Add state to control chat visibility
-  const [showDraftPane, setShowDraftPane] = useState(false); // Add state to control draft pane visibility
   const [showMermaidPane, setShowMermaidPane] = useState(false); // Add state to control Mermaid Gantt pane visibility
   const [showMermaidPlanBottom, setShowMermaidPlanBottom] = useState(false); // Add state to control bottom Mermaid plan panel
   const [viewMode, setViewMode] = useState<ViewMode>('markdown'); // Default to markdown view
@@ -47,9 +45,6 @@ const Canvas: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { currentChart } = useGantt();
   const [showFinalPlanModal, setShowFinalPlanModal] = useState(false);
-
-  // Get createPlanFromMarkdown from DraftPlanContext
-  const { createPlanFromMarkdown } = useDraftPlanContext();
   
   // We no longer need to get mermaidSyntax and streamProgress since they're used in MermaidSyntaxPanel
 
@@ -61,15 +56,6 @@ const Canvas: React.FC = () => {
   // Add function to show the chat
   const handleShowChat = () => {
     setShowChat(true);
-    setShowDraftPane(false);
-    setShowSectionDiff(false);
-    setShowMermaidPane(false);
-    setShowMermaidPlanBottom(false);
-  };
-  // Add function to show/hide the draft plan pane
-  const toggleDraftPane = () => {
-    setShowDraftPane(!showDraftPane);
-    setShowChat(false);
     setShowSectionDiff(false);
     setShowMermaidPane(false);
     setShowMermaidPlanBottom(false);
@@ -80,7 +66,6 @@ const Canvas: React.FC = () => {
     setShowMermaidPane(!showMermaidPane);
     setShowChat(false);
     setShowSectionDiff(false);
-    setShowDraftPane(false);
     setShowMermaidPlanBottom(false);
   };
 
@@ -122,35 +107,8 @@ const Canvas: React.FC = () => {
     setShowMermaidPlanBottom(!showMermaidPlanBottom);
     // Close other panes for better UX
     setShowChat(false);
-    setShowDraftPane(false);
     setShowMermaidPane(false);
     setShowSectionDiff(false);
-  };
-
-  // Handle creating a draft plan from the current project plan markdown
-  const handleCreatePlan = async () => {
-    if (!currentText) {
-      toast.error('No project plan available to convert');
-      return;
-    }
-
-    try {
-      toast.promise(
-        createPlanFromMarkdown(currentText),
-        {
-          loading: 'Creating draft plan...',
-          success: 'Draft plan created successfully!',
-          error: (err) => `Failed to create draft plan: ${err.message}`
-        }
-      );
-    } catch (error) {
-      console.error('Error creating draft plan:', error);
-    }
-  };
-  
-  // Use handleCreatePlan in the "Create Mermaid Gantt" button click event
-  const handleShowMermaidPaneAndGenerate = () => {
-    toggleMermaidPane();
   };
 
   // Handle switching between different view modes

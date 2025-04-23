@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import ReactFlow, {
   Node,
   Background,
-  Controls,
   MiniMap,
   ReactFlowInstance,
 } from 'reactflow';

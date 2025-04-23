@@ -1,5 +1,4 @@
-import { Task, Dependency } from '../../types';
-
+import { Task, Dependency } from '@/types';
 /**
  * Validate task dates and dependencies. Returns the task, may throw or return errors in future.
  * This is a pure function, but can delegate to injected checkForViolations if needed.

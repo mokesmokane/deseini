@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import * as diffLib from 'diff';
-import axios from 'axios';
 import { useProjectPlan } from './ProjectPlanContext';
 
 interface EditedSectionContextType {

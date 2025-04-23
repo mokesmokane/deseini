@@ -1,4 +1,3 @@
-import React from 'react';
 import { Deliverable } from '../types';
 import { useForm } from 'react-hook-form';
 

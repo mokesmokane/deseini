@@ -2,7 +2,6 @@ import type { NodeProps } from 'reactflow';
 import { NodeResizeControl, ResizeDragEvent, ResizeParams } from 'reactflow';
 import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useCallback, useEffect, useState } from 'react';
-import { ensureDate, getXPositionFromDate, roundPositionToDay } from '@/hooks/utils';
 import { useDraftPlanFlow } from '@/contexts/useDraftPlanFlow';
 
 export interface SectionNodeData {

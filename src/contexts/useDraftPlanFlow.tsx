@@ -3,7 +3,7 @@ import { useDraftPlanMermaidContext } from './DraftPlan/DraftPlanContextMermaid'
 import { Section, Timeline, Task } from './DraftPlan/types'
 
 import { Node, Edge, MarkerType, useNodesState, ResizeDragEvent, ResizeParams, NodeDragHandler } from 'reactflow';
-import { ensureDate, getXPositionFromDate, getWidthBetweenDates, getTaskDate, getDateFromXPosition, roundPositionToDay } from '../hooks/utils';
+import { ensureDate, getXPositionFromDate, getTaskDate, getDateFromXPosition, roundPositionToDay } from '../hooks/utils';
 import { MermaidTaskData } from '@/types';
 import { createContext, ReactNode } from 'react';
 
@@ -166,7 +166,6 @@ function useDraftPlanFlowInternal() {
         }
         
         // Add section bar node
-        const sectionWidth = sectionStartDate && sectionEndDate ? getWidthBetweenDates(sectionStartDate, sectionEndDate, TIMELINE_PIXELS_PER_DAY) : 0;
         const defaultStartDate = anchorDate;
         const sectionXPosition = getXPositionFromDate(sectionStartDate, defaultStartDate, TIMELINE_PIXELS_PER_DAY) + 10;
         
@@ -898,24 +897,6 @@ function useDraftPlanFlowInternal() {
         } : n));
         // Apply all buffered context updates
         pendingUpdates.forEach(({ id, newStartDate }) => updateTaskStartDate(id, newStartDate));
-        // Debug: log section spans after drag stop
-        sections.forEach(section => {
-          const spans = section.tasks.map(task => {
-            const sd = ensureDate(task.startDate);
-            const ed = task.type === 'milestone'
-              ? sd
-              : task.endDate
-                ? ensureDate(task.endDate)
-                : (task.duration
-                  ? new Date(sd.getTime() + task.duration * 24 * 60 * 60 * 1000)
-                  : sd);
-            return { sd, ed };
-          });
-          const times = spans.flatMap(s => [s.sd.getTime(), s.ed.getTime()]);
-          const secStart = new Date(Math.min(...times));
-          const secEnd = new Date(Math.max(...times));
-          const widthPx = getWidthBetweenDates(secStart, secEnd, TIMELINE_PIXELS_PER_DAY);
-        });
       }
     }, [nodes, setNodes, sections, anchorDate, updateTaskStartDate, TIMELINE_PIXELS_PER_DAY]);
 

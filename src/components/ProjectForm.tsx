@@ -1,7 +1,7 @@
 import { Project, Role, Attachment } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
-import RoleList, { RoleListProps } from './RoleList'; 
-import EditableField, { EditableFieldProps } from './EditableField';
+import RoleList from './RoleList'; 
+import EditableField from './EditableField';
 import { DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import FileUpload, { FileUploadProps } from './FileUpload';
 import AttachmentList, { AttachmentListProps } from './AttachmentList';
@@ -16,7 +16,6 @@ export default function ProjectForm() {
   const { 
     setProject,
     saveProject,
-    cloneProject, 
     deleteRole,
     deleteDeliverable,
     project
@@ -228,7 +227,7 @@ export default function ProjectForm() {
     }
   };
 
-  const handleSelectRole = (role: Role, index: number) => {
+  const handleSelectRole = (index: number) => {
     setSelectedRoleIndex(index === selectedRoleIndex ? null : index);
   };
 

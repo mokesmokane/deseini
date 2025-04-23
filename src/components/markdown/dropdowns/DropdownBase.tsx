@@ -12,7 +12,6 @@ export interface DropdownBaseProps {
 export const DropdownBase: React.FC<DropdownBaseProps> = ({
   isOpen,
   onClose,
-  lineNumber,
   buttonRef,
   children,
 }) => {

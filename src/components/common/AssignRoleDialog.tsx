@@ -1,6 +1,6 @@
-import React, { Fragment, useState, useEffect } from 'react';
+import React, { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { Task } from '../../types';
+import { Task } from '@/types';
 
 // Export the Role interface
 export interface Role {

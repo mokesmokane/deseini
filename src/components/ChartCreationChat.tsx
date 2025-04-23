@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { SuggestedReplies } from './dialogs/SuggestedReplies';
 import ReactMarkdown from 'react-markdown';
 import { useMessages } from '../contexts/MessagesContext';
@@ -31,13 +31,6 @@ export function ChartCreationChat({
     handleRefreshSuggestions,
     handleGenerateTasksClick
   } = useMessages();
-
-  // Initialize chat when the component is mounted if not already initialized
-  // useEffect(() => {
-  //   if (!isInitialized) {
-  //     initializeChat();
-  //   }
-  // }, [isInitialized, initializeChat]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

@@ -1,4 +1,4 @@
-import { Task, Timeline } from '../contexts/DraftPlan/types';
+import { Task } from '../contexts/DraftPlan/types';
 import { createTask } from './taskUtils';
 /**
  * Find a task's end date by its ID across all sections

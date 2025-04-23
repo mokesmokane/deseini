@@ -1,7 +1,6 @@
-import React from 'react';
 import { Role } from '../types';
 import DeliverableList from './DeliverableList';
-import { TrashIcon, DocumentDuplicateIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import EditableField from './EditableField';
 
 interface RoleCardProps {

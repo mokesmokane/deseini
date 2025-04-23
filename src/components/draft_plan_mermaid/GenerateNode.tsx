@@ -1,7 +1,6 @@
 import { memo, useState, useEffect, useRef } from 'react';
 import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useProjectPlan } from '../../contexts/ProjectPlanContext';
-import ActionPreview from '../mermaid/ActionPreview';
 import { useFinalPlan } from '../../hooks/useFinalPlan';
 
 interface GenerateNodeData {
@@ -16,14 +15,6 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
     isLoading: isMermaidLoading,
     streamSummary,
     fullSyntax,
-    startProcessingBuffer,
-    processAllBuffer,
-    actionBufferLength,
-    processingBufferProgress,
-    nextAction,
-    actionBuffer,
-    TIMELINE_PIXELS_PER_DAY,
-    setTIMELINE_PIXELS_PER_DAY
   } = useDraftPlanMermaidContext();
   const { 
     currentText,
@@ -33,7 +24,6 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
   const [detailedSummary, setDetailedSummary] = useState('');
   const prevSummaryRef = useRef('');
   const detailedSummaryRef = useRef<HTMLDivElement>(null);
-  const [debugMode, setDebugMode] = useState<boolean>(false);
   const { generateFinalPlan, isGeneratingFinalPlan, generationProgress } = useFinalPlan();
   
   // Reset detailed summary when a new summary is received
@@ -66,13 +56,6 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
       element.scrollTop = element.scrollHeight;
     }
   }, [detailedSummary, expanded]);
-
-  // Auto-apply buffered actions when debug mode is off
-  useEffect(() => {
-    if (!debugMode && actionBufferLength > 0) {
-      processAllBuffer();
-    }
-  }, [debugMode, actionBufferLength, processAllBuffer]);
 
   const handleGenerateClick = async () => {
     try {
@@ -178,7 +161,7 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                       <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
-                    Create Plan
+                    Generate Final Plan
                   </button>
                 )}
               </div>

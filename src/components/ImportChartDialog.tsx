@@ -8,14 +8,10 @@ interface ImportChartDialogProps {
 
 const ImportChartDialog: React.FC<ImportChartDialogProps> = ({ 
   isOpen, 
-  onClose, 
-  onImport 
+  onClose
 }) => {
   const [jsonInput, setJsonInput] = useState('');
   const [isValidJson, setIsValidJson] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   
   // Check if the input is valid JSON
   const validateJson = (input: string): boolean => {
@@ -36,13 +32,6 @@ const ImportChartDialog: React.FC<ImportChartDialogProps> = ({
       setIsValidJson(validateJson(value));
     } else {
       setIsValidJson(null);
-    }
-  };
-  
-  const handleImport = () => {
-    if (isValidJson) {
-      setLoading(true);
-      onImport(jsonInput);
     }
   };
   
@@ -112,10 +101,7 @@ const ImportChartDialog: React.FC<ImportChartDialogProps> = ({
           </button>
           <button
             type="submit"
-            className={`px-4 py-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 ${
-              loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-neutral-700 hover:bg-neutral-800'
-            }`}
-            disabled={loading}
+            className={`px-4 py-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 bg-neutral-700 hover:bg-neutral-800`}
           >
             Import Chart
           </button>

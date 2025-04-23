@@ -1,12 +1,10 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import ReactFlow, {
   Background,
   ReactFlowInstance,
   Node,
   NodeMouseHandler,
-  NodeProps,
-  ResizeDragEvent,
-  ResizeParams,
+  NodeProps
 } from 'reactflow';
 import { useDraftPlanFlow } from '../../contexts/useDraftPlanFlow';
 import "react-datepicker/dist/react-datepicker.css";
@@ -27,7 +25,6 @@ function DraftPlanMermaid() {
 
   // Track selected node and panel animation state
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [pendingNode, setPendingNode] = useState<Node | null>(null);
   const [isPanelVisible, setIsPanelVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const animationTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -45,7 +42,6 @@ function DraftPlanMermaid() {
       if (animationTimeout.current) clearTimeout(animationTimeout.current);
       animationTimeout.current = setTimeout(() => {
         setSelectedNode(null);
-        setPendingNode(null);
         setSettingsOpen(true);
       }, ANIMATION_DURATION);
     } else {
@@ -63,12 +59,10 @@ function DraftPlanMermaid() {
         // Now open node panel
         if (selectedNode && node.id !== selectedNode.id) {
           setIsPanelVisible(false);
-          setPendingNode(node);
           if (animationTimeout.current) clearTimeout(animationTimeout.current);
           animationTimeout.current = setTimeout(() => {
             setSelectedNode(node);
             setIsPanelVisible(true);
-            setPendingNode(null);
           }, ANIMATION_DURATION);
         } else if (!selectedNode) {
           setSelectedNode(node);
@@ -79,12 +73,10 @@ function DraftPlanMermaid() {
     }
     if (selectedNode && node.id !== selectedNode.id) {
       setIsPanelVisible(false);
-      setPendingNode(node);
       if (animationTimeout.current) clearTimeout(animationTimeout.current);
       animationTimeout.current = setTimeout(() => {
         setSelectedNode(node);
         setIsPanelVisible(true);
-        setPendingNode(null);
       }, ANIMATION_DURATION);
     } else if (!selectedNode) {
       setSelectedNode(node);
@@ -99,7 +91,6 @@ function DraftPlanMermaid() {
     if (animationTimeout.current) clearTimeout(animationTimeout.current);
     animationTimeout.current = setTimeout(() => {
       setSelectedNode(null);
-      setPendingNode(null);
     }, ANIMATION_DURATION);
   };
 

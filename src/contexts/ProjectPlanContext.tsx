@@ -19,6 +19,7 @@ export interface DiffSegment {
 
 interface ProjectPlanContextProps {
   currentText: string | null;
+  setCurrentText: (text: string) => void;
   previousText: string | null;
   saveText: (text: string) => Promise<void>;
   isStreaming: boolean;
@@ -190,17 +191,6 @@ export function ProjectPlanProvider({
   // Analyzer derived from currentText
   const analyzer = useMemo(() => currentText ? new MarkdownSectionAnalyzer(currentText) : null, [currentText]);
 
-  const getProjectJsonRepresentation = () => {
-    const currentProject = projectRef.current;
-    if (!currentProject) return null;
-    return {
-      id: projectIdRef.current,
-      projectName: currentProject.projectName || '',
-      description: currentProject.description || '',
-      roles: currentProject.roles || [],
-      charts: userChartsRef.current || []
-    };
-  };
 
   const confirmChanges = async (confirm: boolean) => {
     if (confirm) {
@@ -506,6 +496,7 @@ export function ProjectPlanProvider({
     <ProjectPlanContext.Provider
       value={{
         currentText,
+        setCurrentText,
         previousText,
         saveText,
         isStreaming,

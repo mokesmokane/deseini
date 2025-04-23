@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
-import { GanttData } from '../types';
 
 // Helper function to get environment variables from either Vite or Node.js
 function getEnvVariable(key: string): string {

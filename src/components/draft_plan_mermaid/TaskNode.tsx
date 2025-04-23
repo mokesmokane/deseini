@@ -12,7 +12,7 @@ interface TaskNodeProps extends NodeProps<MermaidTaskData> {
 const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd }) => {
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const { TIMELINE_PIXELS_PER_DAY, updateTaskDuration } = useDraftPlanMermaidContext();
+  const { TIMELINE_PIXELS_PER_DAY } = useDraftPlanMermaidContext();
   
   // Calculate the width based on duration
   const initialWidth = data.hasDuration ? (data.width || 60) : 60;
