@@ -12,10 +12,9 @@ import { useProject } from './contexts/ProjectContext';
 
 interface DeseiniProps {
   session: Session | null;
-  onShowAuth?: () => void;
 }
 
-export default function Deseini({ session, onShowAuth }: DeseiniProps) {
+export default function Deseini({ session }: DeseiniProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const navigate = useNavigate();
   const { setProject } = useProject();

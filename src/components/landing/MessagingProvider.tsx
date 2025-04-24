@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useRef } from 'react';
+import { createContext, useContext, useState, ReactNode, useRef } from 'react';
 import { Message } from './types';
 import { sampleMessages } from './sample';
 

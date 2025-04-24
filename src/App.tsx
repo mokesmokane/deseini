@@ -14,8 +14,6 @@ import { Outlet } from 'react-router-dom';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [showAuth, setShowAuth] = useState(false);
-  
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -30,10 +28,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Show auth UI if user explicitly requests it
-  const handleShowAuth = () => {
-    setShowAuth(true);
-  };
 
   // Render appropriate layout based on authentication status
   if (!session) {
@@ -62,7 +56,7 @@ export default function App() {
               <EditedSectionProvider>
                 <LogoCarouselProvider autoRotateInterval={3000}>
                   <div className="flex flex-col h-screen bg-white overflow-hidden">
-                    <Deseini session={session} onShowAuth={handleShowAuth} />
+                    <Deseini session={session} />
                     <main className="flex-1 overflow-hidden">
                       <div className="h-full overflow-auto bg-white">
                         <Outlet />

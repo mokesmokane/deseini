@@ -1,7 +1,6 @@
 import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatMessage from "./ChatMessage";
-import TextInput from "./TextInput";
 import { Message } from "../types";
 
 interface ChatPanelProps {
@@ -10,7 +9,7 @@ interface ChatPanelProps {
   isTyping?: boolean; 
 }
 
-export function ChatPanel({ messages, onSendMessage, isTyping = false }: ChatPanelProps) {
+export function ChatPanel({ messages, isTyping = false }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {

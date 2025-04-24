@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, ReactNode, useCallback, useMemo } from 'react';
-import { ChatMessage, Project, Chart } from '../types';
+import { ChatMessage, Project } from '../types';
 import { toast } from 'react-hot-toast';
 import { MarkdownSectionAnalyzer } from '../components/markdown/MarkdownSections';
 import { projectMarkdownService } from '../services/projectMarkdownService';
