@@ -3,6 +3,7 @@ import { ChatMessage, Project, Chart } from '../types';
 import { toast } from 'react-hot-toast';
 import { MarkdownSectionAnalyzer } from '../components/markdown/MarkdownSections';
 import { projectMarkdownService } from '../services/projectMarkdownService';
+import { useProject } from '../contexts/ProjectContext';
 
 // Define the steps in the generation process
 export type PlanGenerationStep = 'idle' | 'generating' | 'reviewing' | 'finalizing';
@@ -56,9 +57,6 @@ interface ProjectPlanContextProps {
 
 interface ProjectPlanProviderProps {
   children: ReactNode;
-  projectId: string | null;
-  project: Project | null;
-  userCharts: Chart[];
 }
 
 const ProjectPlanContext = createContext<ProjectPlanContextProps | undefined>(undefined);
@@ -152,9 +150,6 @@ const streamLines = async (
 
 export function ProjectPlanProvider({ 
   children, 
-  projectId, 
-  project, 
-  userCharts
 }: ProjectPlanProviderProps) {
 
   const [currentText, setCurrentText] = useState<string | null>(null);
@@ -163,23 +158,24 @@ export function ProjectPlanProvider({
   const [currentLineNumber, setCurrentLineNumber] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [lockedSections, setLockedSections] = useState<Set<string>>(new Set());
+  const { project, userCharts } = useProject();
 
   // Global static flag to track if initialization has happened across all instances
   // This ensures createPlanIfMissing only runs once globally regardless of how many times
   // Canvas components are mounted or remounted
   const hasInitialized = useRef(false);
 
-  const projectIdRef = useRef(projectId);
+  const projectIdRef = useRef(project?.id || null);
   const projectRef = useRef(project);
   const userChartsRef = useRef(userCharts);
   const previousPlanRef = useRef<string | null>(null); // Store previous plan for diffing
 
   // Update refs when props change
   React.useEffect(() => {
-    projectIdRef.current = projectId;
+    projectIdRef.current = project?.id || null;
     projectRef.current = project;
     userChartsRef.current = userCharts;
-  }, [projectId, project, userCharts]);
+  }, [project, userCharts]);
 
   // Reset diff segments when project plan changes
   React.useEffect(() => {
@@ -351,7 +347,7 @@ export function ProjectPlanProvider({
       
       // Get current project context for better AI response
       const projectContextData = {
-        id: projectId,
+        id: projectIdRef.current,
         projectName: project?.projectName,
         description: project?.description,
         roles: project?.roles || [],

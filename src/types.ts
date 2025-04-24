@@ -33,7 +33,10 @@ export interface Role {
 
 export interface Project {
   id: string;
-  projectName: string;
+  projectName: string;  
+  createdAt: string | null;
+  updatedAt: string | null;
+  starred: boolean;
   description?: string;
   bannerImage?: string;
   attachments?: any[]; // Define specific attachment type later

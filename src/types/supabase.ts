@@ -192,6 +192,7 @@ export type Database = {
           description: string | null
           id: string
           project_name: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -200,6 +201,7 @@ export type Database = {
           description?: string | null
           id?: string
           project_name: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -208,6 +210,7 @@ export type Database = {
           description?: string | null
           id?: string
           project_name?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -267,6 +270,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "roles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_projects: {
+        Row: {
+          project_id: string
+          starred: boolean
+          user_id: string
+        }
+        Insert: {
+          project_id?: string
+          starred?: boolean
+          user_id?: string
+        }
+        Update: {
+          project_id?: string
+          starred?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_projects_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"

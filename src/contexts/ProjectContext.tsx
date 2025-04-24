@@ -59,6 +59,9 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
   const createNewProject = () => {
     setProject({
       id: `new-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      starred: false,
       projectName: "",
       description: "",
       bannerImage: "",
@@ -91,7 +94,10 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         description: project.description || undefined,
         bannerImage: project.banner_image || '',
         attachments: [],
-        roles: []
+        roles: [],
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
+        starred: false
       })) || [];
 
       setProjectsList(projects);
@@ -241,6 +247,9 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
       setProject({
         id: projectData.id,
+        createdAt: projectData.created_at,
+        updatedAt: projectData.updated_at,
+        starred: false,
         projectName: projectData.project_name,
         description: projectData.description || undefined,
         bannerImage: projectData.banner_image || '',

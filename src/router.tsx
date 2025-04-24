@@ -2,7 +2,7 @@
 import App from './App';
 import ProjectView from './views/ProjectView';
 import ChartView from './views/ChartView';
-import LandingPage from './components/LandingPage';
+import LandingPage from './components/landing/LandingPage';
 import CanvasView from './views/CanvasView';
 
 const router = createBrowserRouter([

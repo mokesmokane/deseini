@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useLogoCarousel } from './LogoCarouselContext';
 
 // Logo file names
 const logoFiles = [
@@ -13,31 +14,20 @@ const logoFiles = [
 ];
 
 interface LogoCarouselProps {
-  autoRotateInterval?: number; // Time in ms between rotations
   height?: string;
   width?: string;
 }
 
 const LogoCarousel: React.FC<LogoCarouselProps> = ({
-  autoRotateInterval = 3000,
   height = '100px',
   width = '100%',
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  
-  // Auto-rotate logos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % logoFiles.length);
-    }, autoRotateInterval);
-    
-    return () => clearInterval(interval);
-  }, [autoRotateInterval]);
-  
+  const { currentIndex, logoFiles: contextLogoFiles } = useLogoCarousel();
+
   return (
     <div className="flex justify-center items-center" style={{ width, height }}>
       <img 
-        src={`/logos/${logoFiles[currentIndex]}`}
+        src={`/logos/${contextLogoFiles[currentIndex]}`}
         alt={`Logo ${currentIndex + 1}`}
         className="max-w-full max-h-full object-contain transition-opacity duration-500"
       />

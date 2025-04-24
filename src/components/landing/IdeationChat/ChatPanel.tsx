@@ -1,0 +1,63 @@
+import { useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChatMessage } from "./ChatMessage";
+import { TextInput } from "./TextInput";
+import { Message } from "./types";
+
+interface ChatPanelProps {
+  messages: Message[];
+  onSendMessage: (message: string) => void;
+  isTyping?: boolean;
+}
+
+export function ChatPanel({ messages, onSendMessage, isTyping = false }: ChatPanelProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+  
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+  
+  return (
+    <div className="flex flex-col h-screen bg-white">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <AnimatePresence initial={false}>
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+              />
+            ))}
+          </AnimatePresence>
+          
+          {isTyping && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center justify-center gap-2 mb-4"
+            >
+              <div className="flex space-x-1">
+                <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "0ms" }}></span>
+                <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "300ms" }}></span>
+                <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "600ms" }}></span>
+              </div>
+              <span className="text-xs text-gray-500">AI is typing...</span>
+            </motion.div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+      
+      <div className="border-t border-gray-200">
+        <div className="max-w-2xl mx-auto">
+          <TextInput onSendMessage={onSendMessage} />
+        </div>
+      </div>
+    </div>
+  );
+}
