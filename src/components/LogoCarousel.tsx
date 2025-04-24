@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 // Logo file names
 const logoFiles = [
   'image.png',
-  'image copy.png',
-  'image copy 2.png',
-  'image copy 3.png',
-  'image copy 4.png',
-  'image copy 5.png',
-  'image copy 6.png',
-  'image copy 7.png',
+  'image1.png',
+  'image2.png',
+  'image3.png',
+  'image4.png',
+  'image5.png',
+  'image6.png',
+  'image7.png',
 ];
 
 interface LogoCarouselProps {
@@ -37,7 +37,7 @@ const LogoCarousel: React.FC<LogoCarouselProps> = ({
   return (
     <div className="flex justify-center items-center" style={{ width, height }}>
       <img 
-        src={`/src/logos/${logoFiles[currentIndex]}`}
+        src={`/logos/${logoFiles[currentIndex]}`}
         alt={`Logo ${currentIndex + 1}`}
         className="max-w-full max-h-full object-contain transition-opacity duration-500"
       />
