@@ -10,9 +10,12 @@ import { ProjectsDropdown } from './components/ProjectsDropdown';
 import { Project } from './services/projectService';
 import { useProject } from './contexts/ProjectContext';
 
+interface DeseiniProps {
+  session: Session | null;
+  onShowAuth?: () => void;
+}
 
-
-export default function Deseini({ session }: { session: Session | null }) {
+export default function Deseini({ session, onShowAuth }: DeseiniProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const navigate = useNavigate();
   const { setProject } = useProject();
@@ -48,7 +51,7 @@ export default function Deseini({ session }: { session: Session | null }) {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <>
       <Toaster position="top-right" />
       <header className="bg-white shadow-sm w-full border-b border-gray-200 h-16 flex-shrink-0">
         <div className="py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
@@ -87,11 +90,7 @@ export default function Deseini({ session }: { session: Session | null }) {
           </div>
         </div>
       </header>
-      <main className="flex-1 flex pt-[10vh] min-h-0">
-        <div className="flex-1 overflow-auto bg-white">
-          <Outlet context={{ projects }} />
-        </div>
-      </main>
-    </div>   
+      <Outlet context={{ projects }} />
+    </>
   );
 }

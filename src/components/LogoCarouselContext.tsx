@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
+// Logo file names
 const logoFiles = [
-  'image.png',
-  'image1.png',
-  'image2.png',
-  'image3.png',
-  'image4.png',
-  'image5.png',
-  'image6.png',
-  'image7.png',
+  'DeseiniBubble.png',
+  'DeseiniGraffiti.png',
+  'DeseiniItalic.png',
+  'DeseiniNewRoman.png',
+  'DeseiniPaint.png',
+  'DeseiniSans.png',
+  'DeseiniSketch.png',
+  'DeseiniWestern.png',
 ];
 
 interface LogoCarouselContextValue {

@@ -1,22 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Paperclip, Sparkles, ArrowRight } from 'lucide-react';
-import { sampleIdeas } from '../sampleIdeas';
+import { sampleIdeas } from '../sample';
+import { useMessaging } from '../MessagingProvider';
 
 interface TextInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage?: (message: string) => void;
+  hasStarted?: boolean;
 }
 
-const TextInput: React.FC<TextInputProps> = ({ onSendMessage }) => {
+const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false }) => {
   const [currentText, setCurrentText] = useState('');
-  const [isTyping, setIsTyping] = useState(true);
+  const [isTyping, setIsTyping] = useState(!hasStarted);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentIdeaIndex, setCurrentIdeaIndex] = useState(0);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cancelledRef = useRef(false);
+  const { addMessage } = useMessaging();
 
   // Typing and deleting animation
   useEffect(() => {
+    // Skip animation entirely if chat has started
+    if (hasStarted) {
+      setIsTyping(false);
+      setIsDeleting(false);
+      return;
+    }
+    
     if (cancelledRef.current) return; // Prevent scheduling any new timeouts if cancelled
     cancelledRef.current = false; // Reset cancel flag on new animation cycle
     timeoutsRef.current.forEach(clearTimeout);
@@ -68,9 +78,17 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage }) => {
       }
     }
     return () => { timeoutsRef.current.forEach(clearTimeout); timeoutsRef.current = []; };
-  }, [currentText, isTyping, isDeleting, currentIdeaIndex]);
+  }, [currentText, isTyping, isDeleting, currentIdeaIndex, hasStarted]);
 
   const handleTextAreaClick = () => {
+    // Don't handle animation if chat has started
+    if (hasStarted) {
+      if (textAreaRef.current) {
+        textAreaRef.current.select();
+      }
+      return;
+    }
+    
     // Interrupt typing/deleting and clear any pending timeouts
     if (isTyping || isDeleting) {
       cancelledRef.current = true;
@@ -93,8 +111,23 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage }) => {
   };
 
   const handleSendClick = () => {
-    onSendMessage(currentText);
-    
+    if (currentText.trim() === '') return;
+    addMessage(currentText);
+    if (onSendMessage) onSendMessage(currentText);
+    setCurrentText('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter') {
+      if (e.shiftKey) {
+        // Shift+Enter allows multi-line input
+        return;
+      } else {
+        // Regular Enter sends the message
+        e.preventDefault();
+        handleSendClick();
+      }
+    }
   };
 
   return (
@@ -104,7 +137,9 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage }) => {
           ref={textAreaRef}
           value={currentText}
           onChange={(e) => setCurrentText(e.target.value)}
+          onFocus={handleTextAreaClick}
           onClick={handleTextAreaClick}
+          onKeyDown={handleKeyDown}
           className="w-full h-40 bg-white text-black p-4 pr-12 border-none outline-none resize-none text-lg placeholder-gray-400"
           // placeholder="Enter your design idea..."
         />

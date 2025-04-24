@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { GanttProvider } from './contexts/GanttContext';
 import { Session } from '@supabase/supabase-js';
 import { DependencyViolationsProvider } from './contexts/DependencyViolationsContext';
@@ -11,9 +9,12 @@ import { EditedSectionProvider } from './contexts/EditedSectionContext';
 import { ProjectPlanProvider } from './contexts/ProjectPlanContext';
 import Deseini from './Deseini';
 import { LogoCarouselProvider } from './components/LogoCarouselContext';
+import { MessagingProvider } from './components/landing/MessagingProvider';
+import { Outlet } from 'react-router-dom';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [showAuth, setShowAuth] = useState(false);
   
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -29,35 +30,51 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Show auth UI if user explicitly requests it
+  const handleShowAuth = () => {
+    setShowAuth(true);
+  };
+
+  // Render appropriate layout based on authentication status
   if (!session) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full p-8 bg-white shadow-lg rounded-lg">
-          <Auth
-            supabaseClient={supabase}
-            appearance={{ theme: ThemeSupa }}
-            providers={[]}
-          />
-        </div>
-      </div>
+      <LogoCarouselProvider autoRotateInterval={3000}>
+        <MessagingProvider>
+          <div className="flex flex-col h-screen bg-white overflow-hidden">
+            <main className="flex-1 overflow-hidden">
+              <div className="h-full overflow-auto bg-white">
+                <Outlet />
+              </div>
+            </main>
+          </div>
+        </MessagingProvider>
+      </LogoCarouselProvider>
     );
   }
 
+  // For authenticated users, wrap with all necessary providers and show the header
   return (
     <ChartsListProvider>
       <ProjectProvider>
-           <DependencyViolationsProvider>
-            <GanttProvider>
-                <ProjectPlanProvider >
-                  <EditedSectionProvider>
-                  <LogoCarouselProvider autoRotateInterval={3000}>
-                    <Deseini session={session} />
-                  </LogoCarouselProvider>
-                  </EditedSectionProvider>
-                </ProjectPlanProvider>
-            </GanttProvider>
-          </DependencyViolationsProvider>
-        </ProjectProvider>
-      </ChartsListProvider>    
+        <DependencyViolationsProvider>
+          <GanttProvider>
+            <ProjectPlanProvider>
+              <EditedSectionProvider>
+                <LogoCarouselProvider autoRotateInterval={3000}>
+                  <div className="flex flex-col h-screen bg-white overflow-hidden">
+                    <Deseini session={session} onShowAuth={handleShowAuth} />
+                    <main className="flex-1 overflow-hidden">
+                      <div className="h-full overflow-auto bg-white">
+                        <Outlet />
+                      </div>
+                    </main>
+                  </div>
+                </LogoCarouselProvider>
+              </EditedSectionProvider>
+            </ProjectPlanProvider>
+          </GanttProvider>
+        </DependencyViolationsProvider>
+      </ProjectProvider>
+    </ChartsListProvider>    
   );
 }

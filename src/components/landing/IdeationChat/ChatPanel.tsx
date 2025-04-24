@@ -1,13 +1,13 @@
 import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChatMessage } from "./ChatMessage";
-import { TextInput } from "./TextInput";
-import { Message } from "./types";
+import ChatMessage from "./ChatMessage";
+import TextInput from "./TextInput";
+import { Message } from "../types";
 
 interface ChatPanelProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
-  isTyping?: boolean;
+  isTyping?: boolean; 
 }
 
 export function ChatPanel({ messages, onSendMessage, isTyping = false }: ChatPanelProps) {
@@ -22,14 +22,15 @@ export function ChatPanel({ messages, onSendMessage, isTyping = false }: ChatPan
   };
   
   return (
-    <div className="flex flex-col h-screen bg-white">
-      <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex flex-col flex-grow overflow-hidden bg-white">
+      <div className="flex-1 overflow-y-auto hide-scrollbar p-4 max-h-[calc(100vh-270px)]">
         <div className="max-w-2xl mx-auto space-y-4">
           <AnimatePresence initial={false}>
-            {messages.map((message) => (
+            {messages.map((message, index) => (
               <ChatMessage
                 key={message.id}
                 message={message}
+                isLatest={index === messages.length - 1}
               />
             ))}
           </AnimatePresence>
@@ -50,12 +51,6 @@ export function ChatPanel({ messages, onSendMessage, isTyping = false }: ChatPan
           )}
           
           <div ref={messagesEndRef} />
-        </div>
-      </div>
-      
-      <div className="border-t border-gray-200">
-        <div className="max-w-2xl mx-auto">
-          <TextInput onSendMessage={onSendMessage} />
         </div>
       </div>
     </div>
