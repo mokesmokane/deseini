@@ -17,13 +17,15 @@ export const sampleIdeas = [
     id: uuidv4(),
     content: "Hello! I'm your AI assistant. I can help you with various tasks including code examples, data analysis, and general questions. How can I assist you today?",
     timestamp: new Date(),
-    isMe: false,
+    role: 'assistant',
+    status: 'delivered'
   },
   {
     id: uuidv4(),
     content: "Here are some examples of different content types I can handle:",
     timestamp: new Date(),
-    isMe: false,
+    role: 'assistant',
+    status: 'delivered',
     sections: [
       {
         type: "code",
@@ -53,7 +55,8 @@ function Counter() {
     id: uuidv4(),
     content: "Here's a custom React hook for handling form validation:",
     timestamp: new Date(),
-    isMe: false,
+    role: 'assistant',
+    status: 'delivered',
     sections: [
       {
         type: "code",

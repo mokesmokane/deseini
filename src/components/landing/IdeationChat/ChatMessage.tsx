@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Message } from '../types';
 import { MessageSection } from './MessageSection';
+import { useMessaging } from '../MessagingProvider';
 
 interface ChatMessageProps {
   message: Message;
@@ -8,7 +9,21 @@ interface ChatMessageProps {
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
-  const isUser = message.isMe;
+  const { currentStreamingMessageId, currentStreamingContent } = useMessaging();
+  const isUser = message.role === 'user';
+  const isStreaming = !isUser && currentStreamingMessageId === message.id;
+  
+  // Use a local state for smoother animation while streaming
+  const [displayContent, setDisplayContent] = useState(message.content);
+  
+  // Update the display content when streaming or message changes
+  useEffect(() => {
+    if (isStreaming) {
+      setDisplayContent(currentStreamingContent);
+    } else {
+      setDisplayContent(message.content);
+    }
+  }, [isStreaming, currentStreamingContent, message.content]);
   
   return (
     <div 
@@ -36,21 +51,36 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
             Deseini AI
           </div>
         )}
-        <div className={isUser 
-          ? 'text-black text-md font-mono break-words' 
-          : 'text-white break-words'
-        }>
-          {message.content}
-        </div>
-        
-        {message.sections?.map((section, index) => (
-          <div key={index} className="max-w-full overflow-hidden">
-            <MessageSection 
-              section={section}
-              isMe={isUser}
-            />
+        {message.isTyping && displayContent === '' && (
+          <div className="text-white break-words">
+            <div className="flex space-x-1">
+              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "0ms"}}></span>
+              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "300ms"}}></span>
+              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "600ms"}}></span>
+            </div>
           </div>
-        ))}
+        )}
+        {(displayContent || (isStreaming && currentStreamingContent)) && (
+          <div>
+            <div className={isUser 
+              ? 'text-black text-md font-mono break-words whitespace-pre-wrap' 
+              : 'text-white break-words whitespace-pre-wrap'
+            }>
+              {isStreaming ? currentStreamingContent : displayContent}
+              {isStreaming && (
+                <span className="inline-block ml-1 h-4 w-1 bg-white animate-blink"></span>
+              )}
+            </div>
+            {message.sections?.map((section, index) => (
+              <div key={index} className="max-w-full overflow-hidden">
+                <MessageSection 
+                  section={section}
+                  isMe={isUser}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

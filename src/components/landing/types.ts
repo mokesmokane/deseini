@@ -11,10 +11,12 @@ export interface MessageSection {
 
 export interface Message {
   id: string;
-  content: string;
   sections?: MessageSection[];
   timestamp: Date;
-  isMe: boolean;
+  content?: string;
+  role: 'user' | 'assistant';
+  status: MessageStatus;
+  isTyping?: boolean;
 }
 
 export interface ChatState {

@@ -58,6 +58,11 @@ export function createApiRouter(apiKey: string): express.Router {
     taskController.generateFinalPlan(req, res);
   });
   
+  // Judge project draft readiness endpoint
+  router.post('/judge-project-draft-readiness', (req: express.Request, res: express.Response) => {
+    taskController.judgeProjectDraftReadiness(req, res);
+  });
+  
   // Get project context endpoint
   router.get('/get-project-context', (req: express.Request, res: express.Response) => {
     taskController.getProjectContext(req, res);
@@ -66,6 +71,15 @@ export function createApiRouter(apiKey: string): express.Router {
   // Edit markdown section endpoint
   router.post('/edit-markdown-section', (req: express.Request, res: express.Response) => {
     taskController.editMarkdownSection(req, res);
+  });
+
+  // Enhance project prompt endpoint
+  router.post('/enhance-project-prompt', (req: express.Request, res: express.Response) => {
+    taskController.enhanceProjectPrompt(req, res);
+  });
+  // Project consultant chat endpoint
+  router.post('/project-consultant-chat', (req: express.Request, res: express.Response) => {
+    taskController.projectConsultantChat(req, res);
   });
   
   return router;

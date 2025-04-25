@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Paperclip, Sparkles, ArrowRight } from 'lucide-react';
+import { Paperclip, Sparkles, ArrowRight, Menu, Eye, RefreshCw, Download, Loader2 } from 'lucide-react';
 import { sampleIdeas } from '../sample';
 import { useMessaging } from '../MessagingProvider';
 
@@ -8,15 +8,41 @@ interface TextInputProps {
   hasStarted?: boolean;
 }
 
+// Component for a single segment of the progress bar
+const ProgressSegment = ({ filled }: { filled: boolean }) => (
+  <div 
+    className={`h-1 w-full ${filled ? 'bg-black' : 'bg-gray-200'} transition-colors duration-300`}
+  />
+);
+
+// Component for the mini progress bar with 4 segments
+const MiniProgressBar = ({ percentage }: { percentage: number }) => {
+  // Calculate which segments should be filled
+  const segments = [25, 50, 75, 100].map(threshold => percentage >= threshold);
+  
+  return (
+    <div className="flex space-x-0.5 w-24 mx-auto">
+      {segments.map((filled, index) => (
+        <div key={index} className="flex-1">
+          <ProgressSegment filled={filled} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false }) => {
   const [currentText, setCurrentText] = useState('');
   const [isTyping, setIsTyping] = useState(!hasStarted);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentIdeaIndex, setCurrentIdeaIndex] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cancelledRef = useRef(false);
-  const { addMessage } = useMessaging();
+  const { addMessage, toggleCanvas, percentageComplete } = useMessaging();
 
   // Typing and deleting animation
   useEffect(() => {
@@ -117,6 +143,168 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
     setCurrentText('');
   };
 
+  const enhancePrompt = async () => {
+    // Don't enhance if text is empty
+    if (currentText.trim() === '') return;
+    
+    try {
+      setIsEnhancing(true);
+      
+      // Keep track of original text to restore on error
+      const originalText = currentText;
+      let enhancedPrompt = '';
+      
+      // Set up the response with proper headers for SSE
+      const response = await fetch('/api/enhance-project-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          initialPrompt: currentText
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error enhancing prompt:', errorData);
+        throw new Error(errorData.error || 'Failed to enhance prompt');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Failed to get response reader');
+      }
+
+      const decoder = new TextDecoder();
+      
+      // Process the stream chunks
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          console.log('Stream complete');
+          break;
+        }
+        
+        try {
+          // Convert the Uint8Array to a string
+          const chunk = decoder.decode(value, { stream: true });
+          console.log('Received raw chunk:', chunk);
+          
+          // Process the chunk line by line (SSE format)
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            
+            if (line.startsWith('data: ')) {
+              try {
+                // Extract the JSON data from the SSE data line
+                const jsonStr = line.substring(6);
+                const data = JSON.parse(jsonStr);
+                
+                if (data.chunk) {
+                  console.log('Processing chunk content:', data.chunk);
+                  enhancedPrompt += data.chunk;
+                  // Update the text area with the enhanced prompt
+                  setCurrentText(enhancedPrompt);
+                  
+                  // Scroll to the bottom and move caret to end after text update
+                  setTimeout(() => {
+                    if (textAreaRef.current) {
+                      const textArea = textAreaRef.current;
+                      const len = enhancedPrompt.length;
+                      
+                      // Set selection to the end
+                      textArea.setSelectionRange(len, len);
+                      
+                      // If scrollable, ensure we're at the bottom
+                      if (textArea.scrollHeight > textArea.clientHeight) {
+                        textArea.scrollTop = textArea.scrollHeight;
+                      }
+                      
+                      // Make sure the textarea has focus
+                      textArea.focus();
+                    }
+                  }, 0);
+                }
+              } catch (e) {
+                console.error('Error parsing data line:', e, line);
+              }
+            } 
+            else if (line.startsWith('event: stream_end')) {
+              // The next line should contain the data
+              console.log('Stream end event detected');
+            }
+            else if (line.startsWith('event: stream_error')) {
+              console.error('Stream error event detected');
+              // Restore original text on error
+              setCurrentText(originalText);
+            }
+          }
+        } catch (e) {
+          console.error('Error processing chunk:', e);
+        }
+      }
+      
+      // Final scroll to bottom and focus after completion
+      if (textAreaRef.current) {
+        const textArea = textAreaRef.current;
+        // Focus the text area
+        textArea.focus();
+        // Scroll to the bottom
+        textArea.scrollTop = textArea.scrollHeight;
+        // Place cursor at the end
+        const length = enhancedPrompt.length;
+        textArea.setSelectionRange(length, length);
+      }
+    } catch (error) {
+      console.error('Error enhancing prompt:', error);
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  const toggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(!menuOpen);
+  };
+
+  const handleMenuOption = (option: string) => {
+    setMenuOpen(false);
+    // Handle different menu options
+    switch (option) {
+      case 'showCanvas':
+        console.log('Show Canvas clicked');
+        toggleCanvas();
+        break;
+      case 'refreshIdeas':
+        console.log('Refresh Ideas clicked');
+        // Add implementation for refreshing ideas
+        break;
+      case 'exportChat':
+        console.log('Export Chat clicked');
+        // Add implementation for exporting chat
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter') {
       if (e.shiftKey) {
@@ -130,28 +318,130 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
     }
   };
 
+  // Function to resize the textarea based on content
+  const resizeTextArea = () => {
+    const textArea = textAreaRef.current;
+    if (!textArea) return;
+    
+    // Reset the height to auto to get the correct scrollHeight
+    textArea.style.height = 'auto';
+    
+    // Use a more reliable line height calculation
+    const computedStyle = window.getComputedStyle(textArea);
+    const fontSize = parseInt(computedStyle.fontSize) || 18; // Default to 18px if can't get fontSize
+    const lineHeight = Math.ceil(fontSize * 1.5); // Standard line height approximately 1.5x font size
+    
+    // Calculate the minimum height (4 lines) and maximum height (10 lines)
+    // Adding padding to ensure content fits properly
+    const verticalPadding = (parseInt(computedStyle.paddingTop) + parseInt(computedStyle.paddingBottom)) || 40;
+    const minHeight = (lineHeight * 4) + verticalPadding; // Minimum of 4 lines plus padding
+    const maxHeight = (lineHeight * 10) + verticalPadding;
+    
+    // Set the height based on content, but constrained between min and max
+    // Add a buffer to ensure text and caret aren't clipped (20px extra)
+    const contentHeight = textArea.scrollHeight + 20;
+    const newHeight = Math.max(minHeight, Math.min(contentHeight, maxHeight));
+    textArea.style.height = `${newHeight}px`;
+    
+    // Enable scrolling if content exceeds maxHeight
+    textArea.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
+  };
+
+  // Handle text change and resize textarea
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setCurrentText(e.target.value);
+    // Defer the resize to the next tick to ensure text has been updated
+    setTimeout(resizeTextArea, 0);
+  };
+
+  // Resize textarea when content changes programmatically
+  useEffect(() => {
+    resizeTextArea();
+  }, [currentText]);
+
+  // Setup textarea initial height on mount
+  useEffect(() => {
+    resizeTextArea();
+  }, []);
+
+  // Only show progress bar once the conversation has started
+  const showProgressBar = hasStarted;
+
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
       <div className="relative bg-white rounded-lg overflow-hidden shadow-xl border border-black">
         <textarea
           ref={textAreaRef}
           value={currentText}
-          onChange={(e) => setCurrentText(e.target.value)}
+          onChange={handleTextChange}
           onFocus={handleTextAreaClick}
           onClick={handleTextAreaClick}
           onKeyDown={handleKeyDown}
-          className="w-full h-40 bg-white text-black p-4 pr-12 border-none outline-none resize-none text-lg placeholder-gray-400"
-          // placeholder="Enter your design idea..."
+          className={`w-full min-h-[160px] bg-white text-black px-6 ${showProgressBar ? 'pt-10' : 'pt-6'} pb-14 border-none outline-none resize-none text-lg placeholder-gray-400 overflow-hidden box-border`}
+          style={{ 
+            overflowY: 'hidden',
+            lineHeight: '1.6',
+            display: 'block'
+          }}
         />
         <div className="absolute bottom-0 left-0 right-0 p-3 bg-white border-t border-black flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <button className="text-gray-500 hover:text-black transition-colors">
               <Paperclip className="h-5 w-5" />
             </button>
-            <button className="text-black hover:text-gray-700 transition-colors">
-              <Sparkles className="h-5 w-5" />
+            <button 
+              className={`text-black hover:text-gray-700 transition-colors ${isEnhancing ? 'opacity-70' : ''}`}
+              onClick={enhancePrompt}
+              disabled={isEnhancing}
+              title="Enhance your prompt with AI"
+            >
+              {isEnhancing ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Sparkles className="h-5 w-5" />
+              )}
             </button>
+            <div className="relative" ref={menuRef}>
+              <button 
+                onClick={toggleMenu}
+                className="text-black hover:text-gray-700 transition-colors"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              {menuOpen && (
+                <div className="absolute bottom-10 left-0 bg-white border border-black rounded-md shadow-lg z-10 min-w-48">
+                  <ul className="py-1">
+                    <li 
+                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
+                      onClick={() => handleMenuOption('showCanvas')}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      <span>Show Canvas</span>
+                    </li>
+                    <li 
+                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
+                      onClick={() => handleMenuOption('refreshIdeas')}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      <span>Refresh Ideas</span>
+                    </li>
+                    <li 
+                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
+                      onClick={() => handleMenuOption('exportChat')}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      <span>Export Chat</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
+          {showProgressBar && (
+            <div className="absolute top-0 left-0 right-0 pt-1 px-6">
+              <MiniProgressBar percentage={percentageComplete} />
+            </div>
+          )}
           <button 
             onClick={handleSendClick}
             className="flex items-center justify-center bg-black hover:bg-gray-900 text-white p-2 rounded-md transition-colors border border-black"

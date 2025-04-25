@@ -452,7 +452,43 @@ export class TaskController {
     }
   }
 
-  // Gets the current project context
+
+  // Judge if a project draft is ready to be created
+  async judgeProjectDraftReadiness(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { messageHistory } = req.body;
+      
+      if (!messageHistory || !Array.isArray(messageHistory)) {
+        res.status(400).json({ error: 'Valid chat messages are required' });
+        return;
+      }
+
+      console.log('Checking project draft readiness...');
+
+      for (const message of messageHistory) {
+        console.log('Message:', message);
+      }
+
+      const result = await this.aiService.judgeProjectDraftReadiness(messageHistory);
+      
+      if (result.error) {
+        console.error('Project readiness check error:', result.error);
+        res.status(400).json({ error: result.error });
+        return;
+      }
+      
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('API Controller Error (judgeProjectDraftReadiness):', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+        });
+      }
+    }
+  }
+
+    // Gets the current project context
   async getProjectContext(req: express.Request, res: express.Response): Promise<void> {
     try {
       // In a real implementation, this would fetch the actual project data from a session or database
@@ -609,6 +645,150 @@ export class TaskController {
           res.end();
         } catch (writeError) {
           console.error("Failed to write stream error event for markdown edit:", writeError);
+          res.end(); // Force end if write fails
+        }
+      }
+    }
+  }
+
+  // Enhance project prompt endpoint
+  async enhanceProjectPrompt(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { initialPrompt } = req.body;
+      
+      // Validate required inputs
+      if (!initialPrompt || typeof initialPrompt !== 'string' || initialPrompt.trim() === '') {
+        res.status(400).json({ error: 'Initial prompt is required' });
+        return;
+      }
+      
+      // Call OpenAI API with streaming enabled
+      const result = await this.aiService.enhanceProjectPrompt(initialPrompt);
+      
+      if (result.error || !result.stream) {
+        console.error('Prompt enhancement error:', result.error);
+        res.status(500).json({ error: result.error || 'Failed to start enhancement stream' });
+        return;
+      }
+
+      // Set headers for Server-Sent Events (SSE)
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders(); // Flush headers to establish connection
+
+      let accumulatedContent = '';
+
+      try {
+        // Iterate over the stream and send chunks to the client
+        for await (const chunk of result.stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            accumulatedContent += content;
+            // Send the chunk content to the client
+            console.log('Sending chunk:', content);
+            res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+          }
+        }
+        
+        // Send a final event to signal stream completion
+        res.write(`event: stream_end\ndata: ${JSON.stringify({ message: 'Stream ended', fullContent: accumulatedContent })}\n\n`);
+        
+      } catch (streamError) {
+        console.error('Error processing enhancement stream:', streamError);
+        // Attempt to send an error event if possible
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error processing enhancement stream' });
+        } else if (!res.writableEnded) {
+          res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Stream processing failed' })}\n\n`);
+        }
+      } finally {
+        console.log('Enhancement stream ended. Closing connection.');
+        res.end(); // End the response stream
+      }
+    } catch (error) {
+      console.error('API Controller Error (enhanceProjectPrompt):', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+        });
+      } else if (!res.writableEnded) {
+        try {
+          res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Internal server error enhancing prompt' })}\n\n`);
+          res.end();
+        } catch (writeError) {
+          console.error("Failed to write stream error event:", writeError);
+          res.end(); // Force end if write fails
+        }
+      }
+    }
+  }
+
+  async projectConsultantChat(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { messageHistory, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations } = req.body;
+
+      const result = await this.aiService.projectConsultantChat(
+        messageHistory,
+        projectReady,
+        projectReadyReason,
+        percentageComplete,
+        projectReadyRecommendations
+      );
+
+      if (result.error || !result.stream) {
+        console.error('Project consultant chat error:', result.error);
+        res.status(500).json({ error: result.error || 'Failed to start chat stream' });
+        return;
+      }
+
+      // Set headers for Server-Sent Events (SSE)
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders(); // Flush headers to establish connection
+
+      let accumulatedContent = '';
+
+      try {
+        // Iterate over the stream and send chunks to the client
+        for await (const chunk of result.stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            accumulatedContent += content;
+            // Send the chunk content to the client
+            console.log('Sending chunk:', content);
+            res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+          }
+        }
+        
+        // Send a final event to signal stream completion
+        res.write(`event: stream_end\ndata: ${JSON.stringify({ message: 'Stream ended', fullContent: accumulatedContent })}\n\n`);
+        
+      } catch (streamError) {
+        console.error('Error processing chat stream:', streamError);
+        // Attempt to send an error event if possible
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error processing chat stream' });
+        } else if (!res.writableEnded) {
+          res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Stream processing failed' })}\n\n`);
+        }
+      } finally {
+        console.log('Chat stream ended. Closing connection.');
+        res.end(); // End the response stream
+      }
+    } catch (error) {
+      console.error('API Controller Error (projectConsultantChat):', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+        });
+      } else if (!res.writableEnded) {
+        try {
+          res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Internal server error processing chat' })}\n\n`);
+          res.end();
+        } catch (writeError) {
+          console.error("Failed to write stream error event:", writeError);
           res.end(); // Force end if write fails
         }
       }

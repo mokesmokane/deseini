@@ -1482,7 +1482,7 @@ Your response should be ONLY the valid JSON object, nothing else.`
       };
     }
   }
-
+  
   // Edit a specific section of markdown based on an instruction
   async editMarkdownSection(
     fullMarkdown: string,
@@ -1571,5 +1571,209 @@ Please ONLY return the edited version of this specific section, not the entire d
         error: error instanceof Error ? error.message : 'Unknown error occurred during markdown editing'
       };
     }
+  }
+
+  async enhanceProjectPrompt(
+    initialPrompt: string
+  ): Promise<{enhancedPrompt: string, error?: string, stream?: any}> {
+    try {
+      // Construct prompt for OpenAI with clear instructions
+      let systemContent = `You are an AI assistant specializing in improving users prompts for generating project plans. Given a highlevel statement propt you should add more details to make it more specific and actionable.
+
+      Here is an example:
+      The initial prompt: '''Complete the concept design of the Piech GT 2+2 GT car, including a 25% scale model, with timing to enable the final surface sign off ready to provide a full size scale model to Pebble Beach in California.'''
+      The enhanced prompt: '''
+  Project Overview  
+  Piëch GT2.0” — finalize exterior design of the 2+2 grand tourer, build a 25%‐scale clay model, iterate surfacing to final sign-off, then deliver a full-size scale model to the Pebble Beach concours in California.
+  
+  Roles  
+  - Design Director  
+  - Exterior Designer  
+  - Programme Manager  
+  - Alias Modeller  
+  - Visualization Artist
+  
+  Deliverables  
+  - Developed Design Theme  
+  - Concept Sketch Pack  
+  - Proportion Model (25%)  
+  - Outdoor Environment Renders (6 views)  
+  - Studio Renders (6 views)  
+  - Turntable Animation (30 sec)'''
+
+  Givin the initial prompt just return the enhanced prompt, NOTHING ELSE
+  Format it nicely, but dont use markdown
+      `;
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content: systemContent
+        },
+        {
+          role: 'user',
+          content: `I need you to enhance this prompt: "${initialPrompt}"`
+        }
+      ];
+
+      // Call OpenAI API with streaming enabled
+      const stream = await this.client.chat.completions.create({
+        model: 'gpt-4.1',
+        messages,
+        temperature: 0.7,
+        max_tokens: 2000,
+        stream: true,
+      });
+
+      // Return the stream for processing by the controller
+      return { enhancedPrompt: '', stream };
+    } catch (error) {
+      console.error('OpenAI API error in enhancePromjectPrompt:', error);
+      return {
+        enhancedPrompt: '',
+        error: error instanceof Error ? error.message : 'Unknown error occurred during prompt enhancement'
+      };
+    }
+  }
+
+
+  async judgeProjectDraftReadiness(
+    currentMessages: ChatMessage[]
+  ): Promise<{projectReady: boolean, projectReadyReason: string, projectReadyRecommendations: string, error?: string}> {
+    try {
+      // Construct prompt for OpenAI with clear instructions
+      let systemContent = `You are an AI assistant specializing in checking the readiness of project drafts.
+        Projects drafts need a project overview, roles, deliverables, an indication of timefame (short - weeks, medium - a few months, long - few months), and cost bracket (personal project - free/very low cost, low - $1k - $10k, medium - $10k - $50k, high - $50k+).
+      `;
+      
+      // Convert ChatMessage[] to ChatCompletionMessageParam[] for OpenAI API
+      const mappedMessages = currentMessages.map(message => {
+        // Simple cast - TypeScript will handle this appropriately based on the API contract
+        return {
+          role: message.role,
+          content: message.content
+        } as ChatCompletionMessageParam;
+      });
+      
+      const messagesToSend: ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content: systemContent
+        },
+        ...mappedMessages,
+        {
+          role: 'user',
+          content: `Based on the previous messages tell me whether the project is ready to be created`
+        }
+      ];
+
+      // Call OpenAI API with tool calling enabled
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-4.1',
+        messages: messagesToSend,
+        stream: false,
+        tool_choice: {
+          type: "function",
+          function: {
+            name: "check"
+          }
+        },
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "check",
+              description:
+                "Evaluates whether a project draft is complete enough to create the project",
+              parameters: {
+                type: "object",
+                properties: {
+                  projectReady: {
+                    type: "boolean",
+                    description: "Whether the project is ready to be created"
+                  },
+                  projectReadyReason: {
+                    type: "string",
+                    description: "Reason for project readiness decision"
+                  },
+                  percentageComplete: {
+                    type: "number",
+                    description: "Percentage of project draft completion ie if its ready to turn into a full project plan its 100%"
+                  },
+                  projectReadyRecommendations: {
+                    type: "string",
+                    description: "Recommendations for making the project ready"
+                  }
+                },
+                required: ["projectReady", "projectReadyReason", "percentageComplete", "projectReadyRecommendations"]
+              }
+            }
+          }
+        ]
+      });
+      
+      // Extract the function call result from the response
+      const toolCall = response.choices[0]?.message?.tool_calls?.[0];
+      
+      if (!toolCall || toolCall.function.name !== "check") {
+        throw new Error("Invalid tool call response");
+      }
+      
+      const resultJson = JSON.parse(toolCall.function.arguments);
+      return resultJson;
+
+    } catch (error) {
+      console.error('OpenAI API error in judgeProjectDraftReadiness:', error);
+      return {
+        projectReady: false,
+        projectReadyReason: 'Unknown error occurred during project draft readiness check',
+        projectReadyRecommendations: 'Please try again later',
+        error: error instanceof Error ? error.message : 'Unknown error occurred during project draft readiness check'
+      };
+    }
+  }
+
+
+  async projectConsultantChat(
+    messageHistory: ChatMessage[],
+    projectReady: boolean,
+    projectReadyReason: string,
+    percentageComplete: number,
+    projectReadyRecommendations: string
+  ): Promise<ConversationResponse> {
+      // Construct prompt for OpenAI with clear instructions
+      let systemContent = `You are an AI assistant specializing in creating a project plan from a conversation with a user.
+      You need to ask the right questions to the user to create a project plan.
+      
+      You will see the conversation history, but you will also see the verdict of the ai that has decided whether or not the notes are good enough to create a project plan.
+
+      You should craft your question/interaction around the notes and the verdict.
+      `
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content: systemContent
+        },
+        ...messageHistory,
+        {
+          role: 'assistant',
+          content: `PROJECT READY: ${projectReady}
+          PROJECT READY REASON: ${projectReadyReason}
+          PERCENTAGE COMPLETE: ${percentageComplete}
+          PROJECT READY RECOMMENDATIONS: ${projectReadyRecommendations}
+          `
+        }
+      ];
+
+      const stream = await this.client.chat.completions.create({
+        model: 'gpt-4.1',
+        messages,
+        temperature: 0.7,
+        max_tokens: 2000,
+        stream: true
+      });
+
+      return { stream };
   }
 }

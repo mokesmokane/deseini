@@ -2,15 +2,17 @@ import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatMessage from "./ChatMessage";
 import { Message } from "../types";
+import { useMessaging } from "../MessagingProvider";
 
 interface ChatPanelProps {
-  messages: Message[];
   onSendMessage: (message: string) => void;
   isTyping?: boolean; 
 }
 
-export function ChatPanel({ messages, isTyping = false }: ChatPanelProps) {
+export function ChatPanel({ onSendMessage, isTyping = false }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const { messages, addMessage } = useMessaging();
   
   useEffect(() => {
     scrollToBottom();
@@ -45,7 +47,6 @@ export function ChatPanel({ messages, isTyping = false }: ChatPanelProps) {
                 <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "300ms" }}></span>
                 <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "600ms" }}></span>
               </div>
-              <span className="text-xs text-gray-500">AI is typing...</span>
             </motion.div>
           )}
           
