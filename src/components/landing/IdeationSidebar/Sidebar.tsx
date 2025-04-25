@@ -5,18 +5,14 @@ import {
   DocumentIcon,
   PencilIcon,
   ArrowsPointingOutIcon,
-  ChevronLeftIcon,
-  HomeIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
-import { useMessaging } from '../MessagingProvider';
 
 interface SidebarProps {
   isVisible: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
-  const { toggleCanvas } = useMessaging();
   
   return (
     <motion.div

@@ -31,7 +31,7 @@ const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisib
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
         <div className="flex-grow overflow-hidden">
-          <ChatPanel onSendMessage={() => {}} />
+          <ChatPanel />
         </div>
         <div className="w-full px-2 pb-4 pt-2 bg-white z-10">
           {isChatVisible && <TextInput hasStarted={true} />}

@@ -1,18 +1,16 @@
 import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatMessage from "./ChatMessage";
-import { Message } from "../types";
 import { useMessaging } from "../MessagingProvider";
 
 interface ChatPanelProps {
-  onSendMessage: (message: string) => void;
   isTyping?: boolean; 
 }
 
-export function ChatPanel({ onSendMessage, isTyping = false }: ChatPanelProps) {
+export function ChatPanel({ isTyping = false }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { messages, addMessage } = useMessaging();
+  const { messages } = useMessaging();
   
   useEffect(() => {
     scrollToBottom();
