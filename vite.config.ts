@@ -11,11 +11,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // Proxy API requests to our Express server
+      // Proxy API requests to our deployed API server
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://deseini-server.onrender.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
     },
   },

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Paperclip, Sparkles, ArrowRight, Menu, Eye, RefreshCw, Download, Loader2 } from 'lucide-react';
 import { sampleIdeas } from '../sample';
 import { useMessaging } from '../MessagingProvider';
+import { response } from 'express';
 
 interface TextInputProps {
   onSendMessage?: (message: string) => void;
@@ -155,6 +156,7 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
       let enhancedPrompt = '';
       
       // Set up the response with proper headers for SSE
+      console.log('Enhancing prompt...');
       const response = await fetch('/api/enhance-project-prompt', {
         method: 'POST',
         headers: {
@@ -164,13 +166,14 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
           initialPrompt: currentText
         }),
       });
+      console.log('Response received');
 
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Error enhancing prompt:', errorData);
         throw new Error(errorData.error || 'Failed to enhance prompt');
       }
-
+      console.log(response );
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error('Failed to get response reader');
