@@ -192,9 +192,9 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            messageHistory: [...messages, userMessage].map(msg => ({
-              content: msg.content,
-              role: msg.role
+            messageHistory: [...messages, userMessage].map(m => ({
+              content: m.content,
+              role: m.role
             })),
           }),
         });
@@ -283,12 +283,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            messageHistory: [...messages, userMessage].map(msg => ({
-              content: msg.content,
-              role: msg.role
-            }))
-          }),
+          body: msg,
         });
 
         if (!response.ok) {

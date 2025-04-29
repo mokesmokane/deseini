@@ -129,7 +129,7 @@ export const supabaseDbService = {
    */
   linkChartToProject: async (chartId: string, projectId: string): Promise<boolean> => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('project_charts')
         .insert({ project_id: projectId, chart_id: chartId });
         
@@ -142,7 +142,7 @@ export const supabaseDbService = {
       return false;
     }
   },
-  
+
 
   /**
    * Save a new Gantt chart

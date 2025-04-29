@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Paperclip, Sparkles, ArrowRight, Menu, Eye, RefreshCw, Download, Loader2 } from 'lucide-react';
+import { Paperclip, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import { sampleIdeas } from '../sample';
 import { useMessaging } from '../../../contexts/MessagingProvider';
 
@@ -35,13 +35,11 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
   const [isTyping, setIsTyping] = useState(!hasStarted);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentIdeaIndex, setCurrentIdeaIndex] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cancelledRef = useRef(false);
-  const { addMessage, toggleCanvas, percentageComplete } = useMessaging();
+  const { addMessage,   percentageComplete } = useMessaging();
 
   // Typing and deleting animation
   useEffect(() => {
@@ -266,45 +264,6 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
     }
   };
 
-  const toggleMenu = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setMenuOpen(!menuOpen);
-  };
-
-  const handleMenuOption = (option: string) => {
-    setMenuOpen(false);
-    // Handle different menu options
-    switch (option) {
-      case 'showCanvas':
-        console.log('Show Canvas clicked');
-        toggleCanvas();
-        break;
-      case 'refreshIdeas':
-        console.log('Refresh Ideas clicked');
-        // Add implementation for refreshing ideas
-        break;
-      case 'exportChat':
-        console.log('Export Chat clicked');
-        // Add implementation for exporting chat
-        break;
-      default:
-        break;
-    }
-  };
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter') {

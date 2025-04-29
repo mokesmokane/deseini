@@ -6,7 +6,6 @@ import { Section } from '../contexts/DraftPlan/types';
 import toast from 'react-hot-toast';
 import { getDbService } from '../services/dbServiceProvider';
 import { DbServiceType } from '../services/dbServiceProvider';
-import { supabase } from '@/lib/supabase';
 
 // Define the context type
 interface FinalPlanContextType {

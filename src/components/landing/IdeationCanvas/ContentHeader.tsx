@@ -1,14 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Download, Eye, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useDraftMarkdown } from '../../../components/landing/DraftMarkdownProvider';
 
-interface ContentHeaderProps {
-  onRefreshPlan?: () => void;
-}
 
-const ContentHeader: React.FC<ContentHeaderProps> = ({ onRefreshPlan }) => {
-  const { createPlanFromMarkdown } = useDraftPlanMermaidContext();
+const ContentHeader: React.FC = () => {
+  const { createPlanFromMarkdown } = useDraftPlanMermaidContext();  
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const { sections } = useDraftMarkdown();
   const moreMenuRef = useRef<HTMLDivElement>(null);

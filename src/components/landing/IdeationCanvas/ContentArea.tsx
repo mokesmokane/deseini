@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MarkdownViewer } from '../markdown/MarkdownViewer';
-import { useDraftMarkdown } from '../DraftMarkdownProvider';
 import DraftPlanMermaid from '@/components/draft_plan_mermaid/DraftPlanMermaid';
 
 interface ContentAreaProps {
@@ -10,9 +9,6 @@ interface ContentAreaProps {
 }
 
 const ContentArea: React.FC<ContentAreaProps> = ({ currentSectionId, activeTab }) => {
-  const { getSectionById } = useDraftMarkdown();
-  const currentSection = getSectionById(currentSectionId);
-
   return (
     <motion.div 
       className="flex-grow flex flex-col bg-white overflow-hidden"

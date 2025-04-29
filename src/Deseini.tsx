@@ -1,7 +1,5 @@
-import { supabase } from './lib/supabase';
 import LogoCarousel from './components/LogoCarousel';
 import toast, { Toaster } from 'react-hot-toast';
-import { Session } from '@supabase/supabase-js';
 import { Outlet, useNavigate } from 'react-router-dom';
 import AccountDropdown  from './components/AccountDropdown';
 import { ProjectsDropdown } from './components/ProjectsDropdown';

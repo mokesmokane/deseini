@@ -18,7 +18,6 @@ interface CanvasProps {
 const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab }) => {
   const { currentSectionId, selectSection } = useDraftMarkdown();
   const { 
-    createPlanFromMarkdown,
     isLoading: isPlanGenerating, 
     streamSummary 
   } = useDraftPlanMermaidContext();
@@ -37,23 +36,6 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab }) =
     // Update the reference for next check
     wasGeneratingRef.current = isPlanGenerating;
   }, [isPlanGenerating, setActiveTab]);
-  
-  // Handle refreshing the plan
-  const handleRefreshPlan = () => {
-    if (activeTab === 'plan') {
-      // Get the current markdown content and refresh the plan
-      const sections = document.querySelectorAll('.markdown-section');
-      let markdownContent = '';
-      
-      sections.forEach(section => {
-        markdownContent += section.textContent + '\n\n';
-      });
-      
-      if (markdownContent.trim()) {
-        createPlanFromMarkdown(markdownContent);
-      }
-    }
-  };
 
   // Determine whether to show generation status - only when we're generating a plan or have a summary
   const showGenerationStatus = (isPlanGenerating && streamSummary);
@@ -75,7 +57,7 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab }) =
             </div>
             
             <div className="flex items-center gap-2">
-              <ContentHeader onRefreshPlan={handleRefreshPlan} />
+              <ContentHeader />
               <button className="p-2 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors">
                 <Share2 size={18} />
               </button>

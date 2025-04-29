@@ -63,7 +63,7 @@ export const mockDbService = {
    * @param chartId The ID of the chart to link
    * @param projectId The ID of the project to link to
    */
-  linkChartToProject: (chartId: string, projectId: string): boolean => {
+  linkChartToProject: (_: string, __: string): boolean => {
     return true;
   },
 
