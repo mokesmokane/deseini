@@ -59,6 +59,15 @@ export const mockDbService = {
   },
 
   /**
+   * Link a chart to a project
+   * @param chartId The ID of the chart to link
+   * @param projectId The ID of the project to link to
+   */
+  linkChartToProject: (chartId: string, projectId: string): boolean => {
+    return true;
+  },
+
+  /**
    * Delete a Gantt chart
    */
   deleteChart: (id: string): boolean => {

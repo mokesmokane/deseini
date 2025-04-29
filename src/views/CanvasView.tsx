@@ -43,9 +43,7 @@ const CanvasView = () => {
   // Wrap the entire view content with MessagesProvider
   return (
         <DraftPlanProvider>
-      <DraftPlanMermaidProvider
-      projectId={projectId || null}
-      ><DraftPlanFlowProvider>
+      <DraftPlanMermaidProvider><DraftPlanFlowProvider>
 <FinalPlanProvider>
     <MessagesProvider
       // Conditionally pass projectId only when it's valid and not 'new'
@@ -61,12 +59,12 @@ const CanvasView = () => {
         <Sidebar section="create"/>
         
         <div className="flex-1 overflow-auto">
-          <Canvas /> // Canvas reads from MessagesContext
+          <Canvas />
         </div>
       </div>
       
     </MessagesProvider>
-    </FinalPlanProvider>
+    </FinalPlanProvider>  
     </DraftPlanFlowProvider>
     </DraftPlanMermaidProvider>
     </DraftPlanProvider>

@@ -1639,7 +1639,7 @@ Please ONLY return the edited version of this specific section, not the entire d
 
   async judgeProjectDraftReadiness(
     currentMessages: ChatMessage[]
-  ): Promise<{projectReady: boolean, projectReadyReason: string, projectReadyRecommendations: string, error?: string}> {
+  ): Promise<{projectReady: boolean, projectReadyReason: string, projectReadyRecommendations: string, projectNameSuggestion: string, conversationNameSuggestion: string, error?: string}> {
     try {
       // Construct prompt for OpenAI with clear instructions
       let systemContent = `You are an AI assistant specializing in checking the readiness of project drafts.
@@ -1703,9 +1703,17 @@ Please ONLY return the edited version of this specific section, not the entire d
                   projectReadyRecommendations: {
                     type: "string",
                     description: "Recommendations for making the project ready"
+                  },
+                  projectNameSuggestion: {
+                    type: "string",
+                    description: "Suggested project name based on the project draft - keep it short"
+                  },
+                  conversationNameSuggestion: {
+                    type: "string",
+                    description: "Suggested conversation name based on the messages so far - keep it short"
                   }
                 },
-                required: ["projectReady", "projectReadyReason", "percentageComplete", "projectReadyRecommendations"]
+                required: ["projectReady", "projectReadyReason", "percentageComplete", "projectReadyRecommendations", "projectNameSuggestion", "conversationNameSuggestion"]
               }
             }
           }
@@ -1728,6 +1736,8 @@ Please ONLY return the edited version of this specific section, not the entire d
         projectReady: false,
         projectReadyReason: 'Unknown error occurred during project draft readiness check',
         projectReadyRecommendations: 'Please try again later',
+        projectNameSuggestion: 'Unknown',
+        conversationNameSuggestion: 'Unknown',
         error: error instanceof Error ? error.message : 'Unknown error occurred during project draft readiness check'
       };
     }

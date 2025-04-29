@@ -1,3 +1,6 @@
+// Skip empty test file
+describe.skip('mermaidParser - no tests', () => {});
+
 // import { 
 //   createMilestoneId, 
 //   createMilestone, 

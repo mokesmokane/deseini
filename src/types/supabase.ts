@@ -77,6 +77,27 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          message: Json | null
+          message_id: number
+        }
+        Insert: {
+          conversation_id?: string
+          created_at?: string
+          message?: Json | null
+          message_id?: number
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          message?: Json | null
+          message_id?: number
+        }
+        Relationships: []
+      }
       deliverables: {
         Row: {
           created_at: string | null
@@ -133,6 +154,35 @@ export type Database = {
         }
         Relationships: []
       }
+      project_conversations: {
+        Row: {
+          conversation_id: string
+          conversation_name: string | null
+          created_at: string
+          project_id: string
+        }
+        Insert: {
+          conversation_id: string
+          conversation_name?: string | null
+          created_at?: string
+          project_id: string
+        }
+        Update: {
+          conversation_id?: string
+          conversation_name?: string | null
+          created_at?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_draft_chart: {
         Row: {
           json: Json
@@ -154,6 +204,41 @@ export type Database = {
             foreignKeyName: "project_draft_chart_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_draft_section_markdown: {
+        Row: {
+          content: string
+          project_id: string
+          section_id: string
+          section_index: number | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          content?: string
+          project_id?: string
+          section_id?: string
+          section_index?: number | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          content?: string
+          project_id?: string
+          section_id?: string
+          section_index?: number | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_draft_section_markdown_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },

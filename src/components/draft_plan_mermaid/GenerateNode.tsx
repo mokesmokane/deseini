@@ -1,6 +1,6 @@
 import { memo, useState, useEffect, useRef } from 'react';
 import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
-import { useProjectPlan } from '../../contexts/ProjectPlanContext';
+import { useDraftMarkdown } from '../../components/landing/DraftMarkdownProvider';
 import { useFinalPlan } from '../../hooks/useFinalPlan';
 
 interface GenerateNodeData {
@@ -11,15 +11,15 @@ interface GenerateNodeData {
 const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
   const { 
     createPlanFromMarkdown: createMermaidPlan, 
-    sections,
+    sections: mermaidSections,
     isLoading: isMermaidLoading,
     streamSummary,
     fullSyntax,
   } = useDraftPlanMermaidContext();
   const { 
-    currentText,
+    sections: markdownSections,
     isStreaming
-  } = useProjectPlan();
+  } = useDraftMarkdown();
   const [expanded, setExpanded] = useState(false);
   const [detailedSummary, setDetailedSummary] = useState('');
   const prevSummaryRef = useRef('');
@@ -63,8 +63,8 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
       setDetailedSummary('');
       prevSummaryRef.current = '';
       
-      if(currentText && !isStreaming) {
-        await createMermaidPlan(currentText);
+      if(markdownSections.length > 0 && !isStreaming) {
+        await createMermaidPlan(markdownSections.map(section => section.content).join('\n'));
       }
     } catch (error) {
       console.error('Error generating chart:', error);
@@ -142,9 +142,9 @@ const GenerateNode = ({ data }: { data: GenerateNodeData }) => {
             gap: '8px'
           }}
         >
-          {sections.length > 0 ? 'Regenerate Draft Plan' : 'Generate Draft Plan'}
+          {mermaidSections.length > 0 ? 'Regenerate Draft Plan' : 'Generate Draft Plan'}
         </button>
-        {sections.length > 0 && (
+        {mermaidSections.length > 0 && (
         <div className="flex gap-2 mt-2">
                 {isGeneratingFinalPlan ? (
                   <div className="flex items-center gap-2 text-bblack px-3 py-2 rounded-md text-sm font-medium flex-1">

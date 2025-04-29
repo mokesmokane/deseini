@@ -3,7 +3,7 @@ import './MarkdownViewer.css';
 import { useProjectPlan } from '../../contexts/ProjectPlanContext';
 import { useMessages } from '../../contexts/MessagesContext';
 import { MarkdownLineRenderer } from './renderer/MarkdownLineRenderer';
-import { getSectionRange } from './utils/markdownHelpers';
+import { getSectionRange } from '../../utils/__tests__/markdownHelpers';
 import { MarkdownSectionEditor } from './MarkdownSectionEditor';
 
 interface Props {

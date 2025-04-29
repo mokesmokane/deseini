@@ -1,0 +1,879 @@
+data: {"chunk":"---\n"}
+
+data: {"chunk":"#"}
+
+data: {"chunk":" Times"}
+
+data: {"chunk":"c"}
+
+data: {"chunk":"ales"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Project"}
+
+data: {"chunk":" duration"}
+
+data: {"chunk":":"}
+
+data: {"chunk":" "}
+
+data: {"chunk":"6"}
+
+data: {"chunk":" months"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" No"}
+
+data: {"chunk":" specific"}
+
+data: {"chunk":" milestone"}
+
+data: {"chunk":" or"}
+
+data: {"chunk":" key"}
+
+data: {"chunk":" date"}
+
+data: {"chunk":" details"}
+
+data: {"chunk":" yet"}
+
+data: {"chunk":"\n\n"}
+
+data: {"chunk":"#"}
+
+data: {"chunk":" Scope"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Included"}
+
+data: {"chunk":":\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Development"}
+
+data: {"chunk":" of"}
+
+data: {"chunk":" a"}
+
+data: {"chunk":" mobile"}
+
+data: {"chunk":" application"}
+
+data: {"chunk":" for"}
+
+data: {"chunk":" personalized"}
+
+data: {"chunk":" workout"}
+
+data: {"chunk":" routines"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" AI"}
+
+data: {"chunk":"-powered"}
+
+data: {"chunk":" adaptive"}
+
+data: {"chunk":" coaching"}
+
+data: {"chunk":" ("}
+
+data: {"chunk":"plan"}
+
+data: {"chunk":" adjusts"}
+
+data: {"chunk":" based"}
+
+data: {"chunk":" on"}
+
+data: {"chunk":" progress"}
+
+data: {"chunk":","}
+
+data: {"chunk":" preferences"}
+
+data: {"chunk":","}
+
+data: {"chunk":" goals"}
+
+data: {"chunk":")\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" On"}
+
+data: {"chunk":"boarding"}
+
+data: {"chunk":" flow"}
+
+data: {"chunk":" for"}
+
+data: {"chunk":" fitness"}
+
+data: {"chunk":" level"}
+
+data: {"chunk":" assessment"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Dynamic"}
+
+data: {"chunk":" scheduling"}
+
+data: {"chunk":" of"}
+
+data: {"chunk":" routines"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Real"}
+
+data: {"chunk":"-time"}
+
+data: {"chunk":" exercise"}
+
+data: {"chunk":" feedback"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Progress"}
+
+data: {"chunk":" tracking"}
+
+data: {"chunk":"/dashboard"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" No"}
+
+data: {"chunk":" explicit"}
+
+data: {"chunk":" exclusions"}
+
+data: {"chunk":" or"}
+
+data: {"chunk":" scope"}
+
+data: {"chunk":" boundaries"}
+
+data: {"chunk":" discussed"}
+
+data: {"chunk":" yet"}
+
+data: {"chunk":"\n\n"}
+
+data: {"chunk":"#"}
+
+data: {"chunk":" Tasks"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Define"}
+
+data: {"chunk":" user"}
+
+data: {"chunk":" personas"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" journey"}
+
+data: {"chunk":" maps"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Design"}
+
+data: {"chunk":" user"}
+
+data: {"chunk":" interface"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" experience"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Create"}
+
+data: {"chunk":" wire"}
+
+data: {"chunk":"frames"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Develop"}
+
+data: {"chunk":" high"}
+
+data: {"chunk":"-f"}
+
+data: {"chunk":"idelity"}
+
+data: {"chunk":" app"}
+
+data: {"chunk":" mock"}
+
+data: {"chunk":"ups"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Develop"}
+
+data: {"chunk":" functional"}
+
+data: {"chunk":" prototype"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Core"}
+
+data: {"chunk":" onboarding"}
+
+data: {"chunk":" process"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" AI"}
+
+data: {"chunk":"-powered"}
+
+data: {"chunk":" workout"}
+
+data: {"chunk":" generation"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Build"}
+
+data: {"chunk":" comprehensive"}
+
+data: {"chunk":" exercise"}
+
+data: {"chunk":" library"}
+
+data: {"chunk":" ("}
+
+data: {"chunk":"media"}
+
+data: {"chunk":" assets"}
+
+data: {"chunk":")\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Develop"}
+
+data: {"chunk":" AI"}
+
+data: {"chunk":"/"}
+
+data: {"chunk":"ML"}
+
+data: {"chunk":" components"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Personal"}
+
+data: {"chunk":"ization"}
+
+data: {"chunk":" algorithm"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Real"}
+
+data: {"chunk":"-time"}
+
+data: {"chunk":" feedback"}
+
+data: {"chunk":" system"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Implement"}
+
+data: {"chunk":" progress"}
+
+data: {"chunk":" tracking"}
+
+data: {"chunk":" dashboard"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Content"}
+
+data: {"chunk":" writing"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Workout"}
+
+data: {"chunk":" scripts"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Coaching"}
+
+data: {"chunk":" scripts"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" QA"}
+
+data: {"chunk":" testing"}
+
+data: {"chunk":" of"}
+
+data: {"chunk":" app"}
+
+data: {"chunk":" features"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Launch"}
+
+data: {"chunk":" beta"}
+
+data: {"chunk":" release"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":" "}
+
+data: {"chunk":" -"}
+
+data: {"chunk":" Collect"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" analyze"}
+
+data: {"chunk":" user"}
+
+data: {"chunk":" feedback"}
+
+data: {"chunk":"\n\n"}
+
+data: {"chunk":"#"}
+
+data: {"chunk":" Mil"}
+
+data: {"chunk":"estones"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" No"}
+
+data: {"chunk":" specific"}
+
+data: {"chunk":" milestone"}
+
+data: {"chunk":" dates"}
+
+data: {"chunk":" provided"}
+
+data: {"chunk":" yet"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Key"}
+
+data: {"chunk":" events"}
+
+data: {"chunk":" pending"}
+
+data: {"chunk":":"}
+
+data: {"chunk":" functional"}
+
+data: {"chunk":" prototype"}
+
+data: {"chunk":","}
+
+data: {"chunk":" beta"}
+
+data: {"chunk":" release"}
+
+data: {"chunk":","}
+
+data: {"chunk":" feedback"}
+
+data: {"chunk":" analysis"}
+
+data: {"chunk":"\n\n"}
+
+data: {"chunk":"#"}
+
+data: {"chunk":" Roles"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Product"}
+
+data: {"chunk":" Manager"}
+
+data: {"chunk":" —"}
+
+data: {"chunk":" project"}
+
+data: {"chunk":" oversight"}
+
+data: {"chunk":","}
+
+data: {"chunk":" strategy"}
+
+data: {"chunk":","}
+
+data: {"chunk":" milestone"}
+
+data: {"chunk":" tracking"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" UI"}
+
+data: {"chunk":"/"}
+
+data: {"chunk":"UX"}
+
+data: {"chunk":" Designer"}
+
+data: {"chunk":" —"}
+
+data: {"chunk":" user"}
+
+data: {"chunk":" flows"}
+
+data: {"chunk":","}
+
+data: {"chunk":" wire"}
+
+data: {"chunk":"frames"}
+
+data: {"chunk":","}
+
+data: {"chunk":" UI"}
+
+data: {"chunk":" mock"}
+
+data: {"chunk":"ups"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Mobile"}
+
+data: {"chunk":" App"}
+
+data: {"chunk":" Developer"}
+
+data: {"chunk":" ("}
+
+data: {"chunk":"i"}
+
+data: {"chunk":"OS"}
+
+data: {"chunk":"/"}
+
+data: {"chunk":"Android"}
+
+data: {"chunk":")"}
+
+data: {"chunk":" —"}
+
+data: {"chunk":" front"}
+
+data: {"chunk":"-end"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" back"}
+
+data: {"chunk":"-end"}
+
+data: {"chunk":" app"}
+
+data: {"chunk":" development"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" AI"}
+
+data: {"chunk":"/"}
+
+data: {"chunk":"ML"}
+
+data: {"chunk":" Specialist"}
+
+data: {"chunk":" —"}
+
+data: {"chunk":" develop"}
+
+data: {"chunk":" personalization"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" feedback"}
+
+data: {"chunk":" models"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" QA"}
+
+data: {"chunk":" Tester"}
+
+data: {"chunk":" —"}
+
+data: {"chunk":" app"}
+
+data: {"chunk":" testing"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" quality"}
+
+data: {"chunk":" assurance"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Content"}
+
+data: {"chunk":" Writer"}
+
+data: {"chunk":" —"}
+
+data: {"chunk":" develop"}
+
+data: {"chunk":" workout"}
+
+data: {"chunk":"/co"}
+
+data: {"chunk":"aching"}
+
+data: {"chunk":" scripts"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" exercise"}
+
+data: {"chunk":" content"}
+
+data: {"chunk":"\n\n"}
+
+data: {"chunk":"#"}
+
+data: {"chunk":" Dependencies"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" AI"}
+
+data: {"chunk":"/"}
+
+data: {"chunk":"ML"}
+
+data: {"chunk":" model"}
+
+data: {"chunk":" data"}
+
+data: {"chunk":" quality"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" training"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Media"}
+
+data: {"chunk":" assets"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" exercise"}
+
+data: {"chunk":" content"}
+
+data: {"chunk":" availability"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Cross"}
+
+data: {"chunk":"-platform"}
+
+data: {"chunk":" development"}
+
+data: {"chunk":" tools"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Beta"}
+
+data: {"chunk":" tester"}
+
+data: {"chunk":" recruitment"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" No"}
+
+data: {"chunk":" new"}
+
+data: {"chunk":" dependencies"}
+
+data: {"chunk":" noted"}
+
+data: {"chunk":" yet"}
+
+data: {"chunk":"\n\n"}
+
+data: {"chunk":"#"}
+
+data: {"chunk":" Deliver"}
+
+data: {"chunk":"ables"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" User"}
+
+data: {"chunk":" Personas"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" Journey"}
+
+data: {"chunk":" Maps"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Wire"}
+
+data: {"chunk":"frames"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" High"}
+
+data: {"chunk":"-F"}
+
+data: {"chunk":"idelity"}
+
+data: {"chunk":" App"}
+
+data: {"chunk":" Mock"}
+
+data: {"chunk":"ups"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Functional"}
+
+data: {"chunk":" Prototype"}
+
+data: {"chunk":" ("}
+
+data: {"chunk":"on"}
+
+data: {"chunk":"boarding"}
+
+data: {"chunk":","}
+
+data: {"chunk":" AI"}
+
+data: {"chunk":" workout"}
+
+data: {"chunk":" generation"}
+
+data: {"chunk":")\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" AI"}
+
+data: {"chunk":" Model"}
+
+data: {"chunk":" for"}
+
+data: {"chunk":" Personal"}
+
+data: {"chunk":"ization"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" Real"}
+
+data: {"chunk":"-time"}
+
+data: {"chunk":" Feedback"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Comprehensive"}
+
+data: {"chunk":" Exercise"}
+
+data: {"chunk":" Library"}
+
+data: {"chunk":" ("}
+
+data: {"chunk":"with"}
+
+data: {"chunk":" media"}
+
+data: {"chunk":" assets"}
+
+data: {"chunk":")\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" In"}
+
+data: {"chunk":"-App"}
+
+data: {"chunk":" Progress"}
+
+data: {"chunk":" Dashboard"}
+
+data: {"chunk":"\n"}
+
+data: {"chunk":"-"}
+
+data: {"chunk":" Beta"}
+
+data: {"chunk":" Release"}
+
+data: {"chunk":" and"}
+
+data: {"chunk":" User"}
+
+data: {"chunk":" Feedback"}
+
+data: {"chunk":" Report"}
+
+data: {"chunk":"\n\n"}
+
+data: {"chunk":"---"}
+
+event: stream_end
+data: {"message":"Plan stream ended"}
+

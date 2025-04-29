@@ -1,74 +1,112 @@
-import { useState, useEffect } from 'react';
-import { supabase } from './lib/supabase';
-import { GanttProvider } from './contexts/GanttContext';
-import { Session } from '@supabase/supabase-js';
-import { DependencyViolationsProvider } from './contexts/DependencyViolationsContext';
-import { ChartsListProvider } from './contexts/ChartsListContext';
-import { ProjectProvider } from './contexts/ProjectContext';
-import { EditedSectionProvider } from './contexts/EditedSectionContext';
-import { ProjectPlanProvider } from './contexts/ProjectPlanContext';
+import { Outlet } from 'react-router-dom';
 import Deseini from './Deseini';
 import { LogoCarouselProvider } from './components/LogoCarouselContext';
-import { MessagingProvider } from './components/landing/MessagingProvider';
-import { Outlet } from 'react-router-dom';
+import { MessagingProvider } from './contexts/MessagingProvider';
+import { DraftMarkdownProvider } from './components/landing/DraftMarkdownProvider';
+import { ProjectProvider } from './contexts/ProjectContext';
+import { ChartsListProvider } from './contexts/ChartsListContext';
+import { AuthProvider, useAuth } from './hooks/useAuth';
+import { DraftPlanProvider } from './contexts/DraftPlanContext';
+import { DraftPlanMermaidProvider } from './contexts/DraftPlan/DraftPlanContextMermaid';
+import { DraftPlanFlowProvider } from './contexts/useDraftPlanFlow';
+import { FinalPlanProvider } from './hooks/useFinalPlan';
+import { useState, useEffect } from 'react';
 
-export default function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+// App content that depends on authentication state
+const AppContent = () => {
+  const { session, loading } = useAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    );
+  }
 
   // Render appropriate layout based on authentication status
   if (!session) {
     return (
-      <LogoCarouselProvider autoRotateInterval={3000}>
-        <MessagingProvider>
-          <div className="flex flex-col h-screen bg-white overflow-hidden">
-            <main className="flex-1 overflow-hidden">
-              <div className="h-full overflow-auto bg-white">
-                <Outlet />
-              </div>
-            </main>
-          </div>
-        </MessagingProvider>
-      </LogoCarouselProvider>
+      
+            <div className="flex flex-col h-screen bg-white overflow-hidden">
+              <main className="flex-1 overflow-hidden">
+                <div className="h-full overflow-auto bg-white">
+                  <Outlet context={{ session }} />
+                </div>
+              </main>
+            </div>
     );
   }
 
-  // For authenticated users, wrap with all necessary providers and show the header
+  // For authenticated users, provide necessary context
   return (
-    <ChartsListProvider>
+          <div className="flex flex-col h-screen bg-white overflow-hidden">
+            <Deseini />
+            <main className="flex-1 overflow-hidden">
+              <div className="h-full overflow-auto bg-white">
+                <Outlet context={{ session }} />
+              </div>
+            </main>
+          </div>
+  );
+};
+
+// Root component that will provide auth and reset state
+const StateManager = () => {
+  const { session } = useAuth();
+  const [stateKey, setStateKey] = useState('initial');
+  
+  // Reset state when auth changes
+  useEffect(() => {
+    // Generate a new key when auth state changes
+    // This forces all components to remount
+    setStateKey(session ? `auth-${session?.user?.id}-${Date.now()}` : `logged-out-${Date.now()}`);
+    
+    // Clear any localStorage items that might be persisting state
+    if (!session) {
+      // Clear specific items that might contain user data
+      localStorage.removeItem('deseini-messages');
+      localStorage.removeItem('deseini-conversation');
+      localStorage.removeItem('deseini-project');
+      
+      // Optional: clear session storage as well
+      sessionStorage.clear();
+      
+      // Force reload all contexts by adding timestamp to the key
+      setStateKey(`logged-out-${Date.now()}`);
+    }
+  }, [session]);
+  
+  return (
+    <LogoCarouselProvider autoRotateInterval={3000}>
       <ProjectProvider>
-        <DependencyViolationsProvider>
-          <GanttProvider>
-            <ProjectPlanProvider>
-              <EditedSectionProvider>
-                <LogoCarouselProvider autoRotateInterval={3000}>
-                  <div className="flex flex-col h-screen bg-white overflow-hidden">
-                    <Deseini session={session} />
-                    <main className="flex-1 overflow-hidden">
-                      <div className="h-full overflow-auto bg-white">
-                        <Outlet />
-                      </div>
-                    </main>
-                  </div>
-                </LogoCarouselProvider>
-              </EditedSectionProvider>
-            </ProjectPlanProvider>
-          </GanttProvider>
-        </DependencyViolationsProvider>
+        <DraftMarkdownProvider>
+          <DraftPlanProvider>
+            <DraftPlanMermaidProvider>
+              <DraftPlanFlowProvider>
+                <FinalPlanProvider>
+                  <ChartsListProvider>
+                    <MessagingProvider>
+                      {/* Using key to force remounting and state reset */}
+                      <AppContent key={stateKey} />
+                    </MessagingProvider>
+                  </ChartsListProvider>
+                </FinalPlanProvider>
+              </DraftPlanFlowProvider>
+            </DraftPlanMermaidProvider>
+          </DraftPlanProvider>
+        </DraftMarkdownProvider>
       </ProjectProvider>
-    </ChartsListProvider>    
+    </LogoCarouselProvider>
+  );
+};
+
+// Main App component wraps everything with AuthProvider
+export default function App() {
+  return (
+    <AuthProvider>
+      <StateManager />
+    </AuthProvider>
   );
 }

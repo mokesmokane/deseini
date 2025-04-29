@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useRef, ReactNode, useCallback, useMemo } from 'react';
 import { ChatMessage, Project } from '../types';
 import { toast } from 'react-hot-toast';
-import { MarkdownSectionAnalyzer } from '../components/markdown/MarkdownSections';
+import { MarkdownSectionAnalyzer } from '../utils/MarkdownSections';
 import { projectMarkdownService } from '../services/projectMarkdownService';
 import { useProject } from '../contexts/ProjectContext';
+import streamLines from '../utils/streamLines';
 
 // Define the steps in the generation process
 export type PlanGenerationStep = 'idle' | 'generating' | 'reviewing' | 'finalizing';
@@ -22,6 +23,7 @@ interface ProjectPlanContextProps {
   currentText: string | null;
   setCurrentText: (text: string) => void;
   previousText: string | null;
+  deleteMarkdown: () => Promise<void>;
   saveText: (text: string) => Promise<void>;
   isStreaming: boolean;
   
@@ -61,92 +63,6 @@ interface ProjectPlanProviderProps {
 
 const ProjectPlanContext = createContext<ProjectPlanContextProps | undefined>(undefined);
 
-const streamLines = async (
-  currentText: string,
-  reader: ReadableStreamDefaultReader<string>,
-  onLineUpdate: (lineNumber: number, text: string) => void
-): Promise<void> => {
-  const currentLines = currentText.split('\n');
-  let workingLines = [...currentLines];
-  let buffer = '';
-  let lineIndex = 0;
-  
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) {
-      break;
-    }
-    
-    try {
-      // Try to parse the value as JSON
-      const lines = value.split('\n').filter(line => line.trim());
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          console.log('[ProjectPlanContext] Processing line:', line);
-          const dataContent = line.substring(6);
-          try {
-            const jsonData = JSON.parse(dataContent);
-            if (jsonData && jsonData.chunk) {
-              // Extract the chunk text
-              buffer += jsonData.chunk;
-            }
-          } catch (e) {
-            // If JSON parsing fails, treat as plain text
-            console.warn("Failed to parse JSON from data line:", e);
-            buffer += dataContent;
-          }
-        } else {
-          // Handle non-data lines as plain text
-          buffer += line;
-        }
-      }
-    } catch (e) {
-      // Fallback if there's any error in parsing
-      console.warn("Error processing stream value:", e);
-      buffer += value;
-    }
-    
-    // Process any complete lines in the buffer
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-    
-    for (const line of lines) {
-      // Ensure the workingLines array has enough lines
-      while (workingLines.length <= lineIndex) {
-        workingLines.push('');
-      }
-      
-      workingLines[lineIndex] = line;
-      
-      const updatedText = workingLines.join('\n');
-      onLineUpdate(lineIndex, updatedText);
-      lineIndex++;
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-  
-  // Final line flush if there's any remaining data in the buffer
-  if (buffer.length > 0) {
-    while (workingLines.length <= lineIndex) {
-      workingLines.push('');
-    }
-    
-    workingLines[lineIndex] = buffer;
-    const updatedText = workingLines.join('\n');
-    onLineUpdate(lineIndex, updatedText);
-  }
-  
-  // Trim any remaining lines from the original text if needed
-  if (lineIndex < currentLines.length - 1) {
-    workingLines = workingLines.slice(0, lineIndex + 1);
-    const finalText = workingLines.join('\n');
-    onLineUpdate(lineIndex, finalText);
-  }
-  
-  return Promise.resolve();
-}
 
 export function ProjectPlanProvider({ 
   children, 
@@ -315,6 +231,7 @@ export function ProjectPlanProvider({
   };
 
   const reset = () => {
+    hasInitialized.current = false;
     setPreviousText(null);
     setCurrentText(null);
     setIsStreaming(false);
@@ -488,6 +405,13 @@ export function ProjectPlanProvider({
     }
   };
 
+  const deleteMarkdown = async () => {
+    if (projectIdRef.current) {
+      await projectMarkdownService.deleteMarkdown(projectIdRef.current);
+    }
+    reset();
+  };
+
   return (
     <ProjectPlanContext.Provider
       value={{
@@ -495,6 +419,7 @@ export function ProjectPlanProvider({
         setCurrentText,
         previousText,
         saveText,
+        deleteMarkdown,
         isStreaming,
         setIsStreaming,
         currentLineNumber,

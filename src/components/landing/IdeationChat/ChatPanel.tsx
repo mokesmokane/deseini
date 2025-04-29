@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatMessage from "./ChatMessage";
-import { useMessaging } from "../MessagingProvider";
+import { useMessaging } from "../../../contexts/MessagingProvider";
 
 interface ChatPanelProps {
   isTyping?: boolean; 
@@ -22,7 +22,7 @@ export function ChatPanel({ isTyping = false }: ChatPanelProps) {
   
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-white">
-      <div className="flex-1 overflow-y-auto hide-scrollbar p-4 max-h-[calc(100vh-270px)]">
+      <div className="flex-1 overflow-y-auto hide-scrollbar p-4 max-h-[calc(100vh-60px)]">
         <div className="max-w-2xl mx-auto space-y-4">
           <AnimatePresence initial={false}>
             {messages.map((message, index) => (
@@ -32,6 +32,8 @@ export function ChatPanel({ isTyping = false }: ChatPanelProps) {
                 isLatest={index === messages.length - 1}
               />
             ))}
+            {/* Spacer to push TextInput to bottom */}
+            <div className="h-60" />
           </AnimatePresence>
           
           {isTyping && (

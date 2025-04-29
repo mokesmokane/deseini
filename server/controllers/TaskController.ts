@@ -253,7 +253,7 @@ export class TaskController {
       });
 
       // Call the AI service - expecting a StreamedPlanResponse
-      const result: StreamedPlanResponse = await this.aiService.generateProjectPlan(messages, projectContext, currentPlan);
+      const result: StreamedPlanResponse = await this.aiService.generateProjectPlan(messages, projectContext??null, currentPlan??null);
 
       if (result.error || !result.stream) {
         console.error('Project plan generation error:', result.error);

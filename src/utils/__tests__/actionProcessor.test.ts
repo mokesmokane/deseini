@@ -1,3 +1,8 @@
+// Skip empty test file
+describe.skip('actionProcessor - no tests', () => {
+  it('noop', () => {});
+});
+
 // import { processAction, createDependencyResolutionRetryAction, AppState } from '../actionProcessor';
 // import { Section, Task, Timeline } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 // import { BufferedAction } from '../types';

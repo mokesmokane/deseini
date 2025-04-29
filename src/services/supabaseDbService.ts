@@ -123,6 +123,28 @@ export const supabaseDbService = {
   },
 
   /**
+   * Link a chart to a project
+   * @param chartId The ID of the chart to link
+   * @param projectId The ID of the project to link to
+   */
+  linkChartToProject: async (chartId: string, projectId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('project_charts')
+        .insert({ project_id: projectId, chart_id: chartId });
+        
+      if (error) {
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
+  
+
+  /**
    * Save a new Gantt chart
    * @param chart Can be either a GanttData object or a prepared database record
    */

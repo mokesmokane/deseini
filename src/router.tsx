@@ -1,9 +1,9 @@
         import { createBrowserRouter } from 'react-router-dom';
 import App from './App';
-import ProjectView from './views/ProjectView';
 import ChartView from './views/ChartView';
 import LandingPage from './components/landing/LandingPage';
 import CanvasView from './views/CanvasView';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const router = createBrowserRouter([
   {
@@ -16,19 +16,23 @@ const router = createBrowserRouter([
       },
       {
         path: 'projects/:projectId',
-        element: <ProjectView />
+        element: <ProtectedRoute><LandingPage /></ProtectedRoute>
       },
       {
         path: 'projects/:projectId/chart/:chartId',
-        element: <ChartView />
+        element: <ProtectedRoute><ChartView /></ProtectedRoute>
       },
       {
         path: 'projects/:projectId/charts/new',
-        element: <ChartView />
+        element: <ProtectedRoute><ChartView /></ProtectedRoute>
       },
       {
         path: 'projects/:projectId/canvas',
-        element: <CanvasView />
+        element: <ProtectedRoute><CanvasView /></ProtectedRoute>
+      },
+      {
+        path: 'projects-new/:projectId',
+        element: <ProtectedRoute><LandingPage /></ProtectedRoute>
       }
     ]
   }

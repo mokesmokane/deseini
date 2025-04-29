@@ -1,35 +1,41 @@
 import LogoCarousel from '../LogoCarousel';
 import TextInput from './IdeationChat/TextInput';
-import { MessagingProvider, useMessaging } from './MessagingProvider';
+import { useMessaging } from '../../contexts/MessagingProvider';
 import ChatCanvasContainer from './IdeationChat/ChatCanvasContainer';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
-import { Session } from '@supabase/supabase-js';
 import { useState, useEffect } from 'react';
 import AuthForm from '../auth/AuthForm';
+import { useAuth } from '@/hooks/useAuth';
+import { useProject } from '@/contexts/ProjectContext';
+import { useParams } from 'react-router-dom';
 
 const AnimatedContent = () => {
-  const [session, setSession] = useState<Session | null>(null);
+  const { projectId } = useParams<{ projectId?: string; chatId?: string }>();
+  const { session } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const [authView, setAuthView] = useState<'sign_in' | 'sign_up'>('sign_in');
   const { messages, isCanvasVisible } = useMessaging();
-  const hasStarted = messages.length > 0;
+  const {project, fetchProject, fetchProjectCharts} = useProject();
+  const hasStarted = messages.length > 0 || (projectId !== null && projectId !== undefined);
   
+  // Only handle project loading via useEffect
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-  
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-  
-    return () => subscription.unsubscribe();
-  }, []);
-  
-  // Show auth UI if user explicitly requests it
+    if (projectId && projectId !== 'new') {
+      if (project?.id !== projectId) {
+        console.log(`ProjectView: Fetching project ${projectId}. Current project ID: ${project?.id}`);
+        fetchProject(projectId!);
+      }
+    }
+  }, [projectId, fetchProject, project?.id]);
+
+  // Fetch charts when project is loaded or projectId changes
+  useEffect(() => {
+    if (projectId && projectId !== project?.id && projectId !== 'new') {
+      fetchProjectCharts(projectId);
+    }
+  }, [projectId, fetchProjectCharts]); // Added fetchProjectCharts dependency
+
+  // Show auth UI only when user explicitly requests it
   const handleShowAuth = (view: 'sign_in' | 'sign_up') => {
     setAuthView(view);
     setShowAuth(true);
@@ -55,15 +61,17 @@ const AnimatedContent = () => {
             {/* Reserve space where the input initially appears */}
           </div>
         ) : (
-          <div className="w-full flex-1 overflow-hidden hide-scrollbar">
-            <ChatCanvasContainer isCanvasVisible={isCanvasVisible} />
-          </div>
+          <>
+            <div className="w-full flex-1 overflow-hidden hide-scrollbar">
+              <ChatCanvasContainer isCanvasVisible={isCanvasVisible || projectId !== null && projectId !== undefined} />
+            </div>
+          </>
         )}
       </main>
       
-      {/* Auth area only */}
+      {/* Auth area or text input */}
       <AnimatePresence mode="wait">
-        {(!session && showAuth) ? (
+        {showAuth ? (
           <motion.div
             key="auth-container"
             initial={{ opacity: 0 }}
@@ -96,19 +104,19 @@ const AnimatedContent = () => {
             {/* Auth links - shown below input when user hasn't started typing */}
             {!session && (
               <div className="flex justify-center mt-6 text-sm space-x-24">
-              <a 
-                onClick={() => handleShowAuth('sign_in')} 
-                className="text-gray-700 hover:underline focus:outline-none cursor-pointer border-0"
-              >
-                Sign In
-              </a>
-              <a 
-                onClick={() => handleShowAuth('sign_up')} 
-                className="text-gray-700 hover:underline focus:outline-none cursor-pointer border-0"
-              >
-                Sign Up
-              </a>
-            </div>
+                <a 
+                  onClick={() => handleShowAuth('sign_in')} 
+                  className="text-gray-700 hover:underline focus:outline-none cursor-pointer border-0"
+                >
+                  Sign In
+                </a>
+                <a 
+                  onClick={() => handleShowAuth('sign_up')} 
+                  className="text-gray-700 hover:underline focus:outline-none cursor-pointer border-0"
+                >
+                  Sign Up
+                </a>
+              </div>
             )}
           </motion.div>
         ) : null}
@@ -119,9 +127,7 @@ const AnimatedContent = () => {
 
 const LandingPage = () => {
   return (
-    <MessagingProvider>
-      <AnimatedContent />
-    </MessagingProvider>
+        <AnimatedContent />
   );
 };
 

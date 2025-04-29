@@ -1,8 +1,15 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo, useEffect } from 'react';
 import { Project, Chart, TreeTaskNode, ChatMessage, Role, Deliverable } from '../types';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+
+// Interface for project conversations
+interface ProjectConversation {
+  id: string;
+  projectId: string;
+  createdAt: string;
+}
 
 interface ProjectContextType {
   project: Project | null;
@@ -14,7 +21,10 @@ interface ProjectContextType {
   taskGenerationError: string | null;
   initialTasksForDialog: TreeTaskNode[];
   isCreateChartDialogOpen: boolean;
+  projectConversations: ProjectConversation[];
+  isLoadingConversations: boolean;
   setProject: React.Dispatch<React.SetStateAction<Project | null>>;
+  setNoProject: () => void;
   fetchProject: (id: string) => Promise<void>;
   fetchAllProjects: () => Promise<void>;
   fetchProjectCharts: (projectId: string) => Promise<void>;
@@ -25,6 +35,7 @@ interface ProjectContextType {
   createNewProject: () => void;
   handleInitiateTaskGeneration: (chatMessages: ChatMessage[]) => Promise<TreeTaskNode[] | null>;
   setIsCreateChartDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  fetchProjectConversations: (projectId: string) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -56,6 +67,10 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
   const [initialTasksForDialog, setInitialTasksForDialog] = useState<TreeTaskNode[]>([]);
   const [isCreateChartDialogOpen, setIsCreateChartDialogOpen] = useState(false);
 
+  // State for project conversations
+  const [projectConversations, setProjectConversations] = useState<ProjectConversation[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+
   const createNewProject = () => {
     setProject({
       id: `new-${Date.now()}`,
@@ -72,10 +87,15 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     setDatabaseRoleIds(new Set());
   };
 
+  useEffect(() => {
+    fetchAllProjects();
+  }, []);
+
   const fetchAllProjects = async () => {
     setIsLoading(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
+      
       if (!userData.user) {
         throw new Error('Not authenticated');
       }
@@ -103,6 +123,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       setProjectsList(projects);
       toast.success('Projects loaded successfully');
     } catch (error) {
+      setProjectsList([]);
       console.error('Error fetching projects:', error);
       toast.error('Failed to load projects');
     } finally {
@@ -205,6 +226,18 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
       // Fetch charts for this project
       await fetchProjectCharts(id);
+      // Fetch conversations for this project
+      await fetchProjectConversations(id);
+
+      //makse sure we have the project in the list
+      const project = {
+        id: projectData.id,
+        projectName: projectData.project_name,
+        createdAt: projectData.created_at,
+        updatedAt: projectData.updated_at,
+        starred: true
+      };
+      setProjectsList(prev => prev ? [...prev, project] : [project]);
 
       // Transform data to match our frontend model
       const roles = rolesData?.map((role): Role => {
@@ -565,6 +598,47 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     }
   }, [project, userCharts]);
 
+  const setNoProject = () => {
+    setProject(null);
+    setUserCharts([]);
+    setProjectConversations([]);
+    setInitialTasksForDialog([]);
+    setDatabaseRoleIds(new Set());
+  };
+
+  const fetchProjectConversations = useCallback(async (projectId: string) => {
+    setIsLoadingConversations(true);
+    try {
+      // Query the project_conversations table to get conversation IDs for this project
+      const { data: conversationsData, error: conversationsError } = await supabase
+        .from('project_conversations')
+        .select('*')
+        .eq('project_id', projectId);
+
+      if (conversationsError) throw conversationsError;
+
+      const conversations: ProjectConversation[] = conversationsData?.map(conversation => ({
+        id: conversation.conversation_id,
+        projectId: conversation.project_id,
+        createdAt: conversation.created_at,
+      })) || [];
+
+      setProjectConversations(conversations);
+      
+      if (conversations.length > 0) {
+        toast.success(`Found ${conversations.length} conversation${conversations.length === 1 ? '' : 's'} for this project`);
+      } else {
+        toast.success('No conversations found for this project');
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      toast.error('Failed to load conversations');
+      setProjectConversations([]);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  }, [supabase]);
+
   const value = useMemo(() => ({
     project,
     isLoading,
@@ -575,7 +649,10 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     taskGenerationError,
     initialTasksForDialog,
     isCreateChartDialogOpen,
+    projectConversations,
+    isLoadingConversations,
     setProject,
+    setNoProject,
     fetchProject,
     fetchAllProjects,
     fetchProjectCharts,
@@ -585,7 +662,8 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     deleteDeliverable,
     createNewProject,
     handleInitiateTaskGeneration,
-    setIsCreateChartDialogOpen
+    setIsCreateChartDialogOpen,
+    fetchProjectConversations,
   }), [
     project,
     isLoading,
@@ -596,6 +674,8 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     taskGenerationError,
     initialTasksForDialog,
     isCreateChartDialogOpen, 
+    projectConversations,
+    isLoadingConversations,
     fetchProject, 
     fetchAllProjects, 
     fetchProjectCharts, 
@@ -603,9 +683,10 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     cloneProject, 
     deleteRole, 
     deleteDeliverable, 
-    createNewProject, 
     handleInitiateTaskGeneration, 
-    setIsCreateChartDialogOpen
+    createNewProject, 
+    setIsCreateChartDialogOpen,
+    fetchProjectConversations,
   ]);
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

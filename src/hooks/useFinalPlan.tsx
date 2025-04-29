@@ -3,10 +3,10 @@ import { useParams } from 'react-router-dom';
 import { useProject } from '../contexts/ProjectContext';
 import { useDraftPlanMermaidContext } from '../contexts/DraftPlan/DraftPlanContextMermaid';
 import { Section } from '../contexts/DraftPlan/types';
-import { useGantt } from '../contexts/GanttContext';
-import { useChartsList } from '../contexts/ChartsListContext';
 import toast from 'react-hot-toast';
-import { supabase } from '../lib/supabase';
+import { getDbService } from '../services/dbServiceProvider';
+import { DbServiceType } from '../services/dbServiceProvider';
+import { supabase } from '@/lib/supabase';
 
 // Define the context type
 interface FinalPlanContextType {
@@ -27,12 +27,13 @@ interface FinalPlanProviderProps {
 export const FinalPlanProvider = ({ children }: FinalPlanProviderProps) => {
   const { project, fetchProjectCharts } = useProject();
   const { sections: draftPlanSections } = useDraftPlanMermaidContext();
-  const { setCurrentChart, setHasUnsavedChanges } = useGantt();
-  const { saveChart } = useChartsList();
+  // const { setCurrentChart, setHasUnsavedChanges } = useGantt();
+  // const { saveChart } = useChartsList();
   const { projectId } = useParams<{ projectId: string }>();
 
   const [isGeneratingFinalPlan, setIsGeneratingFinalPlan] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
+  const dbService = getDbService(DbServiceType.SUPABASE);
 
   const createMarkdownFromSections = (sections: Section[]) => {
     return sections.map(section => {
@@ -74,18 +75,16 @@ export const FinalPlanProvider = ({ children }: FinalPlanProviderProps) => {
       setGenerationProgress('Processing response...');
       const finalPlan = await response.json();
 
-      setCurrentChart(finalPlan);
-      setHasUnsavedChanges(true);
+      // setCurrentChart(finalPlan);
+      // setHasUnsavedChanges(true);
 
       setGenerationProgress('Saving chart to database...');
-      const saved = await saveChart(finalPlan);
+      const saved = await dbService.saveChart(finalPlan);
       if (!saved) {
         toast.error('Failed to save chart');
       } else if (projectId) {
         setGenerationProgress('Linking chart to project...');
-        const { error: linkError } = await supabase
-          .from('project_charts')
-          .insert({ project_id: projectId, chart_id: finalPlan.id });
+        const linkError = await dbService.linkChartToProject(finalPlan.id, projectId);
         if (linkError) {
           toast.error('Failed to link chart to project');
         } else {

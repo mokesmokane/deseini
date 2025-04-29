@@ -8,6 +8,21 @@ export interface Project {
   starred: boolean;
 }
 
+export interface Conversation {
+  id: string;
+  projectId: string;
+  projectName: string;
+  createdAt: string;
+  lastMessage: string | null;
+}
+
+export interface Message {
+  id: string;
+  timestamp: Date;
+  content?: string;
+  role: 'user' | 'assistant';
+}
+
 /**
  * Fetch projects for a given user.
  * Returns projects the user owns or is shared via user_projects table.
@@ -54,6 +69,7 @@ export const projectService = {
     all.sort((a, b) => (b.createdAt ?? '') .localeCompare(a.createdAt ?? ''));
     return all;
   },
+  
   starProject: async (projectId: string, starred: boolean) => {
     const { data, error } = await supabase
       .from('user_projects')
@@ -61,5 +77,342 @@ export const projectService = {
       .eq('project_id', projectId);
     if (error) console.error('Error starring project:', error);
     return data;
+  },
+  
+  /**
+   * Create a new project for the current user
+   * @returns The ID of the newly created project, or null if creation failed
+   */
+  createNewProject: async (projectName: string = 'Untitled Project'): Promise<string | null> => {
+    try {
+      // Get current user
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      
+      if (!userId) {
+        console.error('Cannot create project: No authenticated user');
+        return null;
+      }
+      
+      // Create the project
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          project_name: projectName,
+          user_id: userId,
+        })
+        .select('id')
+        .single();
+      
+      if (projectError) {
+        console.error('Error creating project:', projectError);
+        return null;
+      }
+      
+      // Link the project to the user in the user_projects table
+      const projectId = projectData.id;
+      const { error: linkError } = await supabase
+        .from('user_projects')
+        .insert({
+          project_id: projectId,
+          user_id: userId,
+          starred: false
+        });
+      
+      if (linkError) {
+        console.error('Error linking project to user:', linkError);
+        // Note: We don't return null here because the project was already created
+        // It's just not linked in the user_projects table
+      }
+      
+      return projectId;
+    } catch (error) {
+      console.error('Error in createNewProject:', error);
+      return null;
+    }
+  },
+  
+  /**
+   * Create a new conversation and link it to a project
+   * @param projectId The project ID to link the conversation to
+   * @returns The ID of the newly created conversation, or null if creation failed
+   */
+  createNewConversation: async (projectId: string, conversationName: string): Promise<string | null> => {
+    try {
+      // Generate a UUID for the conversation
+      const conversationId = crypto.randomUUID();
+      
+      // Link the conversation to the project in project_conversations table
+      const { error: linkError } = await supabase
+        .from('project_conversations')
+        .insert({
+          project_id: projectId,
+          conversation_name: conversationName,
+          conversation_id: conversationId,
+        });
+      
+      if (linkError) {
+        console.error('Error creating conversation link:', linkError);
+        return null;
+      }
+      
+      return conversationId;
+    } catch (error) {
+      console.error('Error in createNewConversation:', error);
+      return null;
+    }
+  },
+  
+  /**
+   * Add a message to a conversation
+   * @param conversationId The conversation ID to add the message to
+   * @param message The message object to add
+   * @returns Whether the message was successfully added
+   */
+  addMessagesToConversation: async (conversationId: string, messages: any[]): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('conversation_messages')
+        .insert(messages.map(msg => ({
+          conversation_id: conversationId,
+          message: msg,
+        })))
+        .select();
+      
+      if (error) {
+        console.error('Error adding message to conversation:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in addMessageToConversation:', error);
+      return false;
+    }
+  },
+  
+  /**
+   * Initialize a project with a first message
+   * Creates a new project and conversation and adds the first message
+   * @param firstMessage The content of the first message
+   * @returns An object containing the project ID and conversation ID, or null if creation failed
+   */
+  initializeProjectWithFirstMessages: async (
+    firstMessages: Message[],
+    projectName: string = 'Untitled Project',
+    conversationName: string = 'Untitled Conversation'
+  ): Promise<{ projectId: string; conversationId: string } | null> => {
+    try {
+      // Create a new project
+      const projectId = await projectService.createNewProject(projectName);
+      if (!projectId) {
+        return null;
+      }
+      
+      // Create a new conversation linked to the project
+      const conversationId = await projectService.createNewConversation(projectId, conversationName);
+      if (!conversationId) {
+        return null;
+      }
+      
+      // Add the first message
+      const messageAdded = await projectService.addMessagesToConversation(
+        conversationId,
+        firstMessages
+      );
+      
+      if (!messageAdded) {
+        return null;
+      }
+      
+      return { projectId, conversationId };
+    } catch (error) {
+      console.error('Error in initializeProjectWithFirstMessage:', error);
+      return null;
+    }
+  },
+  
+  /**
+   * Get conversations for the current user
+   * @param projectId Optional project ID to filter conversations by
+   * @returns An array of conversations, or an empty array if none found or on error
+   */
+  getUserConversations: async (projectId?: string | null): Promise<Conversation[]> => {
+    try {
+      // Get current user
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      
+      if (!userId) {
+        console.error('Cannot get conversations: No authenticated user');
+        return [];
+      }
+      
+      // If we have a specific project ID, only get conversations for that project
+      if (projectId) {
+        // Get conversations linked to this specific project
+        const { data: conversationsData, error: conversationsError } = await supabase
+          .from('project_conversations')
+          .select(`
+            conversation_id,
+            project_id,
+            created_at
+          `)
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false });
+        
+        if (conversationsError) {
+          console.error('Error fetching conversations for project:', conversationsError);
+          return [];
+        }
+        
+        if (!conversationsData || !conversationsData.length) {
+          return [];
+        }
+        
+        // Get the project name
+        const { data: projectData, error: projectError } = await supabase
+          .from('projects')
+          .select('project_name')
+          .eq('id', projectId)
+          .single();
+        
+        if (projectError) {
+          console.error('Error fetching project details:', projectError);
+          return [];
+        }
+        
+        const projectName = projectData?.project_name || 'Unknown Project';
+        
+        // For each conversation, get the last message to display as a preview
+        const conversations: Conversation[] = await Promise.all(
+          conversationsData.map(async (conv) => {
+            // Get last message for this conversation
+            const { data: messageData, error: messageError } = await supabase
+              .from('conversation_messages')
+              .select('message')
+              .eq('conversation_id', conv.conversation_id)
+              .order('message_id', { ascending: false })
+              .limit(1)
+              .single();
+            
+            let lastMessage = null;
+            if (!messageError && messageData) {
+              // Extract content from the message JSON
+              // Using type assertion to handle the unknown structure
+              const msg = messageData.message as any;
+              if (msg && typeof msg === 'object' && 'content' in msg) {
+                lastMessage = msg.content;
+              }
+            }
+            
+            return {
+              id: conv.conversation_id,
+              projectId: conv.project_id,
+              projectName: projectName,
+              createdAt: conv.created_at,
+              lastMessage,
+            };
+          })
+        );
+        
+        return conversations;
+      }
+      
+      // If no specific project ID, get all projects the user has access to
+      const userProjects = await projectService.getProjectsByUser(userId);
+      if (!userProjects.length) {
+        return [];
+      }
+      
+      const projectIds = userProjects.map(p => p.id);
+      
+      // Get conversations linked to these projects
+      const { data: conversationsData, error: conversationsError } = await supabase
+        .from('project_conversations')
+        .select(`
+          conversation_id,
+          project_id,
+          created_at
+        `)
+        .in('project_id', projectIds)
+        .order('created_at', { ascending: false });
+      
+      if (conversationsError) {
+        console.error('Error fetching conversations:', conversationsError);
+        return [];
+      }
+      
+      if (!conversationsData || !conversationsData.length) {
+        return [];
+      }
+      
+      // Create a map of project IDs to project names for easy lookup
+      const projectMap = Object.fromEntries(
+        userProjects.map(p => [p.id, p.projectName])
+      );
+      
+      // For each conversation, get the last message to display as a preview
+      const conversations: Conversation[] = await Promise.all(
+        conversationsData.map(async (conv) => {
+          // Get last message for this conversation
+          const { data: messageData, error: messageError } = await supabase
+            .from('conversation_messages')
+            .select('message')
+            .eq('conversation_id', conv.conversation_id)
+            .order('message_id', { ascending: false })
+            .limit(1)
+            .single();
+          
+          let lastMessage = null;
+          if (!messageError && messageData) {
+            // Extract content from the message JSON
+            // Using type assertion to handle the unknown structure
+            const msg = messageData.message as any;
+            if (msg && typeof msg === 'object' && 'content' in msg) {
+              lastMessage = msg.content;
+            }
+          }
+          
+          return {
+            id: conv.conversation_id,
+            projectId: conv.project_id,
+            projectName: projectMap[conv.project_id] || 'Unknown Project',
+            createdAt: conv.created_at,
+            lastMessage,
+          };
+        })
+      );
+      
+      return conversations;
+    } catch (error) {
+      console.error('Error in getUserConversations:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Get messages for a specific conversation
+   * @param conversationId The conversation ID to get messages for
+   * @returns An array of messages, or an empty array if none found or on error
+   */
+  getConversationMessages: async (conversationId: string): Promise<any[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('conversation_messages')
+        .select('message, created_at')
+        .eq('conversation_id', conversationId)
+        .order('message_id', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching conversation messages:', error);
+        return [];
+      }
+      
+      return (data || []).map(item => item.message);
+    } catch (error) {
+      console.error('Error in getConversationMessages:', error);
+      return [];
+    }
   },
 };

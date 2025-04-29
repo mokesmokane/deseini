@@ -1,3 +1,8 @@
+// Skip empty test file
+describe.skip('actionBuffer - no tests', () => {
+  it('noop', () => {});
+});
+
 // import { 
 //   isValidTimelineUpdate, 
 //   addToActionBuffer, 

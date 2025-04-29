@@ -14,6 +14,7 @@ import { Section, Timeline, Task } from './types';
 import { projectDraftChartService } from '../../services/projectDraftChartService';
 import { debounce } from 'lodash';
 import { ensureDate } from '../../hooks/utils';
+import { useProject } from '../ProjectContext';
 // gantt
 //     section Phase 1
 //     Task 1:t1, 2025-01-01, 10d
@@ -45,11 +46,11 @@ interface DraftPlanMermaidContextType {
 
 interface DraftPlanMermaidProviderProps {
   children: React.ReactNode;
-  projectId: string | null;
 }
 const DraftPlanMermaidContext = createContext<DraftPlanMermaidContextType | undefined>(undefined);
 
-export function DraftPlanMermaidProvider({ children, projectId }: DraftPlanMermaidProviderProps) {
+export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderProps) {
+  const {project} = useProject();
   const [x0Date] = useState<Date | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY] = useState<number>(30);
@@ -62,20 +63,20 @@ export function DraftPlanMermaidProvider({ children, projectId }: DraftPlanMerma
   const [processingBufferProgress, setProcessingBufferProgress] = useState<number>(0);
   const [actionBufferLength, setActionBufferLength] = useState<number>(0);
   const [nextAction, setNextAction] = useState<BufferedAction | null>(null);
-  const projectIdRef = useRef(projectId);
+  const projectIdRef = useRef(project?.id);
 
   // Update refs when props change
   React.useEffect(() => {
-    projectIdRef.current = projectId;
-    if (projectId) {
-      projectDraftChartService.getDraftChart(projectId).then((draftPlan) => {
+    projectIdRef.current = project?.id;
+    if (project?.id) {
+      projectDraftChartService.getDraftChart(project?.id).then((draftPlan) => {
         if (draftPlan) {
           setSections(draftPlan.sections);
           setTimeline(draftPlan.timeline);
         }
       });
     }
-  }, [projectId]);
+  }, [project]);
 
   // References for streaming data handling
   const streamStateRef = useRef<StreamState>({

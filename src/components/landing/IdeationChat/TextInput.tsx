@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Paperclip, Sparkles, ArrowRight, Menu, Eye, RefreshCw, Download, Loader2 } from 'lucide-react';
 import { sampleIdeas } from '../sample';
-import { useMessaging } from '../MessagingProvider';
-import { response } from 'express';
+import { useMessaging } from '../../../contexts/MessagingProvider';
 
 interface TextInputProps {
   onSendMessage?: (message: string) => void;
@@ -20,7 +19,6 @@ const ProgressSegment = ({ filled }: { filled: boolean }) => (
 const MiniProgressBar = ({ percentage }: { percentage: number }) => {
   // Calculate which segments should be filled
   const segments = [25, 50, 75, 100].map(threshold => percentage >= threshold);
-  
   return (
     <div className="flex space-x-0.5 w-24 mx-auto">
       {segments.map((filled, index) => (
@@ -372,7 +370,7 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
-      <div className="relative bg-white rounded-lg overflow-hidden shadow-xl border border-black">
+      <div className="relative bg-white/80 backdrop-blur-md rounded-lg overflow-hidden shadow-xl border border-black transition-all duration-300">
         <textarea
           ref={textAreaRef}
           value={currentText}
@@ -380,14 +378,14 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
           onFocus={handleTextAreaClick}
           onClick={handleTextAreaClick}
           onKeyDown={handleKeyDown}
-          className={`w-full min-h-[160px] bg-white text-black px-6 ${showProgressBar ? 'pt-10' : 'pt-6'} pb-14 border-none outline-none resize-none text-lg placeholder-gray-400 overflow-hidden box-border`}
+          className={`w-full min-h-[160px] bg-transparent text-black px-6 ${showProgressBar ? 'pt-10' : 'pt-6'} pb-14 border-none outline-none resize-none text-lg placeholder-gray-400 overflow-hidden box-border`}
           style={{ 
             overflowY: 'hidden',
             lineHeight: '1.6',
             display: 'block'
           }}
         />
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-white border-t border-black flex justify-between items-center">
+        <div className="absolute bottom-0 left-0 right-0 p-3 bg-white/80 backdrop-blur-md border-t border-black flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <button className="text-gray-500 hover:text-black transition-colors">
               <Paperclip className="h-5 w-5" />
@@ -404,41 +402,7 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
                 <Sparkles className="h-5 w-5" />
               )}
             </button>
-            <div className="relative" ref={menuRef}>
-              <button 
-                onClick={toggleMenu}
-                className="text-black hover:text-gray-700 transition-colors"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              {menuOpen && (
-                <div className="absolute bottom-10 left-0 bg-white border border-black rounded-md shadow-lg z-10 min-w-48">
-                  <ul className="py-1">
-                    <li 
-                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
-                      onClick={() => handleMenuOption('showCanvas')}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      <span>Show Canvas</span>
-                    </li>
-                    <li 
-                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
-                      onClick={() => handleMenuOption('refreshIdeas')}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      <span>Refresh Ideas</span>
-                    </li>
-                    <li 
-                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
-                      onClick={() => handleMenuOption('exportChat')}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      <span>Export Chat</span>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
+            
           </div>
           {showProgressBar && (
             <div className="absolute top-0 left-0 right-0 pt-1 px-6">

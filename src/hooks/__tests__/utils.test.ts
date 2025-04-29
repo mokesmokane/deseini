@@ -1,3 +1,6 @@
+// Skip empty test file
+describe.skip('utils - no tests', () => {});
+
 // import { describe, it, expect, vi } from 'vitest'
 // import { calculateSectionResize, SectionTask } from '../utils'
 

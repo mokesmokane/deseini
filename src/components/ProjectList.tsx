@@ -9,7 +9,7 @@ interface ProjectListProps {
 }
 
 // Utility to format ISO date string to e.g. "24 Apr 2025"
-function formatPrettyDate(dateStr: string) {
+function formatPrettyDate(dateStr: string | null | undefined) {
   if (!dateStr) return '';
   try {
     const date = new Date(dateStr);
@@ -27,12 +27,24 @@ function formatPrettyDate(dateStr: string) {
 export const ProjectList = ({ projects, closeDropdown }: ProjectListProps) => {
   const navigate = useNavigate();
 
-  const handleSelectProject = (projectId: string) => {
-    navigate(`/projects/${projectId}`);
+  const handleSelectProject = (projectId: string, event: React.MouseEvent) => {
+    // Prevent any parent handlers from executing
+    event.preventDefault();
+    event.stopPropagation();
+    
+    console.log(`Navigating to project: ${projectId}`);
+    
+    // Close dropdown first to avoid any potential state issues
     closeDropdown();
+    
+    // Add slight delay to ensure dropdown is closed before navigation
+    setTimeout(() => {
+      navigate(`/projects/${projectId}`);
+    }, 10);
   };
   
-  const handleStarProject = (project: Project) => {
+  const handleStarProject = (project: Project, event: React.MouseEvent) => {
+    event.stopPropagation();
     projectService.starProject(project.id, !project.starred);
   };
   
@@ -41,7 +53,7 @@ export const ProjectList = ({ projects, closeDropdown }: ProjectListProps) => {
       {projects.map((project: Project) => (
         <div
           key={project.id}
-          onClick={() => handleSelectProject(project.id)}
+          onClick={(e) => handleSelectProject(project.id, e)}
           className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"
         >
           <div className="flex items-center min-w-0">
@@ -51,20 +63,22 @@ export const ProjectList = ({ projects, closeDropdown }: ProjectListProps) => {
               </span>
             </div>
             <div className="truncate">
-              <p className="text-sm font-medium text-gray-800 truncate">{project.projectName}</p>
-              <p className="text-xs text-gray-500">{formatPrettyDate(project.updatedAt ?? '')}</p>
+              <div className="text-sm font-medium text-gray-900 truncate">
+                {project.projectName}
+              </div>
+              <p className="text-xs text-gray-500">
+                {formatPrettyDate(project.updatedAt)}
+              </p>
             </div>
           </div>
-          <button 
-            className={`ml-2 p-1 rounded-full ${
-              project.starred 
-                ? 'text-amber-500' 
-                : 'text-gray-300 opacity-0 group-hover:opacity-100'
-            } hover:bg-gray-100 transition-opacity focus:outline-none`}
-            aria-label={project.starred ? "Unstar project" : "Star project"}
-            onClick={() => handleStarProject(project)}
+          <button
+            onClick={(e) => handleStarProject(project, e)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-100"
           >
-            <StarIcon size={16} fill={project.starred ? "currentColor" : "none"} />
+            <StarIcon 
+              size={16} 
+              className={project.starred ? "fill-yellow-400 text-yellow-400" : "text-gray-400"} 
+            />
           </button>
         </div>
       ))}

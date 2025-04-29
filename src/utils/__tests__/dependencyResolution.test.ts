@@ -1,4 +1,7 @@
-// // Tests for dependency resolution in mermaid gantt parsing
+// Skip empty test file
+describe.skip('dependencyResolution - no tests', () => {});
+
+// Tests for dependency resolution in mermaid gantt parsing
 
 // import { resolveDependencies } from '../dependencyResolution';
 // import { Section } from '../../contexts/DraftPlan/DraftPlanContextMermaid'; 

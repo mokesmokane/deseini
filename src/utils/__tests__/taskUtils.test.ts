@@ -1,3 +1,6 @@
+// Skip empty test file
+describe.skip('taskUtils - no tests', () => {});
+
 // import { findTaskById, getTaskEndDate, createTask, checkTimelineBoundaries } from '../taskUtils';
 // import { Task, Timeline } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
 

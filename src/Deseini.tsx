@@ -1,51 +1,27 @@
-import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { projectService } from './services/projectService';
 import LogoCarousel from './components/LogoCarousel';
 import toast, { Toaster } from 'react-hot-toast';
 import { Session } from '@supabase/supabase-js';
 import { Outlet, useNavigate } from 'react-router-dom';
 import AccountDropdown  from './components/AccountDropdown';
 import { ProjectsDropdown } from './components/ProjectsDropdown';
-import { Project } from './services/projectService';
 import { useProject } from './contexts/ProjectContext';
+import { useMessaging } from './contexts/MessagingProvider';
+import { useDraftMarkdown } from './components/landing/DraftMarkdownProvider';
+import { useAuth } from './hooks/useAuth';
 
-interface DeseiniProps {
-  session: Session | null;
-}
 
-export default function Deseini({ session }: DeseiniProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
+export default function Deseini() {
+  const {projectsList, setNoProject} = useProject();
   const navigate = useNavigate();
-  const { setProject } = useProject();
-  
-
-  useEffect(() => {
-    if (session) {
-      fetchProjects();
-    }
-  }, [session]);
-
-  const fetchProjects = async () => {
-    if (!session?.user?.id) return;
-    try {
-      const serviceProjects = await projectService.getProjectsByUser(session.user.id);
-      const uiProjects = serviceProjects.map(p => ({
-        id: p.id,
-        projectName: p.projectName,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-        starred: false
-      }));
-      setProjects(uiProjects);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      toast.error('Failed to fetch projects');
-    }
-  };
+  const {session, logout} = useAuth();
+  const {setMessages} = useMessaging();
+  const {resetMarkdown} = useDraftMarkdown();
 
   const navigateToLanding = () => {
-    setProject(null);
+    setNoProject();
+    setMessages([]);
+    resetMarkdown();
     navigate('/');
   };
 
@@ -66,9 +42,9 @@ export default function Deseini({ session }: DeseiniProps) {
           </div>
          
           {/* Project Dropdown - Always Rendered if Projects Exist */}
-          {projects.length > 0 && (
+          {projectsList.length > 0 && (
             <div className="flex-1 flex justify-start px-4">
-              <ProjectsDropdown projects={projects} />
+              <ProjectsDropdown projects={projectsList} />
             </div>
           )}
           
@@ -81,15 +57,15 @@ export default function Deseini({ session }: DeseiniProps) {
                 toast('Account clicked');
               }}
               onLogout={async () => {
-                await supabase.auth.signOut();
+                setMessages([]);
+                await logout();
                 toast.success('Logged out');
-                navigate('/');
               }}
             />
           </div>
         </div>
       </header>
-      <Outlet context={{ projects }} />
+      <Outlet context={{ projectsList }} />
     </>
   );
 }

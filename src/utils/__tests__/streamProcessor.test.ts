@@ -1,3 +1,6 @@
+// Skip empty test file
+describe.skip('streamProcessor - no tests', () => {});
+
 // import { processStreamData, StreamState, calculateDatesFromDependencies } from '../streamProcessor';
 // import { BufferedAction } from '../types';
 // import { Task } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
@@ -334,22 +337,22 @@
 //       // t4 should start on 2024-05-06 for 8 days
       
 //       if (currentTaskDictionary['t2'].startDate) {
-//         expect(currentTaskDictionary['t2'].startDate).toEqual(new Date('2024-04-21'));
-//         expect(currentTaskDictionary['t2'].endDate).toEqual(new Date('2024-04-30'));
+//         expect(currentTaskDictionary['t2'].startDate).toEqual(new Date('2024-04-21')); // Day after t1
+//         expect(currentTaskDictionary['t2'].endDate).toEqual(new Date('2024-04-30')); // 10 days after start
 //       }
       
 //       if (currentTaskDictionary['t3'].startDate) {
-//         expect(currentTaskDictionary['t3'].startDate).toEqual(new Date('2024-05-01'));
-//         expect(currentTaskDictionary['t3'].endDate).toEqual(new Date('2024-05-05'));
+//         expect(currentTaskDictionary['t3'].startDate).toEqual(new Date('2024-05-01')); // Day after t2
+//         expect(currentTaskDictionary['t3'].endDate).toEqual(new Date('2024-05-05')); // 5 days after start
 //       }
       
 //       if (currentTaskDictionary['completion_of_initial_design_theme'].startDate) {
-//         expect(currentTaskDictionary['completion_of_initial_design_theme'].startDate).toEqual(new Date('2024-05-06'));
+//         expect(currentTaskDictionary['completion_of_initial_design_theme'].startDate).toEqual(new Date('2024-05-06')); // Day after t3
 //       }
       
 //       if (currentTaskDictionary['t4'].startDate) {
-//         expect(currentTaskDictionary['t4'].startDate).toEqual(new Date('2024-05-06'));
-//         expect(currentTaskDictionary['t4'].endDate).toEqual(new Date('2024-05-13'));
+//         expect(currentTaskDictionary['t4'].startDate).toEqual(new Date('2024-05-06')); // Day after t3
+//         expect(currentTaskDictionary['t4'].endDate).toEqual(new Date('2024-05-13')); // 8 days after start
 //       }
 //     });
 

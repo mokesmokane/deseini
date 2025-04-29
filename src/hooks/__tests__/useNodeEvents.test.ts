@@ -1,3 +1,6 @@
+// Skip empty test file
+describe.skip('useNodeEvents - no tests', () => {});
+
 // import { vi, describe, it, expect } from 'vitest'
 // import { ResizeDragEvent, ResizeParams } from 'reactflow'
 // import { useNodeEvents } from '../useNodeEvents'

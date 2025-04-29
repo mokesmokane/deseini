@@ -8,6 +8,7 @@ export interface DbService {
   getChartById: (id: string) => Promise<GanttData | null>;
   saveChart: (chart: GanttData) => Promise<boolean>;
   deleteChart: (id: string) => Promise<boolean>;
+  linkChartToProject: (chartId: string, projectId: string) => Promise<boolean>;
   initWithDemoData: (demoData: GanttData) => Promise<void>;
 }
 
@@ -23,6 +24,7 @@ const promisifyMockDbService: DbService = {
   getChartById: async (id: string) => Promise.resolve(mockDbService.getChartById(id)),
   saveChart: async (chart: GanttData) => Promise.resolve(mockDbService.saveChart(chart)),
   deleteChart: async (id: string) => Promise.resolve(mockDbService.deleteChart(id)),
+  linkChartToProject: async (chartId: string, projectId: string) => Promise.resolve(mockDbService.linkChartToProject(chartId, projectId)),
   initWithDemoData: async (demoData: GanttData) => Promise.resolve(mockDbService.initWithDemoData(demoData))
 };
 

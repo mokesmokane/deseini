@@ -2,6 +2,9 @@ import { FolderIcon, SearchIcon, PlusIcon, ClockIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Project } from '../types';
 import { ProjectList } from './ProjectList';
+import { useProject } from '../contexts/ProjectContext';
+import { useMessaging } from '../contexts/MessagingProvider';
+import { useNavigate } from 'react-router-dom';
 
 interface ProjectsDropdownContentProps {
   projects: Project[];  
@@ -10,11 +13,20 @@ interface ProjectsDropdownContentProps {
 
 export const ProjectsDropdownContent = ({ projects, toggleDropdown }: ProjectsDropdownContentProps) => {
   const [searchQuery, setSearchQuery] = useState('');
-
+  const { setNoProject } = useProject();
+  const {setMessages} = useMessaging();
+  const navigate = useNavigate();
   const filteredProjects = projects.filter((project) => {
     console.log(project);
     return project.projectName.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  const handleCreateProject = () => {
+    setNoProject();
+    setMessages([]);
+    navigate('/');
+    toggleDropdown();
+  };
 
   return (
     <div
@@ -78,6 +90,7 @@ export const ProjectsDropdownContent = ({ projects, toggleDropdown }: ProjectsDr
       {/* Create new project button */}
       <div className="p-3 border-t border-gray-100">
         <button
+          onClick={handleCreateProject}
           className="flex w-full items-center justify-center gap-2 bg-white hover:bg-gray-100 text-black px-3 py-2 rounded-lg transition-colors text-sm font-medium border border-gray-200"
         >
           <PlusIcon size={16} />
