@@ -118,7 +118,9 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
       // Save to database using the provided project ID
       const sectionsToSave = sectionProcessor.current.getSections().map(section => ({
         sectionId: section.id,
-        content: section.content
+        content: section.content,
+        sectionIndex: section.sectionIndex || 0,
+        updatedAt: new Date()
       }));
       
       const success = await projectMarkdownService.saveSections(projectId, sectionsToSave);

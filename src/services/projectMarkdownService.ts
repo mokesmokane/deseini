@@ -175,7 +175,7 @@ export const projectMarkdownService = {
   /**
    * Save or update a markdown section
    */
-  async saveSection(projectId: string, sectionId: string, content: string): Promise<boolean> {
+  async saveSection(projectId: string, sectionId: string, content: string, sectionIndex: number, updatedAt: Date): Promise<boolean> {
     try {
       // First check if this section already exists to increment version
       const { data: existingData, error: fetchError } = await supabase
@@ -196,7 +196,8 @@ export const projectMarkdownService = {
         project_id: projectId,
         section_id: sectionId,
         content,
-        updated_at: new Date().toISOString(),
+        section_index: sectionIndex,
+        updated_at: updatedAt.toISOString(),
         version
       };
       
@@ -219,7 +220,7 @@ export const projectMarkdownService = {
   /**
    * Save multiple sections at once
    */
-  async saveSections(projectId: string, sections: { sectionId: string, content: string }[]): Promise<boolean> {
+  async saveSections(projectId: string, sections: { sectionId: string, content: string, sectionIndex: number, updatedAt: Date }[]): Promise<boolean> {
     try {
       // Process sections in batches to prevent excessive database calls
       const batchSize = 10;
@@ -227,7 +228,7 @@ export const projectMarkdownService = {
       for (let i = 0; i < sections.length; i += batchSize) {
         const batch = sections.slice(i, i + batchSize);
         const promises = batch.map(section => 
-          this.saveSection(projectId, section.sectionId, section.content)
+          this.saveSection(projectId, section.sectionId, section.content, section.sectionIndex, section.updatedAt)
         );
         
         const results = await Promise.all(promises);

@@ -43,33 +43,35 @@ const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisib
             {isChatVisible && <TextInput hasStarted={true} />}
           </div>
         </div>
-
-        {/* Toggle chat button */}
-        {isCanvasVisible && (
-          <button 
-            onClick={toggleChat}
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 z-20 bg-white rounded-full p-1.5 border-0 focus:outline-none"
-            aria-label={isChatVisible ? "Hide Chat" : "Show Chat"}
-            title={isChatVisible ? "Hide Chat" : "Show Chat"}
-          >
-            {isChatVisible ? 
-              <ChevronLeftIcon className="h-4 w-4 text-gray-700" /> : 
-              <ChevronRightIcon className="h-4 w-4 text-gray-700" />
-            }
-          </button>
-        )}
       </motion.div>
+      
+      {/* Toggle chat button */}
+      {isCanvasVisible && (
+        <button
+          onClick={toggleChat}
+          style={{ left: isChatVisible ? 'calc(36rem)' : '72px', zIndex: 60 }}
+          className="absolute top-1/2 transform -translate-y-1/2 bg-white rounded-full p-1.5 border-0 focus:outline-none"
+          aria-label={isChatVisible ? "Hide Chat" : "Show Chat"}
+          title={isChatVisible ? "Hide Chat" : "Show Chat"}
+        >
+          {isChatVisible ? (
+            <ChevronLeftIcon className="h-4 w-4 text-gray-700" />
+          ) : (
+            <ChevronRightIcon className="h-4 w-4 text-gray-700" />
+          )}
+        </button>
+      )}
       
       {/* Canvas that slides in from the right */}
       <motion.div
-        className="h-full w-full min-h-0 min-w-0 overflow-hidden"
+        className={`h-full w-full min-h-0 min-w-0 overflow-hidden ${project !== null && !isChatVisible ? 'pl-[72px]' : ''}`}
         initial={{ width: 0 }}
         animate={{ 
-          width: isCanvasVisible ? (isChatVisible ? 'calc(100% - 36rem - 72px)' : 'calc(100% - 72px)') : 0,
+          width: isCanvasVisible ? (isChatVisible ? 'calc(100% - 36rem)' : '') : 0,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
-        <Canvas isVisible={isCanvasVisible} activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Canvas isVisible={isCanvasVisible} activeTab={activeTab} setActiveTab={setActiveTab} isChatVisible={isChatVisible} />
       </motion.div>
     </div>
   );

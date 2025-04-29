@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Paperclip, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
-import { sampleIdeas } from '../sample';
+import { sampleIdeas as sampleIdeasx } from '../sample';
 import { useMessaging } from '../../../contexts/MessagingProvider';
 
 interface TextInputProps {
@@ -40,6 +40,9 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cancelledRef = useRef(false);
   const { addMessage,   percentageComplete } = useMessaging();
+  const randomisedorder = sampleIdeasx.sort(() => Math.random() - 0.5);
+  const [sampleIdeas, setSampleIdeas] = useState(["What would you build if you had the world's best Designers at your fingertips???",
+    ...randomisedorder]);
 
   // Typing and deleting animation
   useEffect(() => {

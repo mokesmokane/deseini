@@ -360,6 +360,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
             console.error('Error adding AI response to conversation:', error);
           }
         }
+        setCurrentStreamingContent('');
 
         // Mark message as complete
         setCurrentStreamingMessageId(null);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ContentSidebar from './ContentSidebar';
 import ContentArea from './ContentArea';
@@ -13,9 +13,10 @@ interface CanvasProps {
   isVisible: boolean;
   activeTab: 'notes' | 'plan';
   setActiveTab: (tab: 'notes' | 'plan') => void;
+  isChatVisible: boolean;
 }
 
-const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab }) => {
+const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab, isChatVisible }) => {
   const { currentSectionId, selectSection } = useDraftMarkdown();
   const { 
     isLoading: isPlanGenerating, 
@@ -40,17 +41,27 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab }) =
   // Determine whether to show generation status - only when we're generating a plan or have a summary
   const showGenerationStatus = (isPlanGenerating && streamSummary);
   
+  // Determine if window width >= 'xl' (1280px) for side-by-side layout
+  const [isXl, setIsXl] = useState<boolean>(typeof window !== 'undefined' && window.innerWidth >= 1280);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1280px)');
+    const handler = (e: MediaQueryListEvent) => setIsXl(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+  const dualView = isVisible && !isChatVisible && isXl;
+
   return (
     <div className="flex items-center justify-center p-4 w-full h-full min-h-0 min-w-0">
         <div className="w-full h-full min-h-0 min-w-0 bg-white rounded-xl shadow-xl overflow-hidden flex flex-col border-gray-200">
           {/* Header */}
           <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <TabSelector 
+              {!dualView && <TabSelector 
                 activeTab={activeTab} 
                 onChange={setActiveTab}
                 isGeneratingPlan={isPlanGenerating} 
-              />
+              />}
               {showGenerationStatus && (
                 <PlanGenerationStatus />
               )}
@@ -92,6 +103,7 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab }) =
               <ContentArea 
                 currentSectionId={currentSectionId || ''}
                 activeTab={activeTab}
+                dualView={dualView}
               />
             </motion.div>
           </div>
