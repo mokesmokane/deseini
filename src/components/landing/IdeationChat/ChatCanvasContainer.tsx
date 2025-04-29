@@ -17,7 +17,7 @@ const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisib
   const {project} = useProject();
   const [activeTab, setActiveTab] = useState<'notes' | 'plan'>('notes');
   return (
-    <div className="w-full bg-gray-100 h-full flex min-h-0 min-w-0">
+    <div className="relative w-full bg-gray-100 h-full flex min-h-0 min-w-0">
       {/* Sidebar that slides in from the left when canvas is visible */}
       <Sidebar isVisible={project !== null} />
       
@@ -32,14 +32,14 @@ const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisib
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
-        <div className="flex-grow overflow-hidden relative">
+        <div className={`flex-grow overflow-hidden relative ${project !== null ? 'pl-[72px]' : ''}`}>
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm pointer-events-none z-0 transition-all duration-300" />
           <div className="relative z-0 h-full">
             <ChatPanel />
           </div>
           
           {/* Position the TextInput absolutely at the bottom of the container */}
-          <div className="absolute bottom-0 left-0 right-0 px-2 pb-4 pt-2 z-10">
+          <div className={`absolute bottom-0 left-0 right-0 px-2 pb-4 pt-2 z-10 ${project !== null ? 'pl-[80px]' : ''}`}>
             {isChatVisible && <TextInput hasStarted={true} />}
           </div>
         </div>

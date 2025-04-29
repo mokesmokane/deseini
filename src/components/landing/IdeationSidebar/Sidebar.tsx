@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   FolderIcon,
@@ -7,7 +7,8 @@ import {
   ArrowsPointingOutIcon,
   ChatBubbleLeftRightIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
 import { projectService, Conversation } from '@/services/projectService';
 import { useMessaging } from '../../../contexts/MessagingProvider';
@@ -24,6 +25,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const {projectConversations, project} = useProject();
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const INACTIVITY_TIMEOUT = 3000; // 3 seconds
 
   const { 
     setMessages, 
@@ -38,6 +42,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
     }
   }, [activeSection, project?.id]);
   
+  // Handle clicks outside sidebar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node) && activeSection) {
+        setActiveSection(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeSection]);
+
+  // Handle mouse hover and leave
+  const handleMouseEnter = () => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (activeSection && !collapsed) {
+      inactivityTimerRef.current = setTimeout(() => {
+        setActiveSection(null);
+      }, INACTIVITY_TIMEOUT);
+    }
+  };
+
   const loadProjectConversations = async () => {
     if (!project?.id) {
       setConversations([]);
@@ -105,19 +139,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
   
   return (
     <motion.div
-      className="h-full bg-white overflow-hidden flex"
-      initial={{ width: 0 }}
-      animate={{ 
-        width: isVisible 
-          ? (collapsed 
-              ? '72px' 
-              : (activeSection ? '240px' : '72px')) 
-          : 0 
+      ref={sidebarRef}
+      className="absolute top-0 left-0 h-full bg-white/95 backdrop-blur-sm overflow-hidden flex z-50"
+      initial={{ width: 0, x: -340 }}
+      animate={{
+        width: isVisible
+          ? (collapsed ? '72px' : (activeSection ? '340px' : '72px'))
+          : 0,
+        x: isVisible ? 0 : -340
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Fixed icon sidebar */}
-      <div className="h-full flex flex-col pt-6 pb-4 min-w-[72px] z-10">
+      <div className="h-full flex flex-col pt-6 pb-4 min-w-[72px] z-10 bg-transparent">
         <nav className="flex-1 pb-4 flex flex-col items-center space-y-6">
           <SidebarIcon 
             icon={<FolderIcon className="h-6 w-6" />} 
@@ -146,25 +182,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
             isActive={activeSection === 'export'}
           />
         </nav>
-        
         <div className="flex justify-center pt-4">
           <button 
             className="flex items-center justify-center bg-white hover:bg-gray-100 text-gray-700 p-2 rounded-md transition-colors w-10 h-10"
-            title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            title="Settings"
             onClick={toggleCollapse}
           >
-            {collapsed ? 
-              <ChevronRightIcon className="h-6 w-6" /> : 
-              <ChevronLeftIcon className="h-6 w-6" />
-            }
+            <CogIcon className="h-6 w-6" />
           </button>
         </div>
       </div>
         
       {/* Section content - only shown when a section is active and not collapsed */}
       {activeSection && !collapsed && (
-        <div className="relative h-full bg-white w-[168px] p-3">
-          <h3 className="text-lg font-medium mb-3 capitalize">{activeSection}</h3>
+        <div className="relative h-full bg-transparent w-[260px] p-3">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-medium capitalize">{activeSection}</h3>
+            <button 
+              className="flex items-center justify-center bg-white hover:bg-gray-100 text-gray-700 p-2 rounded-md transition-colors w-8 h-8"
+              title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              onClick={toggleCollapse}
+            >
+              {collapsed ? 
+                <ChevronRightIcon className="h-6 w-6" /> : 
+                <ChevronLeftIcon className="h-6 w-6" />
+              }
+            </button>
+          </div>
+          
           
           {activeSection === 'chats' && (
             <>
