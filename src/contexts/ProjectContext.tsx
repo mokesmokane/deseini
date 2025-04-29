@@ -26,7 +26,7 @@ interface ProjectContextType {
   setProject: React.Dispatch<React.SetStateAction<Project | null>>;
   setNoProject: () => void;
   fetchProject: (id: string) => Promise<void>;
-  fetchAllProjects: () => Promise<void>;
+  fetchAllProjects: (silent?: boolean) => Promise<void>;
   fetchProjectCharts: (projectId: string) => Promise<void>;
   saveProject: () => Promise<string | undefined>;
   cloneProject: () => Promise<void>;
@@ -91,7 +91,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     fetchAllProjects();
   }, []);
 
-  const fetchAllProjects = async () => {
+  const fetchAllProjects = async (silent = false) => {
     setIsLoading(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -121,7 +121,9 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       })) || [];
 
       setProjectsList(projects);
-      toast.success('Projects loaded successfully');
+      if (!silent) {
+        toast.success('Projects loaded successfully');
+      }
     } catch (error) {
       setProjectsList([]);
       console.error('Error fetching projects:', error);
@@ -229,15 +231,20 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       // Fetch conversations for this project
       await fetchProjectConversations(id);
 
-      //makse sure we have the project in the list
-      const project = {
+      // Only add to projectsList if it doesn't already exist
+      const projectInfo = {
         id: projectData.id,
         projectName: projectData.project_name,
         createdAt: projectData.created_at,
         updatedAt: projectData.updated_at,
         starred: true
       };
-      setProjectsList(prev => prev ? [...prev, project] : [project]);
+      
+      setProjectsList(prev => {
+        const exists = prev.some(p => p.id === projectInfo.id);
+        if (exists) return prev;
+        return [...prev, projectInfo];
+      });
 
       // Transform data to match our frontend model
       const roles = rolesData?.map((role): Role => {
@@ -290,8 +297,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         roles
       });
 
-      toast.success('Project loaded successfully');
-    } catch (error) {
+      } catch (error) {
       console.error('Error fetching project details:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to load project');
       toast.error('Failed to load project');

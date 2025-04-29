@@ -1,5 +1,5 @@
 import { FolderIcon, SearchIcon, PlusIcon, ClockIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Project } from '../types';
 import { ProjectList } from './ProjectList';
 import { useProject } from '../contexts/ProjectContext';
@@ -16,10 +16,34 @@ export const ProjectsDropdownContent = ({ projects, toggleDropdown }: ProjectsDr
   const { setNoProject } = useProject();
   const {setMessages} = useMessaging();
   const navigate = useNavigate();
-  const filteredProjects = projects.filter((project) => {
-    console.log(project);
-    return project.projectName.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  
+  // Deduplicate projects based on ID
+  const uniqueProjects = useMemo(() => {
+    const uniqueMap = new Map<string, Project>();
+    projects.forEach(project => {
+      if (!uniqueMap.has(project.id)) {
+        uniqueMap.set(project.id, project);
+      }
+    });
+    return Array.from(uniqueMap.values());
+  }, [projects]);
+  
+  const filteredProjects = useMemo(() => {
+    return uniqueProjects.filter((project) => 
+      project.projectName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [uniqueProjects, searchQuery]);
+
+  // Get recently updated projects
+  const recentProjects = useMemo(() => {
+    return [...uniqueProjects]
+      .sort((a, b) => {
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 3);
+  }, [uniqueProjects]);
 
   const handleCreateProject = () => {
     setNoProject();
@@ -55,7 +79,7 @@ export const ProjectsDropdownContent = ({ projects, toggleDropdown }: ProjectsDr
               <ClockIcon size={14} className="mr-1.5" />
               <span>Recent</span>
             </div>
-            <ProjectList projects={projects.slice(0, 3)} closeDropdown={toggleDropdown} />
+            <ProjectList projects={recentProjects} closeDropdown={toggleDropdown} />
           </div>
         )}
 
@@ -81,7 +105,7 @@ export const ProjectsDropdownContent = ({ projects, toggleDropdown }: ProjectsDr
                 <FolderIcon size={14} className="mr-1.5" />
                 <span>All Projects</span>
               </div>
-              <ProjectList projects={projects} closeDropdown={toggleDropdown} />
+              <ProjectList projects={uniqueProjects} closeDropdown={toggleDropdown} />
             </>
           )}
         </div>
