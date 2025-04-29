@@ -278,6 +278,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
 
     const projectConsultantChat = async () => {
       try {
+        setCurrentStreamingContent('');
         const response = await fetch('/api/project-consultant-chat', {
           method: 'POST',
           headers: {
