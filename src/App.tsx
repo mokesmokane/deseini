@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Deseini from './Deseini';
 import { LogoCarouselProvider } from './components/LogoCarouselContext';
-import { MessagingProvider } from './contexts/MessagingProvider';
+import { MessagingProvider } from './contexts/Messaging/MessagingProvider';
 import { DraftMarkdownProvider } from './components/landing/DraftMarkdownProvider';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { ChartsListProvider } from './contexts/ChartsListContext';

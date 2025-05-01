@@ -52,7 +52,6 @@ export function createLineReader(
     async pull(controller) {
       try {
         const { done, value } = await reader.read();
-        
         if (done) {
           controller.close();
           return;
@@ -60,6 +59,7 @@ export function createLineReader(
         
         if (value) {
           controller.enqueue(value);
+        } else {
         }
       } catch (error) {
         controller.error(error);

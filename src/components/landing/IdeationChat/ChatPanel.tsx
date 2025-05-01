@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatMessage from "./ChatMessage";
-import { useMessaging } from "../../../contexts/MessagingProvider";
+import { useMessaging } from "../../../contexts/Messaging/MessagingProvider";
 
 interface ChatPanelProps {
   isTyping?: boolean; 

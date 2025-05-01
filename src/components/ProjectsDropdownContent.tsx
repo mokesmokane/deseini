@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { Project } from '../types';
 import { ProjectList } from './ProjectList';
 import { useProject } from '../contexts/ProjectContext';
-import { useMessaging } from '../contexts/MessagingProvider';
+import { useMessaging } from '../contexts/Messaging/MessagingProvider';
 import { useNavigate } from 'react-router-dom';
 
 interface ProjectsDropdownContentProps {

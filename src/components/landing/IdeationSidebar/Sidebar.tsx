@@ -11,7 +11,7 @@ import {
   CogIcon
 } from '@heroicons/react/24/outline';
 import { projectService, Conversation } from '@/services/projectService';
-import { useMessaging } from '../../../contexts/MessagingProvider';
+import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { Message, MessageStatus } from '../types';
 import { useProject } from '../../../contexts/ProjectContext';
 

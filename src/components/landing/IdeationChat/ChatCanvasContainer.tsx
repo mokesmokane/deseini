@@ -5,7 +5,7 @@ import Canvas from '../IdeationCanvas/Canvas';
 import TextInput from './TextInput';
 import Sidebar from '../IdeationSidebar/Sidebar';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { useMessaging } from '../../../contexts/MessagingProvider';
+import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { useProject } from '../../../contexts/ProjectContext';
 
 interface ChatCanvasContainerProps {

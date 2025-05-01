@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { 
   processStreamData, 
-  StreamState 
+  StreamState,
+  StreamSummary
 } from '../../utils/streamProcessor';
 import { 
   processAction 
@@ -21,7 +22,11 @@ import { useProject } from '../ProjectContext';
 //     Task 2:t2, after t1, 5d
 //     Milestone 1: milestone, 2025-02-15
 
-
+export interface StreamResponse {
+  content?: string;
+  done?: boolean;
+  error?: string;
+}
 interface DraftPlanMermaidContextType {
   sections: Section[];
   timeline: Timeline | undefined;
@@ -42,6 +47,7 @@ interface DraftPlanMermaidContextType {
   actionBuffer: BufferedAction[];
   updateTaskStartDate: (taskId: string, newStartDate: Date) => void;
   updateTaskDuration: (taskId: string, newDuration: number) => void;
+  newSummary: StreamSummary | undefined;
 }
 
 interface DraftPlanMermaidProviderProps {
@@ -60,6 +66,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
   const [mermaidSyntax, setMermaidSyntax] = useState<string>('');
   const [fullSyntax, setFullSyntax] = useState<string>('');
   const [streamSummary, setStreamSummary] = useState<string>('');
+  const [newSummary, setNewSummary] = useState<StreamSummary | undefined>(undefined);
   const [processingBufferProgress, setProcessingBufferProgress] = useState<number>(0);
   const [actionBufferLength, setActionBufferLength] = useState<number>(0);
   const [nextAction, setNextAction] = useState<BufferedAction | null>(null);
@@ -85,7 +92,11 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     inMermaidBlock: false,
     currentSection: null,
     allSections: new Set(),
-    lastHeader: null
+    lastHeader: null,
+    streamSummary: {
+      thinking: []
+      // drawing will be added when we start processing chart data
+    }
   });
   
   // Track current sections and timeline in refs to avoid closure issues
@@ -175,6 +186,10 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     if (newStreamSummary) {
       setStreamSummary(newStreamSummary);
     }
+    
+    if (updatedStreamState.streamSummary) {
+      setNewSummary(updatedStreamState.streamSummary);
+    }
   }, []);
 
   // Helper function to start processing the buffer if not already processing
@@ -230,7 +245,6 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
             );
             
             // Update the application state
-            console.log('MOKES updatedState', updatedState);
             setSections(updatedState.sections);
             if (updatedState.timeline) {
               setTimeline(updatedState.timeline);
@@ -450,7 +464,11 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
         inMermaidBlock: false,
         currentSection: null,
         allSections: new Set(),
-        lastHeader: null
+        lastHeader: null,
+        streamSummary: {
+          thinking: []
+          // drawing will be added when we start processing chart data
+        }
       };
       taskDictionaryRef.current = {};
       actionBufferRef.current = [];
@@ -533,6 +551,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     actionBufferLength,
     nextAction,
     actionBuffer: actionBufferRef.current,
+    newSummary,
     TIMELINE_PIXELS_PER_DAY,
     setTIMELINE_PIXELS_PER_DAY,
     updateTaskStartDate,

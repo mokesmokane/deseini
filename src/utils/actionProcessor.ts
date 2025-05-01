@@ -161,7 +161,6 @@ export const processAction = (
     case 'UPDATE_TASK_DURATION':
       const {sectionName:sn, taskId:ti, newDuration, endDate } = action.payload;
       // Update the task dictionary
-      console.log('mokes action.payload', action.payload);
 
       // Add or update the task in the section
       updatedState.sections = updatedState.sections.map(section => {
@@ -169,15 +168,12 @@ export const processAction = (
           // Check if task already exists
           const existingIndex = section.tasks.findIndex(t => t.id === ti);
           const task = section.tasks[existingIndex];
-          console.log('mokes existing task', task);
           if (existingIndex >= 0) {
             // Update existing task
-            console.log('existing task', task);
             const updatedTasks = [...section.tasks];
             task.duration = newDuration ? newDuration : endDate ? (endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24) : task.duration;
             task.endDate = endDate ? endDate : newDuration ? new Date(task.startDate.getTime() + newDuration * 1000 * 60 * 60 * 24) : task.endDate;
             updatedTasks[existingIndex] = task;
-            console.log('mokes updated task', task);
             return { ...section, tasks: updatedTasks };
           } 
           updatedTaskDictionary[ti] = task;

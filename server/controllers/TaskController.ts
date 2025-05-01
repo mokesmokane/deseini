@@ -476,7 +476,7 @@ export class TaskController {
         res.status(400).json({ error: result.error });
         return;
       }
-      
+      console.log('Project readiness check result:', result);
       res.status(200).json(result);
     } catch (error) {
       console.error('API Controller Error (judgeProjectDraftReadiness):', error);
@@ -756,15 +756,14 @@ export class TaskController {
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
             accumulatedContent += content;
-            // Send the chunk content to the client
-            console.log('Sending chunk:', content);
             res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
           }
         }
         
         // Send a final event to signal stream completion
         res.write(`event: stream_end\ndata: ${JSON.stringify({ message: 'Stream ended', fullContent: accumulatedContent })}\n\n`);
-        
+        console.log('Chat stream ended. Closing connection.');
+        console.log('Accumulated content:', accumulatedContent);
       } catch (streamError) {
         console.error('Error processing chat stream:', streamError);
         // Attempt to send an error event if possible

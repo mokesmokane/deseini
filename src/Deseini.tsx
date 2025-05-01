@@ -4,7 +4,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import AccountDropdown  from './components/AccountDropdown';
 import { ProjectsDropdown } from './components/ProjectsDropdown';
 import { useProject } from './contexts/ProjectContext';
-import { useMessaging } from './contexts/MessagingProvider';
+import { useMessaging } from './contexts/Messaging/MessagingProvider';
 import { useDraftMarkdown } from './components/landing/DraftMarkdownProvider';
 import { useAuth } from './hooks/useAuth';
 

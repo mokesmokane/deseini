@@ -1,6 +1,6 @@
 import LogoCarousel from '../LogoCarousel';
 import TextInput from './IdeationChat/TextInput';
-import { useMessaging } from '../../contexts/MessagingProvider';
+import { useMessaging } from '../../contexts/Messaging/MessagingProvider';
 import ChatCanvasContainer from './IdeationChat/ChatCanvasContainer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';

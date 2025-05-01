@@ -15,7 +15,7 @@ import { ChatMessage } from '../types';
 export const getCleanProjectPlanStream = async (
   messages: ChatMessage[],
   currentPlan: string | null
-): Promise<ReadableStreamDefaultReader<string>> => {
+): Promise<ReadableStream<string>> => {
   const requestBody = JSON.stringify({
     messages,
     projectContext: null,
@@ -116,7 +116,7 @@ export const getCleanProjectPlanStream = async (
   });
   
   // Connect the streams and return the reader
-  return textStream.pipeThrough(cleanStream).getReader();
+  return textStream.pipeThrough(cleanStream);
 };
 
 export default {

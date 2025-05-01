@@ -224,6 +224,177 @@ describe('SimpleSectionProcessor', () => {
     });
   });
 
+  describe('Extensive MNARKDOWN_TO_TEST suite', () => {
+    let processor: SimpleSectionProcessor;
+    let lines: string[];
+    beforeEach(() => {
+      processor = new SimpleSectionProcessor();
+      lines = MNARKDOWN_TO_TEST.split('\n');
+    });
+
+    test('extracts all top-level sections with correct titles and order', () => {
+      processor.processLines(lines);
+      const sections = processor.getSections();
+      expect(sections.length).toBe(7);
+      const expectedTitles = [
+        'Timescales',
+        'Scope',
+        'Tasks',
+        'Milestones',
+        'Roles',
+        'Dependencies',
+        'Deliverables'
+      ];
+      sections.forEach((section, idx) => {
+        expect(section.title).toBe(expectedTitles[idx]);
+      });
+    });
+
+    test('section IDs are unique, slugified, and match titles', () => {
+      processor.processLines(lines);
+      const sections = processor.getSections();
+      const ids = new Set();
+      sections.forEach(section => {
+        expect(section.id).toMatch(/^[a-z0-9-]+$/);
+        expect(ids.has(section.id)).toBe(false);
+        ids.add(section.id);
+        expect(section.id).toBe(section.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+      });
+    });
+
+    test('section index is correct and sequential', () => {
+      processor.processLines(lines);
+      const sections = processor.getSections();
+      sections.forEach((section, idx) => {
+        expect(section.sectionIndex).toBe(idx);
+      });
+    });
+
+    test('content of each section includes all expected lines and preserves nested lists', () => {
+      processor.processLines(lines);
+      const sections = processor.getSections();
+      // Check a couple of sections for specific content
+      expect(sections[1].content).toContain('Mobile application for personalized, AI-driven workout routines');
+      expect(sections[1].content).toContain('Supported platforms: iOS & Android');
+      expect(sections[2].content).toContain('Define user personas and create journey maps');
+      expect(sections[2].content).toContain('Integrate user progress and feedback mechanisms');
+      expect(sections[2].content).toContain('Tailor plans to user preferences and results');
+      expect(sections[4].content).toContain('Product Manager: Project oversight, roadmap, stakeholder coordination');
+      expect(sections[6].content).toContain('User Feedback Report and Iteration Plan');
+    });
+
+    test('throws error on duplicate section titles', () => {
+      const dupLines = lines.concat(['# Tasks']);
+      expect(() => processor.processLines(dupLines)).toThrow(/Duplicate section title/);
+    });
+
+    test('batch, line-by-line, and streaming processing produce consistent results', async () => {
+      // Batch
+      const batch = new SimpleSectionProcessor();
+      batch.processLines(lines);
+      const batchSections = batch.getSections();
+      // Line-by-line
+      const lineByLine = new SimpleSectionProcessor();
+      lines.forEach(line => lineByLine.processLine(line));
+      lineByLine.processLineBuffer();
+      const lblSections = lineByLine.getSections();
+      // Streaming
+      const fakeReader = {
+        idx: 0,
+        read() {
+          if (this.idx >= lines.length) return Promise.resolve({ done: true, value: undefined });
+          return Promise.resolve({ done: false, value: lines[this.idx++] });
+        }
+      };
+      const stream = new SimpleSectionProcessor();
+      await stream.processStream(fakeReader as any, () => {});
+      const streamSections = stream.getSections();
+      // Compare
+      expect(batchSections).toEqual(lblSections);
+      expect(batchSections).toEqual(streamSections);
+    });
+
+    test('onUpdate emits correct creating state for each section during streaming', async () => {
+      const fakeReader = {
+        idx: 0,
+        read() {
+          if (this.idx >= lines.length) return Promise.resolve({ done: true, value: undefined });
+          return Promise.resolve({ done: false, value: lines[this.idx++] });
+        }
+      };
+      const updates: any[] = [];
+      await processor.processStream(fakeReader as any, (update) => {
+        updates.push({
+          sectionTitle: update.section?.title,
+          creating: update.creating
+        });
+      });
+      // For each section, there should be creating:true at start and creating:false when finalized
+      const expectedTitles = [
+        'Timescales','Scope','Tasks','Milestones','Roles','Dependencies','Deliverables'
+      ];
+      expectedTitles.forEach(title => {
+        expect(updates.find(u => u.sectionTitle === title && u.creating === true)).toBeTruthy();
+        expect(updates.find(u => u.sectionTitle === title && u.creating === false)).toBeTruthy();
+      });
+    });
+  });
+
+  describe('Creating state tests', () => {
+    test('onUpdate callback receives correct creating state during streaming', async () => {
+      const markdown = `# Section One\nContent line 1\nContent line 2\n# Section Two\nContent line 3`;
+      const lines = markdown.split('\n');
+      // Simulate a ReadableStreamDefaultReader
+      const fakeReader = {
+        idx: 0,
+        read() {
+          if (this.idx >= lines.length) return Promise.resolve({ done: true, value: undefined });
+          return Promise.resolve({ done: false, value: lines[this.idx++] });
+        }
+      };
+      const processor = new SimpleSectionProcessor();
+      const updates: any[] = [];
+      await processor.processStream(fakeReader as any, (update) => {
+        updates.push({
+          sectionTitle: update.section?.title,
+          creating: update.creating,
+          currentSectionId: update.currentSectionId
+        });
+      });
+      // Should toggle creating true on header, false after section ends
+      // Find first update for Section One (should be creating: true)
+      const sectionOneCreate = updates.find(u => u.sectionTitle === 'Section One' && u.creating === true);
+      expect(sectionOneCreate).toBeTruthy();
+      // Find last update for Section One (should be creating: false)
+      const sectionOneDone = updates.reverse().find(u => u.sectionTitle === 'Section One' && u.creating === false);
+      expect(sectionOneDone).toBeTruthy();
+      // Find update for Section Two (should be creating: true at start)
+      const sectionTwoCreate = updates.find(u => u.sectionTitle === 'Section Two' && u.creating === true);
+      expect(sectionTwoCreate).toBeTruthy();
+      // Section Two should also get a creating: false at the end
+      const sectionTwoDone = updates.find(u => u.sectionTitle === 'Section Two' && u.creating === false);
+      expect(sectionTwoDone).toBeTruthy();
+    });
+
+    test('creating state is false after all processing', async () => {
+      const markdown = `# Section A\nAlpha\n# Section B\nBeta`;
+      const lines = markdown.split('\n');
+      const fakeReader = {
+        idx: 0,
+        read() {
+          if (this.idx >= lines.length) return Promise.resolve({ done: true, value: undefined });
+          return Promise.resolve({ done: false, value: lines[this.idx++] });
+        }
+      };
+      const processor = new SimpleSectionProcessor();
+      let lastCreating = true;
+      await processor.processStream(fakeReader as any, (update) => {
+        lastCreating = update.creating;
+      });
+      expect(lastCreating).toBe(false);
+    });
+  });
+
   // Utility function tests
   describe('Utility functions', () => {
     test('correctly extracts titles from section content', () => {

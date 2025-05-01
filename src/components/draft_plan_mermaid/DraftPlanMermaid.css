@@ -7,3 +7,11 @@
 .react-flow__node {
   transition: transform 0ms !important;
 }
+
+/* Ensure ReactFlow canvas layers sit below modal overlays */
+.react-flow__pane,
+.react-flow__nodes,
+.react-flow__edges,
+.react-flow__controls {
+  z-index: 0 !important;
+}

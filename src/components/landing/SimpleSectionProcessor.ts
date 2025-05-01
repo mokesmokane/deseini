@@ -3,28 +3,17 @@
  * Much simpler than the original SectionUpdater
  */
 
-// Basic section data structure
-export interface SectionData {
-  id: string;
-  title: string;
-  sectionIndex: number | null;
-  content: string;
-  updatedAt: Date;
-}
+import {ProcessUpdateEvent, SectionData, UpdateState, SectionUpdateState} from "./types"
 
-// Process update event to notify consumers
-export interface ProcessUpdateEvent {
-  section?: SectionData; // The individual section that was updated
-  currentSectionId: string | null;
-}
 
-// Callback for stream processing updates
 export type ProcessUpdateCallback = (update: ProcessUpdateEvent) => void;
 
 export class SimpleSectionProcessor {
   private sections: SectionData[] = [];
   private currentLineBuffer: string[] = [];
   private lastSectionId: string | null = null;
+  private isCreatingSection: boolean = false;
+  private updateState: UpdateState = { sectionUpdateStates: [] };
 
   constructor() {
     this.reset();
@@ -37,6 +26,7 @@ export class SimpleSectionProcessor {
     this.sections = [];
     this.currentLineBuffer = [];
     this.lastSectionId = null;
+    this.isCreatingSection = false;
   }
 
   /**
@@ -50,7 +40,7 @@ export class SimpleSectionProcessor {
     onUpdate: ProcessUpdateCallback
   ): Promise<SectionData[]> {
     let reading = true;
-  
+    let prevSectionId: string | null = null;
     while (reading) {
       const { done, value } = await lineReader.read();
       
@@ -58,12 +48,15 @@ export class SimpleSectionProcessor {
         reading = false;
         // Process any remaining content in the buffer
         const finalSection = this.processLineBuffer();
-        
+        this.isCreatingSection = false;
         // Final update if we have a section from the buffer
         if (finalSection) {
+          this.setSectionState(finalSection.id, 'created');
           onUpdate({
             section: finalSection,
-            currentSectionId: this.lastSectionId
+            updateState: this.updateState,
+            currentSectionId: this.lastSectionId,
+            creating: this.isCreatingSection
           });
         }
         break;
@@ -71,26 +64,41 @@ export class SimpleSectionProcessor {
       
       if (!value) continue;
       
+      // Before processing the new line, check if it is a header and if so, emit creating=false for the previous section
+      const isHeader = value.match(/^(#)\s+(.+)$/);
+      if (isHeader && this.sections.length > 0) {
+        // Emit update for previous section with creating=false
+        const prevSection = this.sections[this.sections.length - 1];
+        this.setSectionState(prevSection.id, 'created');
+        onUpdate({
+          section: prevSection,
+          updateState: this.updateState,
+          currentSectionId: prevSection.id,
+          creating: false
+        });
+      }
       // Process this line
       const currentSectionId = this.processLine(value);
-      
       // Get the current section that was updated
       let updatedSection: SectionData | undefined;
-      
       if (currentSectionId) {
         updatedSection = this.getSectionById(currentSectionId);
+        // If this is a header, mark as creating
+        if (isHeader && updatedSection) {
+          this.setSectionState(updatedSection.id, 'creating');
+        }
       }
-      
       // Only call the update callback if we have an updated section
       if (updatedSection) {
         // Call the update callback with the single updated section
         onUpdate({
           section: updatedSection,
-          currentSectionId
+          updateState: this.updateState,
+          currentSectionId,
+          creating: this.isCreatingSection
         });
       }
     }
-    
     return this.sections;
   }
 
@@ -121,6 +129,7 @@ export class SimpleSectionProcessor {
     if (headerMatch && headerMatch[1] === '#') {
       // This is a new top-level section - process any content we've accumulated
       this.processLineBuffer();
+      this.isCreatingSection = true;
       
       // Start a new section
       const title = headerMatch[2].trim();
@@ -162,7 +171,7 @@ export class SimpleSectionProcessor {
   /**
    * Process the current line buffer and update sections
    */
-  private processLineBuffer(): SectionData | null {
+  public processLineBuffer(): SectionData | null {
     if (this.currentLineBuffer.length === 0) return null;
     
     // If we don't have a section yet but have content, create a default section
@@ -185,12 +194,11 @@ export class SimpleSectionProcessor {
       const currentSection = this.sections[this.sections.length - 1];
       currentSection.content = this.currentLineBuffer.join('\n');
     }
-    
-    // Clear the buffer for the next section
+    this.isCreatingSection = false;
+    // Clear the line buffer
     this.currentLineBuffer = [];
-    
-    // Return the last section
-    return this.sections[this.sections.length - 1];
+    // Return the last section updated
+    return this.sections.length > 0 ? this.sections[this.sections.length - 1] : null;
   }
 
   /**
@@ -213,5 +221,12 @@ export class SimpleSectionProcessor {
   public static extractTitleFromContent(content: string): string | null {
     const match = content.match(/^#+\s+(.+)$/m);
     return match ? match[1].trim() : null;
+  }
+
+  private setSectionState(sectionId: string, state: SectionUpdateState['state']) {
+    // Remove any previous state for this section
+    this.updateState.sectionUpdateStates = this.updateState.sectionUpdateStates.filter(s => s.sectionId !== sectionId);
+    // Add the new state
+    this.updateState.sectionUpdateStates.push({ sectionId, state });
   }
 }

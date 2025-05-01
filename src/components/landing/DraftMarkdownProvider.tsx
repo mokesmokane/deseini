@@ -5,7 +5,8 @@ import { getCleanProjectPlanStream } from '../../services/projectPlanService';
 import { createLineReader } from '../../utils/streamToLines';
 import { useProject } from '../../contexts/ProjectContext';
 import { projectMarkdownService } from '../../services/projectMarkdownService';
-import { SimpleSectionProcessor, SectionData, ProcessUpdateEvent } from './SimpleSectionProcessor';
+import { SimpleSectionProcessor } from './SimpleSectionProcessor';
+import { SectionData, ProcessUpdateEvent, UpdateState } from './types';
 
 interface DraftMarkdownContextProps {
   // Core data
@@ -13,12 +14,17 @@ interface DraftMarkdownContextProps {
   currentSectionId: string | null;
   isStreaming: boolean;
   
+  
+  // State updates
+  stateUpdates: Record<string, UpdateState>;
+  
   // Actions
   generateProjectPlan: (currentMessages: ChatMessage[]) => Promise<SectionData[]>;
   generateProjectPlanForProjectId: (currentMessages: ChatMessage[], projectId: string) => Promise<SectionData[]>;
+  createProjectPlan: (projectMarkdownStream: ReadableStream<string>, projectId: string, seedMessageId?: string) => Promise<SectionData[]>;
   resetMarkdown: () => void;
   selectSection: (id: string | null) => void;
-  
+  setCurrentSectionId: (id: string | null) => void;
   // Content access helpers
   getSectionById: (id: string) => SectionData | undefined;
 }
@@ -35,6 +41,7 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
   const [currentSectionId, setCurrentSectionId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [stateUpdates, setStateUpdates] = useState<Record<string, UpdateState>>({});
   
   // Section processor instance
   const sectionProcessor = useRef<SimpleSectionProcessor>(new SimpleSectionProcessor());
@@ -99,35 +106,8 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
     
     try {
       // Get the clean stream reader
-      const rawReader = await getCleanProjectPlanStream(currentMessages, null);
-      
-      // Transform into a line-by-line reader
-      const lineReader = createLineReader(rawReader);
-      
-      // Process the stream directly with the section processor
-      await sectionProcessor.current.processStream(lineReader, (update: ProcessUpdateEvent) => {
-        // Update the specific section
-        updateSection(update.section);
-        
-        // Update the current section ID if provided
-        if (update.currentSectionId) {
-          setCurrentSectionId(update.currentSectionId);
-        }
-      });
-      
-      // Save to database using the provided project ID
-      const sectionsToSave = sectionProcessor.current.getSections().map(section => ({
-        sectionId: section.id,
-        content: section.content,
-        sectionIndex: section.sectionIndex || 0,
-        updatedAt: new Date()
-      }));
-      
-      const success = await projectMarkdownService.saveSections(projectId, sectionsToSave);
-      if (!success) {
-        console.error(`[DraftMarkdownProvider] Failed to save sections to database for project ${projectId}`);
-      }
-      return sectionProcessor.current.getSections();
+      const stream = await getCleanProjectPlanStream(currentMessages, null);
+      return await createProjectPlan(stream, projectId);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to generate project plan.';
       toast.error(message);
@@ -136,6 +116,42 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
       setIsStreaming(false);
     }
   }, [updateSection, setCurrentSectionId, isStreaming]);
+
+  const createProjectPlan = useCallback(async (projectMarkdownStream: ReadableStream<string>, projectId: string, seedMessageId?: string): Promise<SectionData[]> => {
+     // Transform into a line-by-line reader
+     const lineReader = createLineReader(projectMarkdownStream.getReader());
+      
+     // Process the stream directly with the section processor
+     await sectionProcessor.current.processStream(lineReader, (update: ProcessUpdateEvent) => {
+       updateSection(update.section);
+       
+       // Update the update state
+       const updateState = update.updateState;
+       if (seedMessageId) {
+        console.log('MOKES updateState', updateState);
+         setStateUpdates(prev => ({ ...prev, [seedMessageId]: updateState}));
+       }
+       
+       // Update the current section ID if provided
+       if (update.currentSectionId) {
+         setCurrentSectionId(update.currentSectionId);
+       }
+     });
+     
+     // Save to database using the provided project ID
+     const sectionsToSave = sectionProcessor.current.getSections().map(section => ({
+       sectionId: section.id,
+       content: section.content,
+       sectionIndex: section.sectionIndex || 0,
+       updatedAt: new Date()
+     }));
+     
+     const success = await projectMarkdownService.saveSections(projectId, sectionsToSave);
+     if (!success) {
+       console.error(`[DraftMarkdownProvider] Failed to save sections to database for project ${projectId}`);
+     }
+     return sectionProcessor.current.getSections();
+  }, [isStreaming, project]);
 
   // Generate a new project plan
   const generateProjectPlan = useCallback(async (currentMessages: ChatMessage[]): Promise<SectionData[]> => {
@@ -170,11 +186,14 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
     sections,
     currentSectionId,
     isStreaming,
+    stateUpdates,
+    createProjectPlan,
     generateProjectPlan,
     generateProjectPlanForProjectId,
     resetMarkdown,
     selectSection,
-    getSectionById
+    getSectionById,
+    setCurrentSectionId
   };
 
   return (

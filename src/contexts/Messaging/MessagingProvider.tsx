@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Message, MessageStatus } from '../components/landing/types';
-import { useDraftMarkdown } from '../components/landing/DraftMarkdownProvider';
+import { Message, MessageStatus } from '../../components/landing/types';
+import { useDraftMarkdown } from '../../components/landing/DraftMarkdownProvider';
 import { projectService } from '@/services/projectService';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
-import { useProject } from '../contexts/ProjectContext';
-import { useDraftPlanMermaidContext } from '../contexts/DraftPlan/DraftPlanContextMermaid';
+import { useProject } from '../ProjectContext';
+import { useDraftPlanMermaidContext } from '../DraftPlan/DraftPlanContextMermaid';
+import { stream } from './stream';
+import {SectionData } from '../../components/landing/types';
+
 
 interface MessagingContextProps {
   messages: Message[];
@@ -45,7 +48,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
   const {project, projectConversations, fetchProject} = useProject();
-  const { generateProjectPlanForProjectId, sections } = useDraftMarkdown();
+  const { createProjectPlan, sections } = useDraftMarkdown();
   const { createPlanFromMarkdown: createMermaidPlan} = useDraftPlanMermaidContext();
 
   // Load conversation messages when conversation ID changes
@@ -79,6 +82,127 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
     setIsChatVisible(prev => !prev);
   };
   
+  const projectConsultantChat = async (messageHistory: Message[], projectReady: boolean, projectReadyReason: string, percentageComplete: number, projectReadyRecommendations: string[], aiMessage: Message, projectId?: string, conversationId?: string) => {
+    try {
+      const msg = JSON.stringify({
+        messageHistory, 
+        projectReady,
+        projectReadyReason,
+        percentageComplete,
+        projectReadyRecommendations
+      });
+      setCurrentStreamingContent('');
+      const response = await fetch('/api/project-consultant-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: msg,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      // Process as SSE (Server-Sent Events)
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Response body is null');
+
+      try {
+        // Use the new streaming API
+        const { mainStream, codeBlockStreams } = await stream(reader, projectId ? ["projectplan", "ProjectPlan"] : []);
+        
+        // Process the main content stream
+        const mainReader = mainStream.getReader();
+        let accumulatedMainContent = '';
+        
+        // Check if we have a ProjectPlan stream and set up a reader for it if it exists
+        const projectPlanStream = codeBlockStreams["projectplan"] || codeBlockStreams["ProjectPlan"];
+        let newSections: null | Promise<SectionData[]> = null;
+        if (projectPlanStream && projectId) {
+          newSections = createProjectPlan(projectPlanStream, projectId, aiMessage.id);
+        }
+            
+        // Process the main stream
+        while (true) {
+          const { done, value } = await mainReader.read();
+          if (done) break;
+          // Update accumulated content
+          accumulatedMainContent += value;
+          // Update the UI with the latest content
+          setCurrentStreamingContent(accumulatedMainContent);
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === aiMessage.id 
+                ? { ...msg, content: accumulatedMainContent } 
+                : msg
+            )
+          );
+          // the first time we see [[ProjectPlan]] we should create a new project plan
+          //make sure to only do this once
+          if (accumulatedMainContent.includes('[[CREATE_PROJECT_GANTT]]') && newSections) {
+            await createMermaidPlan((await newSections).map(section => section.content).join('\n'));
+          }
+
+        }
+        setCurrentStreamingContent('');
+        
+        // Mark message as complete
+        setCurrentStreamingMessageId(null);
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === aiMessage.id 
+              ? { ...msg, content: accumulatedMainContent, status: 'sent', isTyping: false } 
+              : msg
+          )
+        );
+
+        
+        // Add the AI's response to the conversation if we have a conversation ID
+        if (conversationId) {
+          try {
+            await projectService.addMessagesToConversation(
+              conversationId,
+              [{
+                content: accumulatedMainContent,
+                role: 'assistant',
+                timestamp: new Date(),
+                id: uuidv4(),
+              }
+              ]
+            );
+          } catch (error) {
+            console.error('Error adding AI response to conversation:', error);
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error processing streams:', error);
+        // Mark message as error
+        setCurrentStreamingMessageId(null);
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === aiMessage.id 
+              ? { ...msg, content: 'Error: Failed to get response.', status: 'error', isTyping: false } 
+              : msg
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error in projectConsultantChat:', error);
+      // Mark message as error
+      setCurrentStreamingMessageId(null);
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === aiMessage.id 
+            ? { ...msg, content: 'Error: Failed to get response.', status: 'error', isTyping: false } 
+            : msg
+        )
+      );
+    }
+  };
+
+
   // Load messages for a specific conversation
   const loadConversationMessages = async (conversationId: string) => {
     try {
@@ -182,6 +306,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         role: msg.role
       }))
     });
+
     if(sections.length === 0){
     // Judge project readiness
     const judgeProjectDraftReadiness = async () => {
@@ -202,7 +327,14 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         if (result.error) {
           throw new Error(result.error);
         }
-        return result;
+        return {
+          projectReady: result.projectReady,
+          projectReadyReason: result.projectReadyReason,
+          percentageComplete: result.percentageComplete,
+          projectReadyRecommendations: result.projectReadyRecommendations,
+          projectNameSuggestion: result.projectNameSuggestion,
+          conversationNameSuggestion: result.conversationNameSuggestion
+        };
       } catch (error) {
         console.error('Error judging project draft readiness:', error);
         return { error: error instanceof Error ? error.message : 'An unknown error occurred' };
@@ -224,7 +356,15 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
 
     setProjectReadyRecommendations(result.projectReadyRecommendations || []);
     // setMessages(prev => [...prev, aiMessage]);
-    const { projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, projectNameSuggestion, conversationNameSuggestion } = result;
+    // Since we've checked for the error case above, we can safely assert the type now
+    const { projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, projectNameSuggestion, conversationNameSuggestion } = result as {
+      projectReady: boolean; 
+      projectReadyReason: string; 
+      percentageComplete: number; 
+      projectReadyRecommendations: string[]; 
+      projectNameSuggestion: string; 
+      conversationNameSuggestion: string;
+    };
 
     if (projectReady && wasntReady) {
       // If this is the first message, create a new project and conversation
@@ -238,156 +378,41 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         );
         
         if (result) {
-          console.log('Created new project and conversation:', result);
-          await fetchProject(result.projectId);
-          setCurrentProjectId(result.projectId);
-          setCurrentConversationId(result.conversationId);
+        //   console.log('Created new project and conversation:', result);
+          // await fetchProject(result.projectId);
+          // setCurrentProjectId(result.projectId);
+          // setCurrentConversationId(result.conversationId);
           
           // Generate project plan using the specific project ID directly
           // This avoids React state dependency issues
           console.log('Project is ready!');
           setIsCanvasVisible(true);
           
-          const chatMessages = [...messages, userMessage].map(msg => ({
-            content: msg.content??'',
-            role: msg.role
-          }));
-          
+          msg = JSON.stringify({
+            messageHistory: [...messages, userMessage].map(msg => ({
+              content: msg.content,
+              role: msg.role,
+            })),
+            projectReady,
+            projectReadyReason,
+            percentageComplete,
+            projectReadyRecommendations
+          });
+          await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage, result.projectId, result.conversationId);
+          // await fetchProject(result.projectId);
           // Use the project ID directly instead of relying on React state
-          const newSections = await generateProjectPlanForProjectId(chatMessages, result.projectId);
-          await createMermaidPlan(newSections.map(section => section.content).join('\n'));
-
+          // const newSections = await generateProjectPlanForProjectId(chatMessages, result.projectId);
         } else {
           console.error('Failed to create project and conversation');
         }
       } catch (error) {
         console.error('Error creating project and conversation:', error);
-      } 
-    }
-    msg = JSON.stringify({
-      messageHistory: [...messages, userMessage].map(msg => ({
-        content: msg.content,
-        role: msg.role,
-        projectReady,
-        projectReadyReason,
-        percentageComplete,
-        projectReadyRecommendations
-      }))
-    });
-  }
-
-    const projectConsultantChat = async () => {
-      try {
-        setCurrentStreamingContent('');
-        const response = await fetch('/api/project-consultant-chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: msg,
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        // Process as SSE (Server-Sent Events)
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('Response body is null');
-
-        let accumulatedContent = '';
-        const decoder = new TextDecoder();
-        let buffer = '';
-        
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          // Decode the chunk
-          const chunk = decoder.decode(value, { stream: true });
-          buffer += chunk;
-          
-          // Process each line in the buffer
-          const lines = buffer.split('\n');
-          // Keep the last line (which might be incomplete) in the buffer
-          buffer = lines.pop() || '';
-          
-          for (const line of lines) {
-            // Skip empty lines
-            if (!line.trim()) continue;
-            
-            // Handle SSE format: "data: {"chunk":"text"}"
-            if (line.startsWith('data:')) {
-              try {
-                const jsonStr = line.substring(5).trim();
-                const data = JSON.parse(jsonStr);
-                
-                if (data.chunk) {
-                  accumulatedContent += data.chunk;
-                  
-                  // Update streaming content
-                  setCurrentStreamingContent(accumulatedContent);
-                  
-                  // Update the actual message
-                  setMessages(prev => 
-                    prev.map(msg => 
-                      msg.id === aiMessage.id 
-                        ? { ...msg, content: accumulatedContent } 
-                        : msg
-                    )
-                  );
-                }
-              } catch (e) {
-                console.error('Error parsing SSE data:', e, 'Line:', line);
-              }
-            }
-          }
-        }
-        
-        // Add the AI's response to the conversation if we have a conversation ID
-        if (currentConversationId) {
-          try {
-            await projectService.addMessagesToConversation(
-              currentConversationId,
-              [{
-                content: accumulatedContent,
-                role: 'assistant',
-                timestamp: new Date(),
-                id: uuidv4(),
-              }]
-            );
-          } catch (error) {
-            console.error('Error adding AI response to conversation:', error);
-          }
-        }
-        setCurrentStreamingContent('');
-
-        // Mark message as complete
-        setCurrentStreamingMessageId(null);
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === aiMessage.id 
-              ? { ...msg, content: accumulatedContent, status: 'sent', isTyping: false } 
-              : msg
-          )
-        );
-      } catch (error) {
-        console.error('Error in projectConsultantChat:', error);
-        // Mark message as error
-        setCurrentStreamingMessageId(null);
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === aiMessage.id 
-              ? { ...msg, content: 'Error: Failed to get response.', status: 'error', isTyping: false } 
-              : msg
-          )
-        );
       }
-    };
-
-    projectConsultantChat();
-  };
-
+    } else {
+      await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage);
+    }
+  } 
+};
 
   const reset = () => {
     setMessages([]);

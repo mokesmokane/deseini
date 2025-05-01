@@ -39,10 +39,8 @@ export function calculateSectionResize(
   ) => void
 ): { updates: ResizeSectionUpdate[]; downstreamUpdates: { id: string; newStartDate: Date }[] } {
   if (!tasks || tasks.length === 0) return { updates: [], downstreamUpdates: [] };
-  console.log('MOKES ratio', ratio);
   // compute original duration spanning tasks (accounting for durations and milestones)
   for (const task of tasks) {
-    console.log('MOKES task', task);
   }
   const ms = 1000 * 60 * 60 * 24;
   const minStartTime = Math.min(...tasks.map(t => new Date(t.startDate).getTime()));
@@ -78,9 +76,6 @@ export function calculateSectionResize(
   }));
   const downstream: { id: string; newStartDate: Date }[] = [];
   initial.forEach(item => processDownstream(item.id, item.end, anchorDate, 10, downstream));
-  for (const update of updates) {
-    console.log('MOKES update', update);
-  }
   return { updates, downstreamUpdates: downstream };
 }
 
@@ -99,7 +94,6 @@ const SectionNode: React.FC<SectionNodeProps> = ({ id, data }) => {
   }, [data.duration, TIMELINE_PIXELS_PER_DAY]);
 
     const onResizeEnd = useCallback(( _evt: ResizeDragEvent, _params: ResizeParams, ratio: number, data: SectionNodeData) => {      
-      console.log('MOKES onResizeEndSection', sections);
       const sec = sections.find(s => s.name === data.label);
       if (!sec) return;
       // Delegate to pure calculation
