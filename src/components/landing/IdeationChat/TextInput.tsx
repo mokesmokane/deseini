@@ -42,7 +42,7 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
   const cancelledRef = useRef(false);
   const { addMessage,   percentageComplete } = useMessaging();
   const randomisedorder = sampleIdeasx.sort(() => Math.random() - 0.5);
-  const [sampleIdeas, setSampleIdeas] = useState(["What would you build if you had the world's best Designers at your fingertips???",
+  const [sampleIdeas] = useState(["What would you build if you had the world's best Designers at your fingertips???",
     ...randomisedorder]);
     
   // Predefined debug messages

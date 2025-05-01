@@ -1,6 +1,5 @@
-import React, { memo, useState } from 'react';
+import { memo, useState } from 'react';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
-import { StreamSummary } from '../../../utils/streamProcessor';
 import { createPortal } from 'react-dom';
 
 interface GenerateNodeData {

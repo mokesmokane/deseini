@@ -40,7 +40,6 @@ export class SimpleSectionProcessor {
     onUpdate: ProcessUpdateCallback
   ): Promise<SectionData[]> {
     let reading = true;
-    let prevSectionId: string | null = null;
     while (reading) {
       const { done, value } = await lineReader.read();
       

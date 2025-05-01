@@ -5,7 +5,7 @@ import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { useDraftMarkdown } from '../DraftMarkdownProvider';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 import styles from './ChatMessage.module.css';
-import { UpdateState, SectionUpdateState } from '../types';
+import { SectionUpdateState } from '../types';
 import Generate from './Generate';
 
 interface ChatMessageProps {
@@ -52,11 +52,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
         // Extract code block
         const afterOpen = part.substring(startIndex + openFence.length);
         const closeFencePos = afterOpen.indexOf('```');
-        let planContent = '';
         if (closeFencePos !== -1) {
-          planContent = afterOpen.substring(0, closeFencePos);
+          // Code block extraction logic here
         } else {
-          planContent = afterOpen;
+          // Handle case when closing fence is not found
         }
         // Render project plan block
         nodes.push(

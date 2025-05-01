@@ -47,7 +47,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
-  const {project, projectConversations, fetchProject} = useProject();
+  const {project, projectConversations} = useProject();
   const { createProjectPlan, sections } = useDraftMarkdown();
   const { createPlanFromMarkdown: createMermaidPlan} = useDraftPlanMermaidContext();
 
@@ -300,13 +300,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
     // Add AI message placeholder to state
     setMessages(prevMessages => [...prevMessages, aiMessage]);
     setCurrentStreamingMessageId(aiMessage.id);
-    let msg = JSON.stringify({
-      messageHistory: [...messages, userMessage].map(msg => ({
-        content: msg.content,
-        role: msg.role
-      }))
-    });
-
+    
     if(sections.length === 0){
     // Judge project readiness
     const judgeProjectDraftReadiness = async () => {
@@ -388,16 +382,6 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
           console.log('Project is ready!');
           setIsCanvasVisible(true);
           
-          msg = JSON.stringify({
-            messageHistory: [...messages, userMessage].map(msg => ({
-              content: msg.content,
-              role: msg.role,
-            })),
-            projectReady,
-            projectReadyReason,
-            percentageComplete,
-            projectReadyRecommendations
-          });
           await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage, result.projectId, result.conversationId);
           // await fetchProject(result.projectId);
           // Use the project ID directly instead of relying on React state

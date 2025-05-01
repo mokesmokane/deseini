@@ -13,6 +13,8 @@ export interface StreamState {
   allSections: Set<string>;
   lastHeader: string | null;
   streamSummary: StreamSummary;
+  // buffer forward dependency lines
+  pendingLines?: Record<string, Array<{ line: string; section: string | null }>>;
 }
 
 /**
@@ -86,7 +88,9 @@ export const processStreamData = (
       drawing: streamState.streamSummary.drawing ? { ...streamState.streamSummary.drawing } : undefined,
       mermaidMarkdown: streamState.streamSummary.mermaidMarkdown || '',
       allText: streamState.streamSummary.allText || ''
-    } : initialStreamSummary
+    } : initialStreamSummary,
+    // clone pending dependency buffers
+    pendingLines: { ...(streamState.pendingLines || {}) },
   };
   
   let updatedTimeline: Timeline | undefined = currentTimeline;
@@ -195,7 +199,22 @@ export const processStreamData = (
       if (!updatedStreamState.completeLines.includes(line)) {
         updatedStreamState.completeLines.push(line);
         if (inMermaid) mermaidLines.push(line);
-        const parseResult = parseMermaidLine(line, updatedStreamState.currentSection, updatedTaskDictionary);
+        let parseResult;
+        try {
+          parseResult = parseMermaidLine(line, updatedStreamState.currentSection, updatedTaskDictionary);
+        } catch (err: any) {
+          const msg = err.message || '';
+          const m = msg.match(/Dependency task (.+) not found/);
+          if (m) {
+            const depId = m[1];
+            const entry = { line, section: updatedStreamState.currentSection };
+            if (!updatedStreamState.pendingLines) updatedStreamState.pendingLines = {};
+            if (!updatedStreamState.pendingLines[depId]) updatedStreamState.pendingLines[depId] = [];
+            updatedStreamState.pendingLines[depId].push(entry);
+            continue;
+          }
+          throw err;
+        }
         
         // If it's a section, update the current section
         if (parseResult.type === 'section') {
@@ -285,6 +304,118 @@ export const processStreamData = (
               timestamp: Date.now()
             });
             updatedTimeline = timeline;
+          }
+          
+          const thisId = task.id;
+          updatedTaskDictionary[thisId] = payload.task;
+          if (updatedStreamState.pendingLines && updatedStreamState.pendingLines[thisId]) {
+            for (const { line: pendingLine, section } of updatedStreamState.pendingLines[thisId]) {
+              // restore section context
+              updatedStreamState.currentSection = section;
+              // re-run parsing logic on this line
+              const reParse = parseMermaidLine(pendingLine, section, updatedTaskDictionary);
+              // handle section/task/milestone as usual (duplicate core block) – e.g., push ADD_TASK/ACTION, update timeline
+              // (could extract into a helper to DRY)
+              if (reParse.type === 'section') {
+                const sectionName = reParse.payload.name;
+                updatedStreamState.currentSection = sectionName;
+                
+                // If we haven't seen this section before, add it to our sections state
+                if (!updatedStreamState.allSections.has(sectionName)) {
+                  updatedStreamState.allSections.add(sectionName);
+                  
+                  updatedActionBuffer.push({
+                    type: 'ADD_SECTION',
+                    payload: { name: sectionName },
+                    timestamp: Date.now()
+                  });
+                }
+              } 
+              // Add a task or milestone action
+              else if (reParse.type === 'task' || reParse.type === 'milestone') {
+                const actionType: ActionType = reParse.type === 'task' ? 'ADD_TASK' : 'ADD_MILESTONE';
+                
+                // Update task/milestone counts for drawing summary
+                if (reParse.type === 'task') {
+                  totalTasks++;
+                } else {
+                  totalMilestones++;
+                }
+                
+                // Ensure drawing object exists
+                if (!updatedStreamState.streamSummary.drawing) {
+                  updatedStreamState.streamSummary.drawing = {
+                    duration: 0,
+                    totalTasks: 0,
+                    totalMilestones: 0
+                  };
+                }
+                
+                updatedStreamState.streamSummary.drawing.totalTasks = totalTasks;
+                updatedStreamState.streamSummary.drawing.totalMilestones = totalMilestones;
+                
+                // Try to resolve dependencies if this task has them
+                const payload = { ...reParse.payload };
+                const task = reParse.type === 'task' ? payload.task : payload.milestone;
+                
+                if (task.dependencies?.length > 0) {
+                  // Calculate dates based on dependency end dates
+                  const updatedTask = calculateDatesFromDependencies(task, updatedTaskDictionary);
+                  
+                  // Update the payload with the calculated dates
+                  if (reParse.type === 'task') {
+                    payload.task = updatedTask;
+                  } else {
+                    payload.milestone = updatedTask;
+                  }
+                }
+                
+                // Determine start and end dates for timeline update, handling tasks and milestones
+                const dateStart = task.startDate;
+                const dateEnd = task.endDate ?? task.startDate;
+                if (!currentTimeline || dateStart < currentTimeline.startDate || dateEnd > currentTimeline.endDate) {
+                  let timeline;
+                  if (!currentTimeline) {
+                    timeline = { startDate: dateStart, endDate: dateEnd };
+                  } else {
+                    timeline = {
+                      startDate: new Date(Math.min(currentTimeline.startDate.getTime(), dateStart.getTime())),
+                      endDate: new Date(Math.max(currentTimeline.endDate.getTime(), dateEnd.getTime()))
+                    };
+                  }
+                  
+                  // Update duration in the drawing summary when timeline changes
+                  const durationMs = timeline.endDate.getTime() - timeline.startDate.getTime();
+                  const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
+                  
+                  // Ensure drawing object exists before updating it
+                  if (!updatedStreamState.streamSummary.drawing) {
+                    updatedStreamState.streamSummary.drawing = { duration: 0, totalTasks: 0, totalMilestones: 0 };
+                  }
+                  
+                  updatedStreamState.streamSummary.drawing.duration = durationDays;
+                  updatedStreamState.streamSummary.drawing.startDate = timeline.startDate;
+                  updatedStreamState.streamSummary.drawing.endDate = timeline.endDate;
+                  
+                  updatedActionBuffer.push({
+                    type: 'UPDATE_TIMELINE',
+                    payload: { timeline },
+                    timestamp: Date.now()
+                  });
+                  updatedTimeline = timeline;
+                }
+                
+                updatedActionBuffer.push({
+                  type: actionType, 
+                  payload, 
+                  timestamp: Date.now()
+                });
+                
+                // Add the task to our dictionary for future dependency resolution
+                updatedTaskDictionary[task.id] = payload.task;
+              }
+            }
+            delete updatedStreamState.pendingLines[thisId];
           }
           
           updatedActionBuffer.push({

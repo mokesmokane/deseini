@@ -40,8 +40,7 @@ export function calculateSectionResize(
 ): { updates: ResizeSectionUpdate[]; downstreamUpdates: { id: string; newStartDate: Date }[] } {
   if (!tasks || tasks.length === 0) return { updates: [], downstreamUpdates: [] };
   // compute original duration spanning tasks (accounting for durations and milestones)
-  for (const task of tasks) {
-  }
+
   const ms = 1000 * 60 * 60 * 24;
   const minStartTime = Math.min(...tasks.map(t => new Date(t.startDate).getTime()));
   const maxEndTime = Math.max(...tasks.map(t => {

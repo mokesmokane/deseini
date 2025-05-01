@@ -1,5 +1,5 @@
 export const ganttString = `
-Gantt chunk: mer
+Gantt chunk: \`\`\`mer
 Gantt chunk: maid
 Gantt chunk: 
 
@@ -567,5 +567,4 @@ Gantt chunk: 10
 Gantt chunk: d
 Gantt chunk: 
 
-Gantt chunk: `
-
+Gantt chunk: \`\`\``
