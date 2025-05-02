@@ -1,4 +1,5 @@
 import { SimpleSectionProcessor } from './SimpleSectionProcessor';
+import { beforeEach, describe, expect, test } from 'vitest';
 
 const MNARKDOWN_TO_TEST = `# Timescales
 - Project duration: 6 months

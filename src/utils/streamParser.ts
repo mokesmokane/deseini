@@ -8,8 +8,9 @@ export interface ProcessStreamResult {
 /**
  * Parses SSE text for all 'data:' entries and concatenates their chunk values.
  */
-export function parseRawSSE(value: string): string {
+export function parseRawSSE(value: string, jsonParam: string = 'chunk'): string {
   const prefix = 'data: ';
+  console.log('[Parse raw SSE] value:', value);
   const occurrences = (value.match(/data: /g) || []).length;
   if (occurrences === 0) return value;
   // Single-event: use full JSON (may include embedded newlines)
@@ -18,15 +19,19 @@ export function parseRawSSE(value: string): string {
     const dataContent = value.substring(start);
     try {
       const obj = JSON.parse(dataContent);
-      if (typeof obj.chunk === 'string') return obj.chunk;
+      if (typeof obj[jsonParam] === 'string'){
+        console.log('[Parse raw SSE] obj.' + jsonParam + ':', obj[jsonParam]);
+        return obj[jsonParam];
+      }
     } catch {
       // fallback to manual extraction
-      const cp = '"chunk":"';
+      const cp = '"' + jsonParam + '":"';
       const idx = dataContent.indexOf(cp);
       let rest = idx >= 0 ? dataContent.substring(idx + cp.length) : dataContent;
       // strip trailing quotes/braces
       if (rest.endsWith('"}')) rest = rest.slice(0, -2);
       else if (rest.endsWith('"')) rest = rest.slice(0, -1);
+      console.log('[Parse raw SSE] rest:', rest);
       return rest;
     }
     return '';
@@ -40,13 +45,14 @@ export function parseRawSSE(value: string): string {
     const dataContent = trimmed.substring(prefix.length);
     try {
       const obj = JSON.parse(dataContent);
-      if (typeof obj.chunk === 'string') {
-        output += obj.chunk;
+      
+      if (typeof obj[jsonParam] === 'string') {
+        output += obj[jsonParam];
         continue;
       }
     } catch {
       // fallback
-      const cp = '"chunk":"';
+      const cp = '"' + jsonParam + '":"';
       const idx = dataContent.indexOf(cp);
       let rest = idx >= 0 ? dataContent.substring(idx + cp.length) : dataContent;
       if (rest.endsWith('"}')) rest = rest.slice(0, -2);

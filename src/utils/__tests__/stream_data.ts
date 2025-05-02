@@ -247,21 +247,6 @@ Gantt chunk:  t
 Gantt chunk: 13
 Gantt chunk: 
 
-
-Gantt chunk:    
-Gantt chunk:  %%
-Gantt chunk:  MONTH
-Gantt chunk:  
-Gantt chunk: 3
-Gantt chunk: :
-Gantt chunk:  Prototype
-Gantt chunk:  Refin
-Gantt chunk: ement
-Gantt chunk:  &
-Gantt chunk:  Extended
-Gantt chunk:  Testing
-Gantt chunk: 
-
 Gantt chunk:      
 Gantt chunk:  Conduct
 Gantt chunk:  extended
@@ -568,3 +553,423 @@ Gantt chunk: d
 Gantt chunk: 
 
 Gantt chunk: \`\`\``
+
+export const ganttString2 = `Gantt chunk: \`\`\`
+Gantt chunk: mer
+Gantt chunk: maid
+Gantt chunk: 
+
+Gantt chunk: g
+Gantt chunk: antt
+Gantt chunk: 
+
+Gantt chunk:    
+Gantt chunk:  title
+Gantt chunk:  Rain
+Gantt chunk: water
+Gantt chunk:  Harvest
+Gantt chunk: ing
+Gantt chunk:  in
+Gantt chunk:  Public
+Gantt chunk:  Spaces
+Gantt chunk:  –
+Gantt chunk:  Project
+Gantt chunk:  Timeline
+Gantt chunk: 
+
+Gantt chunk:    
+Gantt chunk:  date
+Gantt chunk: Format
+Gantt chunk:  
+Gantt chunk:  YYYY
+Gantt chunk: -MM
+Gantt chunk: -DD
+Gantt chunk: 
+
+Gantt chunk:    
+Gantt chunk:  section
+Gantt chunk:  Site
+Gantt chunk:  Analysis
+Gantt chunk:  &
+Gantt chunk:  Fe
+Gantt chunk: as
+Gantt chunk: ibility
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Identify
+Gantt chunk:  and
+Gantt chunk:  survey
+Gantt chunk:  potential
+Gantt chunk:  sites
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 1
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 202
+Gantt chunk: 5
+Gantt chunk: -
+Gantt chunk: 06
+Gantt chunk: -
+Gantt chunk: 01
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 10
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Assess
+Gantt chunk:  rainfall
+Gantt chunk: ,
+Gantt chunk:  runoff
+Gantt chunk: ,
+Gantt chunk:  infrastructure
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 2
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 1
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 10
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Prepare
+Gantt chunk:  feasibility
+Gantt chunk:  report
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 3
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 2
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 10
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Site
+Gantt chunk:  Analysis
+Gantt chunk:  &
+Gantt chunk:  Fe
+Gantt chunk: as
+Gantt chunk: ibility
+Gantt chunk:  Complete
+Gantt chunk: :
+Gantt chunk:  milestone
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 3
+Gantt chunk: 
+
+
+Gantt chunk:    
+Gantt chunk:  section
+Gantt chunk:  System
+Gantt chunk:  Design
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Develop
+Gantt chunk:  system
+Gantt chunk:  sche
+Gantt chunk: matics
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 4
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  m
+Gantt chunk: 1
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 15
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Integr
+Gantt chunk: ate
+Gantt chunk:  with
+Gantt chunk:  landscape
+Gantt chunk: /
+Gantt chunk: urban
+Gantt chunk:  design
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 5
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 4
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 10
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Prepare
+Gantt chunk:  design
+Gantt chunk:  drawings
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 6
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 5
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 10
+Gantt chunk: d
+Gantt chunk: 
+
+
+Gantt chunk:    
+Gantt chunk:  section
+Gantt chunk:  Integration
+Gantt chunk:  Planning
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Coordinate
+Gantt chunk:  with
+Gantt chunk:  municipal
+Gantt chunk:  authorities
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 7
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 4
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 10
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Plan
+Gantt chunk:  system
+Gantt chunk:  tie
+Gantt chunk: -in
+Gantt chunk:  with
+Gantt chunk:  infrastructure
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 8
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 7
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 10
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  System
+Gantt chunk:  Design
+Gantt chunk:  &
+Gantt chunk:  Integration
+Gantt chunk:  Plan
+Gantt chunk:  Final
+Gantt chunk: ized
+Gantt chunk: :
+Gantt chunk:  milestone
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 8
+Gantt chunk: 
+
+
+Gantt chunk:    
+Gantt chunk:  section
+Gantt chunk:  Cost
+Gantt chunk: ing
+Gantt chunk:  &
+Gantt chunk:  Scheduling
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Develop
+Gantt chunk:  detailed
+Gantt chunk:  cost
+Gantt chunk:  estimate
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 9
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 6
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 7
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Prepare
+Gantt chunk:  implementation
+Gantt chunk:  timeline
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 10
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 9
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 7
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Cost
+Gantt chunk:  Estimate
+Gantt chunk:  &
+Gantt chunk:  Timeline
+Gantt chunk:  Approved
+Gantt chunk: :
+Gantt chunk:  milestone
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 10
+Gantt chunk: 
+
+
+Gantt chunk:    
+Gantt chunk:  section
+Gantt chunk:  Public
+Gantt chunk:  Education
+Gantt chunk:  &
+Gantt chunk:  Outreach
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Create
+Gantt chunk:  educational
+Gantt chunk:  materials
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 11
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 10
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 14
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Plan
+Gantt chunk:  and
+Gantt chunk:  execute
+Gantt chunk:  awareness
+Gantt chunk:  campaign
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 12
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 11
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 14
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Public
+Gantt chunk:  Education
+Gantt chunk:  Materials
+Gantt chunk:  Ready
+Gantt chunk: :
+Gantt chunk:  milestone
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 12
+Gantt chunk: 
+
+
+Gantt chunk:    
+Gantt chunk:  section
+Gantt chunk:  Monitoring
+Gantt chunk:  &
+Gantt chunk:  Maintenance
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Design
+Gantt chunk:  monitoring
+Gantt chunk:  protocols
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 13
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 12
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 7
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  Develop
+Gantt chunk:  maintenance
+Gantt chunk:  schedule
+Gantt chunk: :
+Gantt chunk:  t
+Gantt chunk: 14
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 13
+Gantt chunk: ,
+Gantt chunk:  
+Gantt chunk: 7
+Gantt chunk: d
+Gantt chunk: 
+
+Gantt chunk:        
+Gantt chunk:  System
+Gantt chunk:  Installation
+Gantt chunk:  Complete
+Gantt chunk:  &
+Gantt chunk:  Monitoring
+Gantt chunk:  in
+Gantt chunk:  Place
+Gantt chunk: :
+Gantt chunk:  milestone
+Gantt chunk: ,
+Gantt chunk:  after
+Gantt chunk:  t
+Gantt chunk: 14
+Gantt chunk: 
+
+Gantt chunk: \`\`\`
+Gantt chunk: `
+

@@ -13,7 +13,6 @@ import { useDraftPlanMermaidContext} from '../../contexts/DraftPlan/DraftPlanCon
 import TaskNode from './TaskNode';
 import MilestoneNode from './MilestoneNode';
 import TimelineNode from './TimelineNode';
-import GenerateNode from './GenerateNode';
 import { MermaidTaskData } from '@/types';
 import SectionNode , { SectionNodeData } from './SectionNode';
 
@@ -160,7 +159,6 @@ function DraftPlanMermaid() {
           task: (props: NodeProps<MermaidTaskData>) => <TaskNode {...props} onResizeEnd={onResizeEnd} />,
           milestone: (props: NodeProps<any>) => <MilestoneNode {...props} />,
           timeline: (props: NodeProps<any>) => <TimelineNode {...props} />,
-          generate: GenerateNode,
         }), [])}
         onInit={setReactFlowInstance}
         fitView

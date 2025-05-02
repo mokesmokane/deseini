@@ -4,6 +4,7 @@ import ChartView from './views/ChartView';
 import LandingPage from './components/landing/LandingPage';
 import CanvasView from './views/CanvasView';
 import ProtectedRoute from './components/ProtectedRoute';
+import MermaidNotepad from './components/landing/MermaidNotepad/MermaidNotepad';
 
 const router = createBrowserRouter([
   {
@@ -33,6 +34,10 @@ const router = createBrowserRouter([
       {
         path: 'projects-new/:projectId',
         element: <ProtectedRoute><LandingPage /></ProtectedRoute>
+      },
+      {
+        path: 'mermaid-notepad',
+        element: <ProtectedRoute><MermaidNotepad /></ProtectedRoute>
       }
     ]
   }

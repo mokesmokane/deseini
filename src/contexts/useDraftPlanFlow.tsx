@@ -27,7 +27,6 @@ function useDraftPlanFlowInternal() {
   const [visibleTasks, setVisibleTasks] = useState<string[]>([]);
   const [tasksWithDates, setTasksWithDates] = useState<string[]>([]);
   const [tasksWithDurations, setTasksWithDurations] = useState<string[]>([]);
-  const [storedGenerateNode, setGenerateNode] = useState<Node | null>(null);
   const [visibleSectionBars, setVisibleSectionBars] = useState<string[]>([]);
   const [changedNodeIds, setChangedNodeIds] = useState<string[]>([]);
   const [prevSections, setPrevSections] = useState<Section[]>([]);
@@ -84,19 +83,19 @@ function useDraftPlanFlowInternal() {
 
 
   const nodesMemo = useMemo(() => {
-      const generateNode: Node = storedGenerateNode || {
-        id: 'generate_chart',
-        type: 'generate',
-        data: { 
-          label: 'Chart Generator',
-          isVisible: true,
-        },
-        position: { x: 50, y: -250 }, // Position it in a visible area when there's no content
-        style: { 
-          zIndex: 10,
-        },
-        draggable: true, // Make only this node draggable
-      };
+      // const generateNode: Node = storedGenerateNode || {
+      //   id: 'generate_chart',
+      //   type: 'generate',
+      //   data: { 
+      //     label: 'Chart Generator',
+      //     isVisible: true,
+      //   },
+      //   position: { x: 50, y: -250 }, // Position it in a visible area when there's no content
+      //   style: { 
+      //     zIndex: 10,
+      //   },
+      //   draggable: true, // Make only this node draggable
+      // };
       
       const timelineNode: Node | null = timeline ? {
         id: 'timeline',
@@ -116,7 +115,7 @@ function useDraftPlanFlowInternal() {
         draggable: false, // Prevent dragging
       } : null;
   
-      const allNodes: Node[] = timelineNode ? [timelineNode, generateNode] : [generateNode];
+      const allNodes: Node[] = timelineNode ? [timelineNode] : [];
       let yPosition = 70; // Starting Y position after the timeline
   
       // Process each section and its tasks
@@ -703,10 +702,6 @@ function useDraftPlanFlowInternal() {
   const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const onNodeDrag: NodeDragHandler = useCallback((_event, node) => {
       console.log('onNodeDrag', node);
-      if(node.type === 'generate') {
-        setGenerateNode(node);
-        return;
-      }
       if (node.type === 'section') {
         // Handle dragging of section: adjust its position and its child tasks visually
         setDraggingNodeId(node.id);

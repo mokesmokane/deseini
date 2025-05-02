@@ -28,12 +28,14 @@ export interface Thought {
 /**
  * Interface for tracking sketch data
  */
-export interface Sketch {
+export interface SketchSummary {
   duration: number; // Duration in days
   totalTasks: number;
   totalMilestones: number;
   startDate?: Date;
   endDate?: Date;
+  _minStart?: Date;
+  _maxEnd?: Date;
 }
 
 /**
@@ -41,21 +43,66 @@ export interface Sketch {
  */
 export interface StreamSummary {
   thinking: Thought[];
-  drawing?: Sketch;
+  sketchSummary?: SketchSummary;
   mermaidMarkdown?: string;
   allText?: string;
 }
 
 /**
- * Processes a chunk of streaming data
+ * Processes a chunk of main stream data
+ * @param content Chunk of content received from the stream
+ * @param streamState Current state of the stream processing
+ * @returns Updated state and effects
+ */
+export const processMainStreamData = (
+  content: string,
+  streamState: StreamState
+): {
+  updatedStreamState: StreamState;
+  newStreamSummary?: string;
+} => {
+  console.log('[Main stream] content:', content);
+  const updatedStreamState: StreamState = {
+    ...streamState,
+    streamSummary: {
+      ...streamState.streamSummary,
+      allText: (streamState.streamSummary.allText || '') + content
+    }
+  };
+  let newStreamSummary: string | undefined;
+  const lines = content.split('\n');
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (line.startsWith('#')) {
+      const headerText = line.replace(/^#+\s*/, '').trim();
+      if (headerText) {
+        updatedStreamState.lastHeader = headerText;
+        const newThought: Thought = {
+          summary: headerText,
+          thoughts: line
+        };
+        updatedStreamState.streamSummary = {
+          ...updatedStreamState.streamSummary,
+          thinking: [...(updatedStreamState.streamSummary.thinking || []), newThought]
+        };
+        newStreamSummary = headerText;
+      }
+    }
+  }
+  console.log('[Main stream] newStreamSummary:', newStreamSummary);
+  return { updatedStreamState, newStreamSummary };
+};
+
+/**
+ * Processes a chunk of mermaid stream data
  * @param content Chunk of content received from the stream
  * @param streamState Current state of the stream processing
  * @param actionBuffer Current action buffer
- * @param pendingTimelineUpdate Any pending timeline update
+ * @param currentTimeline Any pending timeline update
  * @param taskDictionary Optional dictionary of tasks by ID for dependency resolution
  * @returns Updated state and effects
  */
-export const processStreamData = (
+export const processMermaidStreamData = (
   content: string,
   streamState: StreamState,
   actionBuffer: BufferedAction[],
@@ -69,369 +116,121 @@ export const processStreamData = (
   newMermaidSyntax: string;
   newStreamSummary?: string;
 } => {
-  // Initialize streamSummary if it doesn't exist
-  const initialStreamSummary: StreamSummary = {
-    thinking: []
-    // drawing will be added when mermaid content is detected
-  };
-
-  // Create a new copy of the stream state for immutability
+  console.log('[Mermaid stream] content:', content);
+  // Merge new content
   const updatedStreamState: StreamState = {
-    mermaidData: streamState.mermaidData + content,
-    completeLines: [...streamState.completeLines],
-    inMermaidBlock: streamState.inMermaidBlock,
-    currentSection: streamState.currentSection,
-    allSections: new Set(streamState.allSections),
-    lastHeader: streamState.lastHeader,
-    streamSummary: streamState.streamSummary ? {
-      thinking: [...streamState.streamSummary.thinking],
-      drawing: streamState.streamSummary.drawing ? { ...streamState.streamSummary.drawing } : undefined,
-      mermaidMarkdown: streamState.streamSummary.mermaidMarkdown || '',
-      allText: streamState.streamSummary.allText || ''
-    } : initialStreamSummary,
-    // clone pending dependency buffers
-    pendingLines: { ...(streamState.pendingLines || {}) },
+    ...streamState,
+    mermaidData: streamState.mermaidData + content
   };
-  
-  let updatedTimeline: Timeline | undefined = currentTimeline;
+  // Ensure drawing summary exists
+  if (!updatedStreamState.streamSummary.sketchSummary) {
+    updatedStreamState.streamSummary.sketchSummary = { duration: 0, totalTasks: 0, totalMilestones: 0 };
+  }
+  // Retrieve or initialize min/max tracking on sketchSummary
+  const sketchSummary = updatedStreamState.streamSummary.sketchSummary;
+  // Use hidden properties to persist min/max dates across calls
+  // @ts-ignore
+  if (!sketchSummary._minStart) sketchSummary._minStart = undefined;
+  // @ts-ignore
+  if (!sketchSummary._maxEnd) sketchSummary._maxEnd = undefined;
+  let minStart: Date | undefined = sketchSummary._minStart;
+  let maxEnd: Date | undefined = sketchSummary._maxEnd;
+
+  // Append markdown and full text
+  updatedStreamState.streamSummary.mermaidMarkdown =
+    (updatedStreamState.streamSummary.mermaidMarkdown || '') + content;
+  updatedStreamState.streamSummary.allText =
+    (updatedStreamState.streamSummary.allText || '') + content;
+
   let updatedActionBuffer = [...actionBuffer];
-  const updatedTaskDictionary = taskDictionary;
+  let updatedTimeline = currentTimeline;
+  const updatedTaskDictionary: Record<string, Task> = { ...taskDictionary };
   let newStreamSummary: string | undefined;
 
-  // Look for complete lines that end with newline
-  const newLines = updatedStreamState.mermaidData.split('\n');
+  // Split buffered data into complete lines and keep last partial
+  const lines = updatedStreamState.mermaidData.split('\n');
+  const completeLines = lines.slice(0, -1);
+  updatedStreamState.mermaidData = lines[lines.length - 1];
 
-  // Counters for Sketch statistics
-  let totalTasks = updatedStreamState.streamSummary.drawing?.totalTasks || 0;
-  let totalMilestones = updatedStreamState.streamSummary.drawing?.totalMilestones || 0;
-
-  // --- Collect all streamed text ---
-  // Append new content to allText
-  updatedStreamState.streamSummary.allText = (updatedStreamState.streamSummary.allText || '') + content;
-
-  // If we have more than one line, all lines except the last one are complete
-  if (newLines.length > 1) {
-    let inMermaid = false;
-    let mermaidLines: string[] = [];
-    for (let i = 0; i < newLines.length - 1; i++) {
-      const line = newLines[i].trim();
-
-      // Look for markdown headers (starting with #) to track as summaries
-      if (line.startsWith('#')) {
-        const headerText = line.replace(/^#+\s*/, '').trim();
-        
-        if (headerText) {
-          updatedStreamState.lastHeader = headerText;
-          newStreamSummary = headerText;
-          
-          // Add thought to summary when we encounter a header
-          const newThought: Thought = {
-            summary: headerText,
-            thoughts: line
-          };
-          updatedStreamState.streamSummary.thinking.push(newThought);
-        }
+  // Process each complete line as mermaid syntax
+  for (const rawLine of completeLines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    console.log('[Mermaid stream] parsing line:', line);
+    let parseResult;
+    try {
+      parseResult = parseMermaidLine(line, updatedStreamState.currentSection, updatedTaskDictionary);
+    } catch (err: any) {
+      const match = err.message.match(/Dependency task (.+) not found/);
+      if (match) {
+        const depId = match[1];
+        updatedStreamState.pendingLines = updatedStreamState.pendingLines || {};
+        updatedStreamState.pendingLines[depId] = [
+          ...(updatedStreamState.pendingLines[depId] || []),
+          { line, section: updatedStreamState.currentSection }
+        ];
+        continue;
       }
-
-      // Track if we're inside a mermaid code block
-      if (line === '```mermaid') {
-        updatedStreamState.inMermaidBlock = true;
-        updatedStreamState.completeLines = [];
-        inMermaid = true;
-        mermaidLines = [];
-
-        // Reset sections when starting a new mermaid block
-        updatedActionBuffer = [];
-        updatedStreamState.currentSection = null;
-        
-        // Initialize/update drawing metrics when we start a mermaid block
-        updatedStreamState.streamSummary.drawing = {
-          duration: 0,
-          totalTasks: 0,
-          totalMilestones: 0
-        };
-        // Start live updating mermaidMarkdown as soon as block starts
-        updatedStreamState.streamSummary.mermaidMarkdown = '```mermaid\n';
-      } else if (line === 'gantt' && updatedStreamState.inMermaidBlock) {
-        // Detected the start of a gantt chart
-        updatedStreamState.completeLines.push(line);
-        newStreamSummary = 'Creating Gantt chart';
-        if (inMermaid) mermaidLines.push(line);
-        // Live update mermaidMarkdown
-        updatedStreamState.streamSummary.mermaidMarkdown =
-          (updatedStreamState.streamSummary.mermaidMarkdown || '```mermaid\n') + 'gantt\n';
-      } else if (line === '```' && updatedStreamState.inMermaidBlock) {
-        updatedStreamState.inMermaidBlock = false;
-        if (inMermaid) {
-          // End of mermaid block
-          inMermaid = false;
-          // Store the mermaid markdown block
-          updatedStreamState.streamSummary.mermaidMarkdown = '```mermaid\n' + mermaidLines.join('\n') + '\n```';
-        }
-        // We've finished processing the mermaid block
-        // Update summary to indicate completion of gantt chart
-        if (updatedStreamState.completeLines.includes('gantt')) {
-          newStreamSummary = 'Done creating Gantt chart';
-          
-          // Finalize drawing metrics with timeline information
-          if (updatedTimeline && updatedStreamState.streamSummary.drawing) {
-            const durationMs = updatedTimeline.endDate.getTime() - updatedTimeline.startDate.getTime();
-            const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
-            
-            updatedStreamState.streamSummary.drawing = {
-              duration: durationDays,
-              totalTasks,
-              totalMilestones,
-              startDate: updatedTimeline.startDate,
-              endDate: updatedTimeline.endDate
-            };
-          }
-        }
-      } else if (updatedStreamState.inMermaidBlock) {
-        // Collect all lines inside the mermaid block
-        mermaidLines.push(line);
-        // Live update mermaidMarkdown as lines are added
-        updatedStreamState.streamSummary.mermaidMarkdown =
-          (updatedStreamState.streamSummary.mermaidMarkdown || '```mermaid\n') + line + '\n';
-      }
-
-      // We're inside a mermaid block, parse the line
-      if (!updatedStreamState.completeLines.includes(line)) {
-        updatedStreamState.completeLines.push(line);
-        if (inMermaid) mermaidLines.push(line);
-        let parseResult;
-        try {
-          parseResult = parseMermaidLine(line, updatedStreamState.currentSection, updatedTaskDictionary);
-        } catch (err: any) {
-          const msg = err.message || '';
-          const m = msg.match(/Dependency task (.+) not found/);
-          if (m) {
-            const depId = m[1];
-            const entry = { line, section: updatedStreamState.currentSection };
-            if (!updatedStreamState.pendingLines) updatedStreamState.pendingLines = {};
-            if (!updatedStreamState.pendingLines[depId]) updatedStreamState.pendingLines[depId] = [];
-            updatedStreamState.pendingLines[depId].push(entry);
-            continue;
-          }
-          throw err;
-        }
-        
-        // If it's a section, update the current section
-        if (parseResult.type === 'section') {
-          const sectionName = parseResult.payload.name;
-          updatedStreamState.currentSection = sectionName;
-          
-          // If we haven't seen this section before, add it to our sections state
-          if (!updatedStreamState.allSections.has(sectionName)) {
-            updatedStreamState.allSections.add(sectionName);
-            
-            updatedActionBuffer.push({
-              type: 'ADD_SECTION',
-              payload: { name: sectionName },
-              timestamp: Date.now()
-            });
-          }
-        } 
-        // Add a task or milestone action
-        else if (parseResult.type === 'task' || parseResult.type === 'milestone') {
-          const actionType: ActionType = parseResult.type === 'task' ? 'ADD_TASK' : 'ADD_MILESTONE';
-          
-          // Update task/milestone counts for drawing summary
-          if (parseResult.type === 'task') {
-            totalTasks++;
-          } else {
-            totalMilestones++;
-          }
-          
-          // Ensure drawing object exists
-          if (!updatedStreamState.streamSummary.drawing) {
-            updatedStreamState.streamSummary.drawing = {
-              duration: 0,
-              totalTasks: 0,
-              totalMilestones: 0
-            };
-          }
-          
-          updatedStreamState.streamSummary.drawing.totalTasks = totalTasks;
-          updatedStreamState.streamSummary.drawing.totalMilestones = totalMilestones;
-          
-          // Try to resolve dependencies if this task has them
-          const payload = { ...parseResult.payload };
-          const task = parseResult.type === 'task' ? payload.task : payload.milestone;
-          
-          if (task.dependencies?.length > 0) {
-            // Calculate dates based on dependency end dates
-            const updatedTask = calculateDatesFromDependencies(task, updatedTaskDictionary);
-            
-            // Update the payload with the calculated dates
-            if (parseResult.type === 'task') {
-              payload.task = updatedTask;
-            } else {
-              payload.milestone = updatedTask;
-            }
-          }
-          
-          // Determine start and end dates for timeline update, handling tasks and milestones
-          const dateStart = task.startDate;
-          const dateEnd = task.endDate ?? task.startDate;
-          if (!currentTimeline || dateStart < currentTimeline.startDate || dateEnd > currentTimeline.endDate) {
-            let timeline;
-            if (!currentTimeline) {
-              timeline = { startDate: dateStart, endDate: dateEnd };
-            } else {
-              timeline = {
-                startDate: new Date(Math.min(currentTimeline.startDate.getTime(), dateStart.getTime())),
-                endDate: new Date(Math.max(currentTimeline.endDate.getTime(), dateEnd.getTime()))
-              };
-            }
-            
-            // Update duration in the drawing summary when timeline changes
-            const durationMs = timeline.endDate.getTime() - timeline.startDate.getTime();
-            const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
-            
-            // Ensure drawing object exists before updating it
-            if (!updatedStreamState.streamSummary.drawing) {
-              updatedStreamState.streamSummary.drawing = { duration: 0, totalTasks: 0, totalMilestones: 0 };
-            }
-            
-            updatedStreamState.streamSummary.drawing.duration = durationDays;
-            updatedStreamState.streamSummary.drawing.startDate = timeline.startDate;
-            updatedStreamState.streamSummary.drawing.endDate = timeline.endDate;
-            
-            updatedActionBuffer.push({
-              type: 'UPDATE_TIMELINE',
-              payload: { timeline },
-              timestamp: Date.now()
-            });
-            updatedTimeline = timeline;
-          }
-          
-          const thisId = task.id;
-          updatedTaskDictionary[thisId] = payload.task;
-          if (updatedStreamState.pendingLines && updatedStreamState.pendingLines[thisId]) {
-            for (const { line: pendingLine, section } of updatedStreamState.pendingLines[thisId]) {
-              // restore section context
-              updatedStreamState.currentSection = section;
-              // re-run parsing logic on this line
-              const reParse = parseMermaidLine(pendingLine, section, updatedTaskDictionary);
-              // handle section/task/milestone as usual (duplicate core block) – e.g., push ADD_TASK/ACTION, update timeline
-              // (could extract into a helper to DRY)
-              if (reParse.type === 'section') {
-                const sectionName = reParse.payload.name;
-                updatedStreamState.currentSection = sectionName;
-                
-                // If we haven't seen this section before, add it to our sections state
-                if (!updatedStreamState.allSections.has(sectionName)) {
-                  updatedStreamState.allSections.add(sectionName);
-                  
-                  updatedActionBuffer.push({
-                    type: 'ADD_SECTION',
-                    payload: { name: sectionName },
-                    timestamp: Date.now()
-                  });
-                }
-              } 
-              // Add a task or milestone action
-              else if (reParse.type === 'task' || reParse.type === 'milestone') {
-                const actionType: ActionType = reParse.type === 'task' ? 'ADD_TASK' : 'ADD_MILESTONE';
-                
-                // Update task/milestone counts for drawing summary
-                if (reParse.type === 'task') {
-                  totalTasks++;
-                } else {
-                  totalMilestones++;
-                }
-                
-                // Ensure drawing object exists
-                if (!updatedStreamState.streamSummary.drawing) {
-                  updatedStreamState.streamSummary.drawing = {
-                    duration: 0,
-                    totalTasks: 0,
-                    totalMilestones: 0
-                  };
-                }
-                
-                updatedStreamState.streamSummary.drawing.totalTasks = totalTasks;
-                updatedStreamState.streamSummary.drawing.totalMilestones = totalMilestones;
-                
-                // Try to resolve dependencies if this task has them
-                const payload = { ...reParse.payload };
-                const task = reParse.type === 'task' ? payload.task : payload.milestone;
-                
-                if (task.dependencies?.length > 0) {
-                  // Calculate dates based on dependency end dates
-                  const updatedTask = calculateDatesFromDependencies(task, updatedTaskDictionary);
-                  
-                  // Update the payload with the calculated dates
-                  if (reParse.type === 'task') {
-                    payload.task = updatedTask;
-                  } else {
-                    payload.milestone = updatedTask;
-                  }
-                }
-                
-                // Determine start and end dates for timeline update, handling tasks and milestones
-                const dateStart = task.startDate;
-                const dateEnd = task.endDate ?? task.startDate;
-                if (!currentTimeline || dateStart < currentTimeline.startDate || dateEnd > currentTimeline.endDate) {
-                  let timeline;
-                  if (!currentTimeline) {
-                    timeline = { startDate: dateStart, endDate: dateEnd };
-                  } else {
-                    timeline = {
-                      startDate: new Date(Math.min(currentTimeline.startDate.getTime(), dateStart.getTime())),
-                      endDate: new Date(Math.max(currentTimeline.endDate.getTime(), dateEnd.getTime()))
-                    };
-                  }
-                  
-                  // Update duration in the drawing summary when timeline changes
-                  const durationMs = timeline.endDate.getTime() - timeline.startDate.getTime();
-                  const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
-                  
-                  // Ensure drawing object exists before updating it
-                  if (!updatedStreamState.streamSummary.drawing) {
-                    updatedStreamState.streamSummary.drawing = { duration: 0, totalTasks: 0, totalMilestones: 0 };
-                  }
-                  
-                  updatedStreamState.streamSummary.drawing.duration = durationDays;
-                  updatedStreamState.streamSummary.drawing.startDate = timeline.startDate;
-                  updatedStreamState.streamSummary.drawing.endDate = timeline.endDate;
-                  
-                  updatedActionBuffer.push({
-                    type: 'UPDATE_TIMELINE',
-                    payload: { timeline },
-                    timestamp: Date.now()
-                  });
-                  updatedTimeline = timeline;
-                }
-                
-                updatedActionBuffer.push({
-                  type: actionType, 
-                  payload, 
-                  timestamp: Date.now()
-                });
-                
-                // Add the task to our dictionary for future dependency resolution
-                updatedTaskDictionary[task.id] = payload.task;
-              }
-            }
-            delete updatedStreamState.pendingLines[thisId];
-          }
-          
-          updatedActionBuffer.push({
-            type: actionType, 
-            payload, 
-            timestamp: Date.now()
-          });
-          
-          // Add the task to our dictionary for future dependency resolution
-          updatedTaskDictionary[task.id] = payload.task;
-        }
-      }
+      throw err;
     }
 
-    // Keep the last incomplete line for the next update
-    updatedStreamState.mermaidData = newLines[newLines.length - 1];
+    // Section headers
+    if (parseResult.type === 'section') {
+      const name = parseResult.payload.name;
+      updatedStreamState.currentSection = name;
+      if (!updatedStreamState.allSections.has(name)) {
+        updatedStreamState.allSections.add(name);
+        updatedActionBuffer.push({ type: 'ADD_SECTION', payload: { name }, timestamp: Date.now() });
+      }
+      continue;
+    }
+
+    // Tasks or milestones
+    if (parseResult.type === 'task' || parseResult.type === 'milestone') {
+      const actionType: ActionType = parseResult.type === 'task' ? 'ADD_TASK' : 'ADD_MILESTONE';
+      const payload = { ...parseResult.payload };
+      const task = parseResult.type === 'task' ? payload.task : payload.milestone;
+      // Resolve dependencies
+      if (task.dependencies?.length) {
+        const updatedTask = calculateDatesFromDependencies(task, updatedTaskDictionary);
+        if (parseResult.type === 'task') payload.task = updatedTask;
+        else payload.milestone = updatedTask;
+      }
+      // Update timeline
+      const start = task.startDate!;
+      const end = task.endDate ?? task.startDate!;
+      // Track min/max for sketch summary
+      if (!minStart || start < minStart) minStart = start;
+      if (!maxEnd || end > maxEnd) maxEnd = end;
+      if (!updatedTimeline || start < updatedTimeline.startDate || end > updatedTimeline.endDate) {
+        const newTimeline = updatedTimeline
+          ? {
+              startDate: new Date(Math.min(updatedTimeline.startDate.getTime(), start.getTime())),
+              endDate: new Date(Math.max(updatedTimeline.endDate.getTime(), end.getTime()))
+            }
+          : { startDate: start, endDate: end };
+        updatedTimeline = newTimeline;
+        updatedActionBuffer.push({ type: 'UPDATE_TIMELINE', payload: { timeline: newTimeline }, timestamp: Date.now() });
+        const ms = newTimeline.endDate.getTime() - newTimeline.startDate.getTime();
+        updatedStreamState.streamSummary.sketchSummary!.duration = Math.ceil(ms / (1000 * 60 * 60 * 24));
+      }
+      // Update counts
+      if (parseResult.type === 'task') updatedStreamState.streamSummary.sketchSummary!.totalTasks += 1;
+      else updatedStreamState.streamSummary.sketchSummary!.totalMilestones += 1;
+      // Push action and update dictionary
+      updatedActionBuffer.push({ type: actionType, payload, timestamp: Date.now() });
+      updatedTaskDictionary[task.id] = task;
+    }
+  }
+  // Persist min/max for next chunk
+  // @ts-ignore
+  sketchSummary._minStart = minStart;
+  // @ts-ignore
+  sketchSummary._maxEnd = maxEnd;
+  // Set startDate and endDate for sketch summary if both are available
+  if (minStart && maxEnd) {
+    sketchSummary.startDate = minStart;
+    sketchSummary.endDate = maxEnd;
   }
 
   return {
@@ -439,7 +238,7 @@ export const processStreamData = (
     updatedActionBuffer,
     updatedTimeline,
     updatedTaskDictionary,
-    newMermaidSyntax: updatedStreamState.mermaidData,
+    newMermaidSyntax: updatedStreamState.streamSummary.mermaidMarkdown!,
     newStreamSummary
   };
 };

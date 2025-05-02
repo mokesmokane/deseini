@@ -17,10 +17,15 @@ export default function Deseini() {
   const {resetMarkdown} = useDraftMarkdown();
 
   const navigateToLanding = () => {
-    setNoProject();
-    setMessages([]);
-    resetMarkdown();
+    // First navigate to prevent UI flickering
     navigate('/');
+    
+    // Then update all states to maintain a consistent UI
+    setTimeout(() => {
+      setNoProject();
+      setMessages([]);
+      resetMarkdown();
+    }, 10);
   };
 
   return (

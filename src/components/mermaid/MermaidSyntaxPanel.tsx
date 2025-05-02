@@ -15,7 +15,7 @@ export const MermaidSyntaxPanel: React.FC<MermaidSyntaxPanelProps> = ({
   onClose,
 }) => {
   const { 
-    createPlanFromMarkdown: createMermaidPlan, 
+    createPlanFromMarkdownString: createMermaidPlan, 
     fullSyntax, 
     streamProgress, 
     isLoading: isMermaidLoading,

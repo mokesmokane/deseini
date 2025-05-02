@@ -6,7 +6,8 @@ import { useDraftMarkdown } from '../DraftMarkdownProvider';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 import styles from './ChatMessage.module.css';
 import { SectionUpdateState } from '../types';
-import Generate from './Generate';
+// import Generate from './Generate';
+import { StreamingPlan } from './StreamingPlanSummary/StreamingPlan';
 
 interface ChatMessageProps {
   message: Message;
@@ -16,7 +17,7 @@ interface ChatMessageProps {
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
   const { currentStreamingMessageId, currentStreamingContent } = useMessaging();
   const { stateUpdates, setCurrentSectionId  } = useDraftMarkdown();
-  const { sections } = useDraftPlanMermaidContext();
+  const { sections, streamSummary, newSummary } = useDraftPlanMermaidContext();
   const isUser = message.role === 'user';
   const isStreaming = !isUser && currentStreamingMessageId === message.id;
   
@@ -122,12 +123,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
       // After every part except the last, insert the Generate button/plan
       if (idx < parts.length - 1) {
         nodes.push(
-          <Generate
+          <StreamingPlan
             key={`generate-gantt-${idx}`}
             data={{
               label: hasPlan ? 'Regenerate Project Plan' : 'Generate Project Plan',
               isVisible: true
             }}
+            streamSummary={streamSummary}
+            newSummary={newSummary}
           />
         );
       }

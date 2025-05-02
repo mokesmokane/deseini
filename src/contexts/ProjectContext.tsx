@@ -605,11 +605,19 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
   }, [project, userCharts]);
 
   const setNoProject = () => {
+    // We want to maintain projectsList state for the dropdown
+    // but clear all current project-specific state
     setProject(null);
     setUserCharts([]);
     setProjectConversations([]);
     setInitialTasksForDialog([]);
     setDatabaseRoleIds(new Set());
+    
+    // Reset error states
+    setErrorMessage(undefined);
+    setTaskGenerationError(null);
+    setIsLoading(false);
+    setIsGeneratingTasks(false);
   };
 
   const fetchProjectConversations = useCallback(async (projectId: string) => {

@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import { MarkdownSectionAnalyzer } from '../utils/MarkdownSections';
 import { projectMarkdownService } from '../services/projectMarkdownService';
 import { useProject } from '../contexts/ProjectContext';
-import streamLines from '../utils/streamLines';
+import { streamByLine } from '../utils/streamByLine';
 
 // Define the steps in the generation process
 export type PlanGenerationStep = 'idle' | 'generating' | 'reviewing' | 'finalizing';
@@ -208,9 +208,9 @@ export function ProjectPlanProvider({
       }
 
       const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-      await streamLines(currentText || '', reader, (lineNumber: number, updatedText: string) => {
-        setCurrentLineNumber(lineNumber);
-        setCurrentText(updatedText);
+      await streamByLine(currentText || '', reader, (lines: string[]) => {
+        setCurrentLineNumber(lines.length);
+        setCurrentText(lines.join('\n'));
       });      
 
     } catch (err) {

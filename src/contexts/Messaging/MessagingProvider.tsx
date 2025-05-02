@@ -6,7 +6,8 @@ import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { useProject } from '../ProjectContext';
 import { useDraftPlanMermaidContext } from '../DraftPlan/DraftPlanContextMermaid';
-import { stream } from './stream';
+import { getPlanToGanttStream } from '../../services/planConversionService';
+import { streamToStreams, streamToStringStream } from '../../utils/stream';
 import {SectionData } from '../../components/landing/types';
 
 
@@ -47,9 +48,9 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
-  const {project, projectConversations} = useProject();
+  const {project, projectConversations, setProject} = useProject();
   const { createProjectPlan, sections } = useDraftMarkdown();
-  const { createPlanFromMarkdown: createMermaidPlan} = useDraftPlanMermaidContext();
+  const { createPlanFromMarkdownStream: createMermaidPlan} = useDraftPlanMermaidContext();
 
   // Load conversation messages when conversation ID changes
   useEffect(() => {
@@ -110,7 +111,8 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         // Use the new streaming API
-        const { mainStream, codeBlockStreams } = await stream(reader, projectId ? ["projectplan", "ProjectPlan"] : []);
+        const stringReader = streamToStringStream(reader);
+        const { mainStream, codeBlockStreams } = streamToStreams<string>(stringReader, projectId ? ["projectplan", "ProjectPlan"] : []);
         
         // Process the main content stream
         const mainReader = mainStream.getReader();
@@ -119,6 +121,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         // Check if we have a ProjectPlan stream and set up a reader for it if it exists
         const projectPlanStream = codeBlockStreams["projectplan"] || codeBlockStreams["ProjectPlan"];
         let newSections: null | Promise<SectionData[]> = null;
+
         if (projectPlanStream && projectId) {
           newSections = createProjectPlan(projectPlanStream, projectId, aiMessage.id);
         }
@@ -141,12 +144,12 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
           // the first time we see [[ProjectPlan]] we should create a new project plan
           //make sure to only do this once
           if (accumulatedMainContent.includes('[[CREATE_PROJECT_GANTT]]') && newSections) {
-            await createMermaidPlan((await newSections).map(section => section.content).join('\n'));
+            const stream = await getPlanToGanttStream((await newSections).map(section => section.content).join('\n'));
+            await createMermaidPlan(stream);
           }
-
         }
+
         setCurrentStreamingContent('');
-        
         // Mark message as complete
         setCurrentStreamingMessageId(null);
         setMessages(prev => 
@@ -372,20 +375,15 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         );
         
         if (result) {
-        //   console.log('Created new project and conversation:', result);
-          // await fetchProject(result.projectId);
-          // setCurrentProjectId(result.projectId);
-          // setCurrentConversationId(result.conversationId);
+          setProject(result.project);
+          setCurrentProjectId(result.project.id);
           
           // Generate project plan using the specific project ID directly
           // This avoids React state dependency issues
           console.log('Project is ready!');
           setIsCanvasVisible(true);
           
-          await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage, result.projectId, result.conversationId);
-          // await fetchProject(result.projectId);
-          // Use the project ID directly instead of relying on React state
-          // const newSections = await generateProjectPlanForProjectId(chatMessages, result.projectId);
+          await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage, result.project.id, result.conversationId);
         } else {
           console.error('Failed to create project and conversation');
         }

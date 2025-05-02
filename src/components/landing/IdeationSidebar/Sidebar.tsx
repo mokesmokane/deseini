@@ -136,6 +136,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
       setActiveSection(null);
     }
   };
+
+  const handleSketchesClick = () => {
+    // Navigate to the mermaid notepad page
+    window.location.href = '/mermaid-notepad';
+  };
   
   return (
     <motion.div
@@ -173,8 +178,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
           />
           <SidebarIcon 
             icon={<PencilIcon className="h-6 w-6" />}   
-            onClick={() => !collapsed && toggleSection('sketches')}
-            isActive={activeSection === 'sketches'}
+            onClick={handleSketchesClick}
+            isActive={false}
           />
           <SidebarIcon 
             icon={<ArrowsPointingOutIcon className="h-6 w-6" />} 

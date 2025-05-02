@@ -30,7 +30,7 @@ const Canvas: React.FC = () => {
   } = useProject();
   const { resetState } = useEditedSection();
   const { 
-      createPlanFromMarkdown: createMermaidPlan,
+      createPlanFromMarkdownString: createMermaidPlan,
       streamProgress
     } = useDraftPlanMermaidContext();
   const [showChat, setShowChat] = useState(false); // Add state to control chat visibility

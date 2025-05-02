@@ -1,6 +1,7 @@
 import { parseRawSSE, processStreamValue } from '../streamParser';
 import fs from 'fs';
 import path from 'path';
+import { describe, expect, it } from 'vitest';
 
 describe('parseRawSSE', () => {
   it('extracts chunk from single data line', () => {

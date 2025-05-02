@@ -6,6 +6,11 @@ export interface Project {
   createdAt: string | null;
   updatedAt: string | null;
   starred: boolean;
+  description?: string;
+  bannerImage?: string;
+  attachments?: any[];
+  roles?: any[];
+  charts?: any[];
 }
 
 export interface Conversation {
@@ -68,6 +73,42 @@ export const projectService = {
     const all = [...owned, ...shared];
     all.sort((a, b) => (b.createdAt ?? '') .localeCompare(a.createdAt ?? ''));
     return all;
+  },
+
+  getProjectById: async (userId: string, projectId: string): Promise<Project | null> => {
+    const { data, error } = await supabase
+      .from('projects')
+      // Select specific columns matching the Project interface + DB names (excluding 'starred')
+      .select('id, project_name, created_at, updated_at, description, banner_image')
+      .eq('user_id', userId)
+      .eq('id', projectId)
+      .single();
+
+    if (error) {
+      // Log the specific Supabase error
+      console.error('Error fetching project by ID from Supabase:', error.message);
+      return null;
+    }
+
+    if (!data) {
+      return null; // Project not found
+    }
+
+    // Map Supabase response (snake_case) to Project interface (camelCase)
+    const project: Project = {
+      id: data.id,
+      projectName: data.project_name,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      starred: false, // Default to false as it's not in the DB
+      description: data.description ?? undefined,
+      bannerImage: data.banner_image ?? undefined,
+      attachments: [],
+      roles: [],
+      charts: [],
+    };
+
+    return project;
   },
   
   starProject: async (projectId: string, starred: boolean) => {
@@ -201,8 +242,17 @@ export const projectService = {
     firstMessages: Message[],
     projectName: string = 'Untitled Project',
     conversationName: string = 'Untitled Conversation'
-  ): Promise<{ projectId: string; conversationId: string } | null> => {
+  ): Promise<{ project: Project; conversationId: string } | null> => {
     try {
+      // Get current user
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      
+      if (!userId) {
+        console.error('Cannot get conversations: No authenticated user');
+        return null;
+      }
+      
       // Create a new project
       const projectId = await projectService.createNewProject(projectName);
       if (!projectId) {
@@ -224,8 +274,11 @@ export const projectService = {
       if (!messageAdded) {
         return null;
       }
+
+      //get the project
+      const project = await projectService.getProjectById(userId, projectId); 
       
-      return { projectId, conversationId };
+      return { project: project!, conversationId };
     } catch (error) {
       console.error('Error in initializeProjectWithFirstMessage:', error);
       return null;

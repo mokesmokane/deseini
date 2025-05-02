@@ -1,6 +1,7 @@
 import { MarkdownSectionAnalyzer } from '../../../../utils/MarkdownSections';
+import { describe, expect, it } from 'vitest';
 
-describe('MarkdownSectionAnalyzer - root section parsing', () => {
+describe('MarkdownSectionAnalyzer - root section parsing', () => {  
   const markdown = `# A
 contentA line1
 contentA line2

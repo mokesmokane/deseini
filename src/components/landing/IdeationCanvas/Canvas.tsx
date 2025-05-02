@@ -6,7 +6,6 @@ import { useDraftMarkdown } from '../DraftMarkdownProvider';
 import { Share2 } from 'lucide-react';
 import TabSelector from './TabSelector';
 import ContentHeader from './ContentHeader';
-import PlanGenerationStatus from './PlanGenerationStatus';  
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 
 interface CanvasProps {
@@ -20,7 +19,6 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab, isC
   const { currentSectionId, selectSection } = useDraftMarkdown();
   const { 
     isLoading: isPlanGenerating, 
-    streamSummary 
   } = useDraftPlanMermaidContext();
   
   // Reference to track previous generation state
@@ -38,8 +36,6 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab, isC
     wasGeneratingRef.current = isPlanGenerating;
   }, [isPlanGenerating, setActiveTab]);
 
-  // Determine whether to show generation status - only when we're generating a plan or have a summary
-  const showGenerationStatus = (isPlanGenerating && streamSummary);
   
   // Determine if window width >= 'xl' (1280px) for side-by-side layout
   const [isXl, setIsXl] = useState<boolean>(typeof window !== 'undefined' && window.innerWidth >= 1280);
@@ -62,9 +58,6 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab, isC
                 onChange={setActiveTab}
                 isGeneratingPlan={isPlanGenerating} 
               />}
-              {showGenerationStatus && (
-                <PlanGenerationStatus />
-              )}
             </div>
             
             <div className="flex items-center gap-2">

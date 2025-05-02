@@ -5,13 +5,13 @@ import { useDraftMarkdown } from '../../../components/landing/DraftMarkdownProvi
 
 
 const ContentHeader: React.FC = () => {
-  const { createPlanFromMarkdown } = useDraftPlanMermaidContext();  
+  const { createPlanFromMarkdownString } = useDraftPlanMermaidContext();  
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const { sections } = useDraftMarkdown();
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   const handleRefreshPlan = () => {
-      createPlanFromMarkdown(sections.map(section => section.content).join('\n\n'));
+    createPlanFromMarkdownString(sections.map(section => section.content).join('\n\n'));
       setIsMoreMenuOpen(false);
   };
 

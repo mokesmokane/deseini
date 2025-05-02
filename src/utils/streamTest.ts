@@ -2,7 +2,7 @@
  * Test utility for the streaming functionality
  */
 
-import { stream } from '../contexts/Messaging/stream';
+import { streamToStreams } from './stream';
 
 // Example response text from the server - the full ProjectPlan block
 const testProjectPlan = `Thank you for providing all the necessary information. Based on your notes, here is your project plan:
@@ -108,7 +108,7 @@ export async function simulateStreamingTest() {
   };
   
   // Process with our stream utility
-  const { mainStream, codeBlockStreams } = stream(
+  const { mainStream, codeBlockStreams } = streamToStreams(
     mockReader as ReadableStreamDefaultReader<Uint8Array>,
     ["projectplan", "ProjectPlan"] // Test with both lowercase and proper case
   );
@@ -212,7 +212,7 @@ export function simulateSSEChunks() {
   };
   
   // Process with our stream utility
-  return stream(
+  return streamToStreams(
     mockReader as ReadableStreamDefaultReader<Uint8Array>,
     ["projectplan", "ProjectPlan"] // Try both lowercase and proper case
   );
