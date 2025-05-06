@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { ChatMessage, Project, Chart, TreeTaskNode } from '../types';
 import { toast } from 'react-hot-toast';
+import { fetchApi } from '@/utils/api';
+
 // Add EventSourcePolyfill if targeting environments without native EventSource or needing headers
 // For simplicity, assuming native EventSource is available
 
@@ -91,7 +93,7 @@ export function MessagesProvider({
 
     try {
       const projectData = getProjectJsonRepresentation();
-      const response = await fetch('/api/conversation', {
+      const response = await fetchApi('/api/conversation', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -236,7 +238,7 @@ export function MessagesProvider({
 
     try {
       const projectData = getProjectJsonRepresentation();
-      const response = await fetch('/api/generate-suggestions', {
+      const response = await fetchApi('/api/generate-suggestions', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({ messages: currentMessages, projectContext: projectData }),
@@ -306,7 +308,7 @@ export function MessagesProvider({
     
     try {
       const projectData = getProjectJsonRepresentation();
-      const response = await fetch('/api/conversation', {
+      const response = await fetchApi('/api/conversation', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

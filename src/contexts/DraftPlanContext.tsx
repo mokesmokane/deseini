@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import { fetchApi } from '@/utils/api';
 
 export interface Task {
   id: string;
@@ -57,7 +58,7 @@ export const DraftPlanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       setIsLoading(true);
       
-      const response = await fetch('/api/convert-plan-to-tasks', {
+      const response = await fetchApi('/api/convert-plan-to-tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

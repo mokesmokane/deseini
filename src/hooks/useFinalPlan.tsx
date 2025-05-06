@@ -6,6 +6,7 @@ import { Section } from '../contexts/DraftPlan/types';
 import toast from 'react-hot-toast';
 import { getDbService } from '../services/dbServiceProvider';
 import { DbServiceType } from '../services/dbServiceProvider';
+import { fetchApi } from '../utils/api';
 
 // Define the context type
 interface FinalPlanContextType {
@@ -60,9 +61,11 @@ export const FinalPlanProvider = ({ children }: FinalPlanProviderProps) => {
       const draftPlanMarkdown = createMarkdownFromSections(draftPlanSections);
 
       setGenerationProgress('Generating plan...');
-      const response = await fetch('/api/generate-final-plan', {
+      const response = await fetchApi('/api/generate-final-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ projectContext, messages: [], draftPlanMarkdown })
       });
 

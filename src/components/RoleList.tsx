@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Role } from '../types';
 import RoleCard from './RoleCard';
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { fetchApi } from '../utils/api';
 
 export interface RoleListProps {
   roles: Role[];
@@ -87,7 +88,7 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
     setProcessingError('');
     
     try {
-      const response = await fetch('/api/extract-role-info', {
+      const response = await fetchApi('/api/extract-role-info', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

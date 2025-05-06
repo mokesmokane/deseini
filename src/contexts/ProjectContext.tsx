@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useCallback, use
 import { Project, Chart, TreeTaskNode, ChatMessage, Role, Deliverable } from '../types';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { fetchApi } from '@/utils/api';
 import { useNavigate } from 'react-router-dom';
 
 // Interface for project conversations
@@ -562,7 +563,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
       console.log("ProjectContext: Calling /api/create-tasks with prompt:", prompt.substring(0, 100) + "...");
 
-      const response = await fetch('/api/create-tasks', {
+      const response = await fetchApi('/api/create-tasks', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({

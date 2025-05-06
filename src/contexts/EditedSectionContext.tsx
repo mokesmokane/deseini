@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import * as diffLib from 'diff';
 import { useProjectPlan } from './ProjectPlanContext';
+import { fetchApi } from '@/utils/api';
 
 interface EditedSectionContextType {
   originalContent: string;
@@ -127,7 +128,7 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       // Make API request to edit the section
       console.log('startEditing - Making API request to edit section...');
-      const response = await fetch('/api/edit-markdown-section', {
+      const response = await fetchApi('/api/edit-markdown-section', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

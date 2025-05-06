@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Paperclip, Sparkles, ArrowRight, Loader2, Bug } from 'lucide-react';
 import { sampleIdeas as sampleIdeasx } from '../sample';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
+import { fetchApi } from '../../../utils/api';
+
+// Get API base URL from environment or use relative path for proxy in development
+// const API_BASE_URL = import.meta.env.VITE_API_SERVER || '';
 
 interface TextInputProps {
   onSendMessage?: (message: string) => void;
@@ -182,7 +186,7 @@ Deliverables
       
       // Set up the response with proper headers for SSE
       console.log('Enhancing prompt...');
-      const response = await fetch('/api/enhance-project-prompt', {
+      const response = await fetchApi('/api/enhance-project-prompt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

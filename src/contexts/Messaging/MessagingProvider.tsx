@@ -9,7 +9,7 @@ import { useDraftPlanMermaidContext } from '../DraftPlan/DraftPlanContextMermaid
 import { getPlanToGanttStream } from '../../services/planConversionService';
 import { streamToStreams, streamToStringStream } from '../../utils/stream';
 import {SectionData } from '../../components/landing/types';
-
+import { fetchApi } from '@/utils/api';
 
 interface MessagingContextProps {
   messages: Message[];
@@ -93,7 +93,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         projectReadyRecommendations
       });
       setCurrentStreamingContent('');
-      const response = await fetch('/api/project-consultant-chat', {
+      const response = await fetchApi('/api/project-consultant-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -308,7 +308,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
     // Judge project readiness
     const judgeProjectDraftReadiness = async () => {
       try {
-        const response = await fetch('/api/judge-project-draft-readiness', {
+        const response = await fetchApi('/api/judge-project-draft-readiness', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

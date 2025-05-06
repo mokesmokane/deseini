@@ -3,6 +3,7 @@
  */
 
 import { ChatMessage } from '../types';
+import { fetchApi } from '../utils/api';
 
 /**
  * Get a project plan stream with the "data:{}" formatting removed
@@ -22,7 +23,7 @@ export const getCleanProjectPlanStream = async (
     currentPlan
   });
 
-  const response = await fetch('/api/generate-project-plan', {
+  const response = await fetchApi('/api/generate-project-plan', {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',

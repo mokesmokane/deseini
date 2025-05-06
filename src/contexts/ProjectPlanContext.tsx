@@ -5,6 +5,7 @@ import { MarkdownSectionAnalyzer } from '../utils/MarkdownSections';
 import { projectMarkdownService } from '../services/projectMarkdownService';
 import { useProject } from '../contexts/ProjectContext';
 import { streamByLine } from '../utils/streamByLine';
+import { fetchApi } from '@/utils/api';
 
 // Define the steps in the generation process
 export type PlanGenerationStep = 'idle' | 'generating' | 'reviewing' | 'finalizing';
@@ -184,7 +185,7 @@ export function ProjectPlanProvider({
       });
 
       console.log('[ProjectPlanContext] generateProjectPlan: Fetching /api/generate-project-plan (for stream)...');
-      const response = await fetch('/api/generate-project-plan', {
+      const response = await fetchApi('/api/generate-project-plan', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -271,7 +272,7 @@ export function ProjectPlanProvider({
         charts: userCharts || []
       };
       
-      const response = await fetch('/api/edit-markdown-section', {
+      const response = await fetchApi('/api/edit-markdown-section', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
