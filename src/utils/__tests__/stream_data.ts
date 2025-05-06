@@ -973,3 +973,49 @@ Gantt chunk:
 Gantt chunk: \`\`\`
 Gantt chunk: `
 
+
+
+export const ganttString3 = `
+\`\`\`mermaid
+gantt
+    title Vertical Farming Pilot Project Timeline
+    dateFormat YYYY-MM-DD
+
+    section Site Analysis & Location Selection
+        Research local urban sites: research, 2025-06-01, 7d
+        Assess site constraints: assess, after research, 10d
+        Prepare Site Analysis Report: prepare, after assess, 7d
+        Completion of Site Analysis Report: milestone, after prepare
+
+    section Modular System Design
+        Develop initial concepts and 3D models: develop, 2025-06-05, 10d
+        Engineer hydroponic/aeroponic modules: engineer, after develop, 10d
+        Review with stakeholders: review, after engineer, 5d
+        Finalize Modular Design Pack: finalize, after review, 5d
+        Approval of Modular Design Pack: milestone, after finalize
+
+    section Resource Efficiency Planning
+        Analyze energy, water, nutrient needs: analyze, 2025-06-10, 5d
+        Integrate sustainable resource solutions: integrate, after analyze, 5d
+        Draft Resource Efficiency Plan: draft, after integrate, 5d
+        Resource Efficiency Plan finalized: milestone, after draft
+
+    section Prototype Fabrication & Installation
+        Source materials and components: source, after milestone, 10d
+        Assemble and install prototype: assemble, after source, 15d
+        Conduct safety and compliance checks: compliance, after assemble, 5d
+        Pilot Installation operational: milestone, after compliance
+
+    section Operational Testing & Performance Measurement
+        Plant initial crop cycles: plant, after milestone, 2d
+        Monitor yield, resource use, and reliability: monitor, after plant, 88d
+        Collect and analyze performance data: analyze_data, after monitor, 5d
+        3-month crop yield data collected: milestone, after analyze_data
+
+    section Documentation & Handover
+        Compile Crop Yield and Performance Report: report, after milestone, 5d
+        Create Maintenance and Operations Manual: manual, after report, 5d
+        Final presentation to stakeholders: present, after manual, 3d
+        Final deliverables submitted: milestone, after present
+\`\`\`
+`

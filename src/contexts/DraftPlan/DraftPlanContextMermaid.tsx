@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
+import{StreamState, StreamSummary, SketchSummary} from '../../utils/types';
 import { 
   processMainStreamData,
-  processMermaidStreamData,
-  StreamState,
-  StreamSummary
+  processMermaidStreamData
 } from '../../utils/streamProcessor';
 import { 
   processAction 
@@ -55,6 +54,7 @@ interface DraftPlanMermaidContextType {
   updateTaskStartDate: (taskId: string, newStartDate: Date) => void;
   updateTaskDuration: (taskId: string, newDuration: number) => void;
   newSummary: StreamSummary | undefined;
+  sketchSummary: SketchSummary | undefined;
 }
 
 interface DraftPlanMermaidProviderProps {
@@ -74,6 +74,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
   const [fullSyntax, setFullSyntax] = useState<string>('');
   const [streamSummary, setStreamSummary] = useState<string>('');
   const [newSummary, setNewSummary] = useState<StreamSummary | undefined>(undefined);
+  const [sketchSummaryState, setSketchSummaryState] = useState<SketchSummary | undefined>(undefined);
   const [processingBufferProgress, setProcessingBufferProgress] = useState<number>(0);
   const [actionBufferLength, setActionBufferLength] = useState<number>(0);
   const [nextAction, setNextAction] = useState<BufferedAction | null>(null);
@@ -200,6 +201,12 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     }
     if (updatedStreamState.streamSummary) {
       setNewSummary(updatedStreamState.streamSummary);
+      console.log('[Handle mermaid stream] sketchSummary', updatedStreamState.streamSummary.sketchSummary);
+      setSketchSummaryState(
+        updatedStreamState.streamSummary.sketchSummary
+          ? { ...updatedStreamState.streamSummary.sketchSummary }
+          : undefined
+      );
     }
   }, []);
 
@@ -484,43 +491,55 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
       taskDictionaryRef.current = {};
       actionBufferRef.current = [];
       isProcessingBufferRef.current = false;
-
+      setSketchSummaryState(undefined);
 
       // Process the stream using our pure function
       const textStream = sseStreamToText(stream, 'content');
       const linesStream = streamByLine(textStream);
       const { mainStream, codeBlockStreams } = streamToStreams(linesStream, ["mermaid"]);
       const mermaidStream = codeBlockStreams["mermaid"];
-      const reader = mainStream.getReader();
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          try {
-            handleStreamData(value);
-          } catch(error) {
-            console.error('Error processing stream:', error);
-            setIsLoading(false);
-          }
-        }
-      } finally {
-        reader.releaseLock();
-      }
+
+      // Read main and mermaid streams concurrently for real-time processing
+      const mainReader = mainStream.getReader();
       const mermaidReader = mermaidStream.getReader();
-      try {
-        while (true) {
-          const { value, done } = await mermaidReader.read();
-          if (done) break;
-          try {
-            handleMermaidStreamData(value);
-          } catch(error) {
-            console.error('Error processing stream:', error);
-            setIsLoading(false);
+
+      const mainTask = (async () => {
+        try {
+          while (true) {
+            const { value, done } = await mainReader.read();
+            if (done) break;
+            try {
+              handleStreamData(value);
+            } catch (error) {
+              console.error('Error processing main stream:', error);
+              setIsLoading(false);
+            }
           }
+        } finally {
+          mainReader.releaseLock();
         }
-      } finally {
-        mermaidReader.releaseLock();
-      }
+      })();
+
+      const mermaidTask = (async () => {
+        try {
+          while (true) {
+            const { value, done } = await mermaidReader.read();
+            if (done) break;
+            try {
+              handleMermaidStreamData(value);
+            } catch (error) {
+              console.error('Error processing mermaid stream:', error);
+              setIsLoading(false);
+            }
+          }
+        } finally {
+          mermaidReader.releaseLock();
+        }
+      })();
+
+      // Await both streams to finish
+      await Promise.all([mainTask, mermaidTask]);
+
       processDependencies();
       
       // Process all actions in the buffer and wait for completion
@@ -571,6 +590,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     nextAction,
     actionBuffer: actionBufferRef.current,
     newSummary,
+    sketchSummary: sketchSummaryState,
     TIMELINE_PIXELS_PER_DAY,
     setTIMELINE_PIXELS_PER_DAY,
     updateTaskStartDate,

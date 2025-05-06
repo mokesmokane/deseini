@@ -1,53 +1,7 @@
 import { parseMermaidLine } from './mermaidParser';
 import { ActionType, BufferedAction } from './types';
 import { Task, Timeline } from '../contexts/DraftPlan/types';
-
-/**
- * Interface for tracking the state of streaming data processing
- */
-export interface StreamState {
-  mermaidData: string;
-  completeLines: string[];
-  inMermaidBlock: boolean;
-  currentSection: string | null;
-  allSections: Set<string>;
-  lastHeader: string | null;
-  streamSummary: StreamSummary;
-  // buffer forward dependency lines
-  pendingLines?: Record<string, Array<{ line: string; section: string | null }>>;
-}
-
-/**
- * Interface for tracking thoughts
- */
-export interface Thought {
-  summary: string;
-  thoughts: string;
-}
-
-/**
- * Interface for tracking sketch data
- */
-export interface SketchSummary {
-  duration: number; // Duration in days
-  totalTasks: number;
-  totalMilestones: number;
-  startDate?: Date;
-  endDate?: Date;
-  _minStart?: Date;
-  _maxEnd?: Date;
-}
-
-/**
- * Interface for tracking stream summary
- */
-export interface StreamSummary {
-  thinking: Thought[];
-  sketchSummary?: SketchSummary;
-  mermaidMarkdown?: string;
-  allText?: string;
-}
-
+import { StreamState, Thought } from './types';
 /**
  * Processes a chunk of main stream data
  * @param content Chunk of content received from the stream
@@ -156,16 +110,27 @@ export const processMermaidStreamData = (
     console.log('[Mermaid stream] parsing line:', line);
     let parseResult;
     try {
-      parseResult = parseMermaidLine(line, updatedStreamState.currentSection, updatedTaskDictionary);
+      parseResult = parseMermaidLine(line, updatedStreamState.currentSection, updatedTaskDictionary, updatedStreamState.lastMilestoneId);
     } catch (err: any) {
       const match = err.message.match(/Dependency task (.+) not found/);
       if (match) {
         const depId = match[1];
         updatedStreamState.pendingLines = updatedStreamState.pendingLines || {};
-        updatedStreamState.pendingLines[depId] = [
-          ...(updatedStreamState.pendingLines[depId] || []),
-          { line, section: updatedStreamState.currentSection }
-        ];
+        
+        // Special case for tasks dependent on generic "milestone"
+        if (depId === 'milestone') {
+          // Store in a special queue for milestone dependencies
+          updatedStreamState.pendingLines['milestone'] = [
+            ...(updatedStreamState.pendingLines['milestone'] || []),
+            { line, section: updatedStreamState.currentSection }
+          ];
+        } else {
+          // Regular dependency case
+          updatedStreamState.pendingLines[depId] = [
+            ...(updatedStreamState.pendingLines[depId] || []),
+            { line, section: updatedStreamState.currentSection }
+          ];
+        }
         continue;
       }
       throw err;
@@ -187,6 +152,85 @@ export const processMermaidStreamData = (
       const actionType: ActionType = parseResult.type === 'task' ? 'ADD_TASK' : 'ADD_MILESTONE';
       const payload = { ...parseResult.payload };
       const task = parseResult.type === 'task' ? payload.task : payload.milestone;
+      
+      // Update lastMilestoneId if processing a milestone
+      if (parseResult.type === 'milestone') {
+        updatedStreamState.lastMilestoneId = task.id;
+        
+        // Process any pending tasks that were waiting for a milestone
+        if (updatedStreamState.pendingLines && updatedStreamState.pendingLines['milestone']) {
+          const pendingMilestoneTasks = updatedStreamState.pendingLines['milestone'];
+          delete updatedStreamState.pendingLines['milestone'];
+          
+          // Process each pending task that was waiting for a milestone
+          for (const pendingTask of pendingMilestoneTasks) {
+            console.log('[Mermaid stream] processing pending task with milestone dependency:', pendingTask.line);
+            try {
+              // Re-process with the updated lastMilestoneId
+              const pendingResult = parseMermaidLine(
+                pendingTask.line, 
+                pendingTask.section, 
+                updatedTaskDictionary,
+                updatedStreamState.lastMilestoneId
+              );
+              
+              if (pendingResult.type === 'task' || pendingResult.type === 'milestone') {
+                const pendingActionType: ActionType = pendingResult.type === 'task' ? 'ADD_TASK' : 'ADD_MILESTONE';
+                const pendingPayload = { ...pendingResult.payload };
+                const pendingTaskObj = pendingResult.type === 'task' ? pendingPayload.task : pendingPayload.milestone;
+                
+                // Resolve dependencies for the pending task
+                if (pendingTaskObj.dependencies?.length) {
+                  const updatedPendingTask = calculateDatesFromDependencies(pendingTaskObj, updatedTaskDictionary);
+                  if (pendingResult.type === 'task') pendingPayload.task = updatedPendingTask;
+                  else pendingPayload.milestone = updatedPendingTask;
+                }
+                
+                // Update timeline for the pending task
+                const pendingStart = pendingTaskObj.startDate!;
+                const pendingEnd = pendingTaskObj.endDate ?? pendingTaskObj.startDate!;
+                
+                // Track min/max for sketch summary
+                if (!minStart || pendingStart < minStart) minStart = pendingStart;
+                if (!maxEnd || pendingEnd > maxEnd) maxEnd = pendingEnd;
+                
+                if (!updatedTimeline || pendingStart < updatedTimeline.startDate || pendingEnd > updatedTimeline.endDate) {
+                  const newTimeline = updatedTimeline
+                    ? {
+                        startDate: new Date(Math.min(updatedTimeline.startDate.getTime(), pendingStart.getTime())),
+                        endDate: new Date(Math.max(updatedTimeline.endDate.getTime(), pendingEnd.getTime()))
+                      }
+                    : { startDate: pendingStart, endDate: pendingEnd };
+                  
+                  updatedTimeline = newTimeline;
+                  updatedActionBuffer.push({ 
+                    type: 'UPDATE_TIMELINE', 
+                    payload: { timeline: newTimeline }, 
+                    timestamp: Date.now() 
+                  });
+                  
+                  const ms = newTimeline.endDate.getTime() - newTimeline.startDate.getTime();
+                  updatedStreamState.streamSummary.sketchSummary!.duration = Math.ceil(ms / (1000 * 60 * 60 * 24));
+                }
+                
+                // Update counts
+                if (pendingResult.type === 'task') updatedStreamState.streamSummary.sketchSummary!.totalTasks += 1;
+                else updatedStreamState.streamSummary.sketchSummary!.totalMilestones += 1;
+                
+                // Push action and update dictionary
+                updatedActionBuffer.push({ type: pendingActionType, payload: pendingPayload, timestamp: Date.now() });
+                updatedTaskDictionary[pendingTaskObj.id] = pendingTaskObj;
+              }
+            } catch (err) {
+              console.error('[Mermaid stream] Error processing pending task:', err);
+              // Re-add to pending queue if there's still an issue
+              updatedStreamState.pendingLines['milestone'] = updatedStreamState.pendingLines['milestone'] || [];
+              updatedStreamState.pendingLines['milestone'].push(pendingTask);
+            }
+          }
+        }
+      }
+      
       // Resolve dependencies
       if (task.dependencies?.length) {
         const updatedTask = calculateDatesFromDependencies(task, updatedTaskDictionary);
@@ -219,6 +263,11 @@ export const processMermaidStreamData = (
       updatedTaskDictionary[task.id] = task;
     }
   }
+
+  //if sketchSummary has changed log it
+  if (sketchSummary !== updatedStreamState.streamSummary.sketchSummary) {
+    console.log('[Mermaid stream] sketchSummary changed:', updatedStreamState.streamSummary.sketchSummary);
+  }
   // Persist min/max for next chunk
   // @ts-ignore
   sketchSummary._minStart = minStart;
@@ -229,7 +278,6 @@ export const processMermaidStreamData = (
     sketchSummary.startDate = minStart;
     sketchSummary.endDate = maxEnd;
   }
-
   return {
     updatedStreamState,
     updatedActionBuffer,

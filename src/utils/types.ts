@@ -1,4 +1,3 @@
-
 // Define the types of actions that can be buffered
 export type ActionType = 
   | 'ADD_SECTION'
@@ -18,13 +17,6 @@ export interface BufferedAction {
   payload: any;
   timestamp: number;
 }
-/**
- * Interface for a thought during streaming
- */
-export interface Thought {
-  content: string;
-  timestamp: number;
-}
 
 /**
  * Interface for sketch/drawing data
@@ -35,18 +27,59 @@ export interface Sketch {
 }
 
 /**
- * Interface for streaming summary data
- */
-export interface StreamSummary {
-  thinking: Thought[];
-  drawing: Sketch;
-}
-
-/**
  * Interface for streaming data response
  */
 export interface StreamResponse {
   content?: string;
   done?: boolean;
   error?: string;
+}
+
+
+/**
+ * Interface for tracking the state of streaming data processing
+ */
+export interface StreamState {
+  mermaidData: string;
+  completeLines: string[];
+  inMermaidBlock: boolean;
+  currentSection: string | null;
+  allSections: Set<string>;
+  lastHeader: string | null;
+  streamSummary: StreamSummary;
+  // buffer forward dependency lines
+  pendingLines?: Record<string, Array<{ line: string; section: string | null }>>;
+  // track last milestone ID for handling "after milestone" references
+  lastMilestoneId?: string;
+}
+
+/**
+ * Interface for tracking thoughts
+ */
+export interface Thought {
+  summary: string;
+  thoughts: string;
+}
+
+/**
+ * Interface for tracking sketch data
+ */
+export interface SketchSummary {
+  duration: number; // Duration in days
+  totalTasks: number;
+  totalMilestones: number;
+  startDate?: Date;
+  endDate?: Date;
+  _minStart?: Date;
+  _maxEnd?: Date;
+}
+
+/**
+ * Interface for tracking stream summary
+ */
+export interface StreamSummary {
+  thinking: Thought[];
+  sketchSummary?: SketchSummary;
+  mermaidMarkdown?: string;
+  allText?: string;
 }

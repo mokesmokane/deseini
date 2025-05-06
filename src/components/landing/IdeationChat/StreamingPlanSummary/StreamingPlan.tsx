@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react';
 import { PlanSummary } from './PlanSummary';
 import { formatDate, formatDuration } from './utils';
 import { FadeThoughts } from './FadeThoughts';
+import { StreamSummary, SketchSummary } from '@/utils/types';
 
 interface StreamingPlanProps {
   data: {
     label: string;
     isVisible: boolean;
   };
-  newSummary: any | null;
+  newSummary: StreamSummary | undefined;
+  sketchSummary: SketchSummary | undefined;
 }
 
-export const StreamingPlan = ({ data, newSummary }: StreamingPlanProps) => {
+export const StreamingPlan = ({ data, newSummary, sketchSummary }: StreamingPlanProps) => {
   
   const isLoading = !newSummary?.sketchSummary;
   const hasThoughts = newSummary?.thinking && newSummary.thinking.length > 0;
@@ -56,9 +58,10 @@ export const StreamingPlan = ({ data, newSummary }: StreamingPlanProps) => {
           <div className={`transition-all duration-500 ease-in-out ${!isLoading ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-4'}`}>
             {newSummary?.sketchSummary && (
               <PlanSummary 
-                sketchSummary={newSummary!.sketchSummary} 
                 formatDate={formatDate}
                 formatDuration={formatDuration}
+                newSummary={newSummary}
+                sketchSummary={sketchSummary}
               />
             )}
           </div>

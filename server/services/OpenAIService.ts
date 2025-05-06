@@ -1274,12 +1274,13 @@ gantt
     Task 2: t2, after t1, 5d
     Milestone 1: milestone, after t1
     section Phase 2
-    Task 3: t3, after m1, 7d
+    Task 3: t3, after milestone, 7d
 \`\`\`
 
 Important:
 - CUSTOM RULE: Tasks are always defined as <taskname>: <id>, <startdate|"after <taskid>">, <duration|enddate>
-- CUSTOM RULE: Start dates are ALWAYS defined as <date> or "after <taskid>" - there are no other options. ie "Task 1: t1, 2025-01-01, 10d" or "Task 2: t2, after t1, 5d"
+- CUSTOM RULE: Start dates are ALWAYS defined as <date> or "after <taskid>" or "after milestone" - there are no other options. ie "Task 1: t1, 2025-01-01, 10d" or "Task 2: t2, after t1, 5d"
+- CUSTOM RULE: "after milestone" will refer to the last milestone before the task 
 - Sections are always defined as "section <sectionname>"
 - DO NOT write it in any other way
     - e.g. "Developed Design Theme: edt, 2024-06-30, milestone" is not a valid milestone, use "Developed Design Theme: milestone, after t1" instead

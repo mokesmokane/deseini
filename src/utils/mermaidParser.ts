@@ -80,9 +80,16 @@ export const createMilestoneWithDependency = (name: string, dependencyId: string
  * Parses a single line of Mermaid Gantt syntax
  * @param line The line to parse
  * @param currentSection The name of the current section
+ * @param tasks Dictionary of existing tasks
+ * @param lastMilestoneId Optional ID of the last processed milestone
  * @returns Object containing parsed information or null if line should be skipped
  */
-export const parseMermaidLine = (line: string, currentSection: string | null, tasks: Record<string, Task>): {
+export const parseMermaidLine = (
+  line: string, 
+  currentSection: string | null, 
+  tasks: Record<string, Task>,
+  lastMilestoneId?: string
+): {
   type: 'section' | 'task' | 'milestone' | 'skip';
   payload: any;
 } => {
@@ -178,8 +185,13 @@ export const parseMermaidLine = (line: string, currentSection: string | null, ta
   if (dependencyMatch) {
     const taskName = dependencyMatch[1].trim();
     const taskId = dependencyMatch[2].trim();
-    const dependencyId = dependencyMatch[3].trim();
+    let dependencyId = dependencyMatch[3].trim();
     const durationDays = parseInt(dependencyMatch[4], 10);
+    
+    // Special case: handle "after milestone" by using lastMilestoneId
+    if (dependencyId === 'milestone' && lastMilestoneId) {
+      dependencyId = lastMilestoneId;
+    }
     
     const dependencyEndDate = findTaskEndDateById(dependencyId, tasks);
     if (!dependencyEndDate) {
@@ -197,6 +209,32 @@ export const parseMermaidLine = (line: string, currentSection: string | null, ta
           undefined,
           [dependencyId]
         )
+      }
+    };
+  }
+  
+  // Parse milestones without explicit ID
+  // e.g., "Final deliverables submitted: milestone, after present"
+  const genericMilestoneMatch = line.match(/^([^:]+):\s*milestone\s*,\s*after\s+([^,\s]+)/);
+  if (genericMilestoneMatch) {
+    const milestoneName = genericMilestoneMatch[1].trim();
+    let dependencyId = genericMilestoneMatch[2].trim();
+    
+    // Special case: handle "after milestone" by using lastMilestoneId
+    if (dependencyId === 'milestone' && lastMilestoneId) {
+      dependencyId = lastMilestoneId;
+    }
+    
+    const dependencyEndDate = findTaskEndDateById(dependencyId, tasks);
+    if (!dependencyEndDate) {
+      throw new Error(`Dependency task ${dependencyId} not found`);
+    }
+    
+    return {
+      type: 'milestone',
+      payload: {
+        sectionName: currentSection,
+        milestone: createMilestoneWithDependency(milestoneName, dependencyId, dependencyEndDate)
       }
     };
   }
@@ -265,9 +303,10 @@ export const processMultipleMermaidLines = (lines: string[]): {
   const sections = new Map<string, boolean>();
   const tasks: Record<string, Task> = {};
   let currentSection: string | null = null;
+  let lastMilestoneId: string | undefined;
   
   const parsedResults = lines.map(line => {
-    const result = parseMermaidLine(line, currentSection, tasks);
+    const result = parseMermaidLine(line, currentSection, tasks, lastMilestoneId);
     
     // Update the current section if needed
     if (result.type === 'section') {
@@ -283,6 +322,7 @@ export const processMultipleMermaidLines = (lines: string[]): {
       tasks[result.payload.task.id] = result.payload.task;
     } else if (result.type === 'milestone' && result.payload.milestone) {
       tasks[result.payload.milestone.id] = result.payload.milestone;
+      lastMilestoneId = result.payload.milestone.id;
     }
     
     return result;

@@ -17,7 +17,7 @@ interface ChatMessageProps {
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
   const { currentStreamingMessageId, currentStreamingContent } = useMessaging();
   const { stateUpdates, setCurrentSectionId  } = useDraftMarkdown();
-  const { sections, newSummary } = useDraftPlanMermaidContext();
+  const { sections, newSummary, sketchSummary } = useDraftPlanMermaidContext();
   const isUser = message.role === 'user';
   const isStreaming = !isUser && currentStreamingMessageId === message.id;
   
@@ -130,6 +130,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
               isVisible: true
             }}
             newSummary={newSummary}
+            sketchSummary={sketchSummary}
           />
         );
       }
