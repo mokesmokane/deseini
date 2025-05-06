@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// Determine the API server URL based on environment
+const apiServer = process.env.VITE_API_SERVER || 'http://localhost:3001'
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -13,7 +16,7 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to our Express server
       '/api': {
-        target: 'http://localhost:3001',
+        target: apiServer,
         changeOrigin: true,
         secure: false,
       },
