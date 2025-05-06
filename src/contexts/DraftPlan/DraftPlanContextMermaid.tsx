@@ -180,9 +180,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
       updatedStreamState,
       updatedActionBuffer,
       updatedTimeline,
-      updatedTaskDictionary,
-      newMermaidSyntax,
-      newStreamSummary
+      updatedTaskDictionary
     } = processMermaidStreamData(
       content,
       streamStateRef.current,
@@ -194,14 +192,11 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     actionBufferRef.current = updatedActionBuffer;
     timelineRef.current = updatedTimeline;
     taskDictionaryRef.current = updatedTaskDictionary;
-
+    const newMermaidSyntax = updatedStreamState.streamSummary.mermaidMarkdown!;
     setMermaidSyntax(newMermaidSyntax);
     setActionBufferLength(actionBufferRef.current.length);
     if (actionBufferRef.current.length > 0) {
       setNextAction(actionBufferRef.current[0]);
-    }
-    if (newStreamSummary) {
-      setStreamSummary(newStreamSummary);
     }
     if (updatedStreamState.streamSummary) {
       setNewSummary(updatedStreamState.streamSummary);

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { EditDialog } from './EditDialog';
 import { PlanSummary } from './PlanSummary';
 import { formatDate, formatDuration } from './utils';
 import { FadeThoughts } from './FadeThoughts';
@@ -9,19 +8,15 @@ interface StreamingPlanProps {
     label: string;
     isVisible: boolean;
   };
-  streamSummary: string | null;
   newSummary: any | null;
 }
 
-export const StreamingPlan = ({ data, streamSummary, newSummary }: StreamingPlanProps) => {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogText, setDialogText] = useState('');
+export const StreamingPlan = ({ data, newSummary }: StreamingPlanProps) => {
   
-  const isLoading = !newSummary || !newSummary.sketchSummary;
+  const isLoading = !newSummary?.sketchSummary;
   const hasThoughts = newSummary?.thinking && newSummary.thinking.length > 0;
   const mostRecentThought = hasThoughts ? newSummary.thinking[newSummary.thinking.length - 1].summary : '';
   
-  // Track the previous thought to animate between them
   const [currentThought, setCurrentThought] = useState('');
 
   useEffect(() => {
@@ -30,33 +25,10 @@ export const StreamingPlan = ({ data, streamSummary, newSummary }: StreamingPlan
     }
   }, [mostRecentThought, currentThought]);
 
-  const handleShowFullText = () => {
-    setDialogOpen(true);
-    setDialogText(newSummary?.allText || '');
-  };
-
-  const handleShowChartSyntax = () => {
-    setDialogOpen(true);
-    setDialogText(newSummary?.mermaidMarkdown || '');
-  };
-
   return (
     <>
-      <EditDialog 
-        isOpen={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        text={dialogText}
-        onTextChange={setDialogText}
-        title={dialogText === newSummary?.allText ? 'Full Streamed Text' : 'Mermaid Syntax'}
-        contextActions={{ 
-          newSummary, 
-          handleShowFullText, 
-          handleShowChartSyntax 
-        }}
-      />
-      
       <div
-        className="relative bg-white rounded-xl overflow-hidden border border-gray-300 shadow-sm"
+        className="relative bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-md"
         style={{
           opacity: data.isVisible ? 1 : 0,
           transition: 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -66,12 +38,12 @@ export const StreamingPlan = ({ data, streamSummary, newSummary }: StreamingPlan
           maxWidth: 1200,
         }}
       >
-        {/* Content container */}
         <div className="relative z-10 p-6">
-          <div className="font-bold text-lg mb-4 text-black">
-            Creating plan sketch
+        {isLoading && (
+          <div className="text-lg mb-4 text-white">
+            Thinking...
           </div>
-          {/* Streaming state with thoughts */}
+        )}
           <div 
             className={`transition-all duration-500 ease-in-out ${isLoading ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 pointer-events-none absolute'}`}
             style={{ width: '100%' }}
@@ -79,22 +51,12 @@ export const StreamingPlan = ({ data, streamSummary, newSummary }: StreamingPlan
             {hasThoughts && (
               <FadeThoughts thoughts={newSummary?.thinking || []} />
             )}
-            
-            {!hasThoughts && (
-              <div className="text-gray-500 italic">
-                {streamSummary || 'Processing...'}
-              </div>
-            )}
-            
-            {/* Shimmer effect for loading state */}
-            <div className={`shimmer-effect overflow-hidden ${isLoading ? 'before:absolute before:inset-0 before:w-full before:h-full before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-gray-300 before:to-transparent' : ''}`} />
           </div>
           
-          {/* Final state with project timeline */}
           <div className={`transition-all duration-500 ease-in-out ${!isLoading ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-4'}`}>
-            {!isLoading && (
+            {newSummary?.sketchSummary && (
               <PlanSummary 
-                newSummary={newSummary} 
+                sketchSummary={newSummary!.sketchSummary} 
                 formatDate={formatDate}
                 formatDuration={formatDuration}
               />
@@ -102,16 +64,6 @@ export const StreamingPlan = ({ data, streamSummary, newSummary }: StreamingPlan
           </div>
         </div>
       </div>
-      
-      <style>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        .shimmer-effect::before {
-          animation: shimmer 2s infinite;
-        }
-      `}</style>
     </>
   );
 };

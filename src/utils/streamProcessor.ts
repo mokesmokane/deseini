@@ -113,8 +113,6 @@ export const processMermaidStreamData = (
   updatedActionBuffer: BufferedAction[];
   updatedTimeline: Timeline | undefined;
   updatedTaskDictionary: Record<string, Task>;
-  newMermaidSyntax: string;
-  newStreamSummary?: string;
 } => {
   console.log('[Mermaid stream] content:', content);
   // Merge new content
@@ -145,7 +143,6 @@ export const processMermaidStreamData = (
   let updatedActionBuffer = [...actionBuffer];
   let updatedTimeline = currentTimeline;
   const updatedTaskDictionary: Record<string, Task> = { ...taskDictionary };
-  let newStreamSummary: string | undefined;
 
   // Split buffered data into complete lines and keep last partial
   const lines = updatedStreamState.mermaidData.split('\n');
@@ -237,9 +234,7 @@ export const processMermaidStreamData = (
     updatedStreamState,
     updatedActionBuffer,
     updatedTimeline,
-    updatedTaskDictionary,
-    newMermaidSyntax: updatedStreamState.streamSummary.mermaidMarkdown!,
-    newStreamSummary
+    updatedTaskDictionary
   };
 };
 

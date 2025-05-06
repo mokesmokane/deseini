@@ -8,12 +8,10 @@ interface ThoughtStreamProps {
 export const FadeThoughts = memo(({ thoughts }: ThoughtStreamProps) => {
   
   return (
-    <div className="relative bg-gray-800/50 rounded-lg p-4 border border-purple-500/30 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-purple-500/10 to-purple-500/0 animate-shimmer" />
+    <div className="relative bg-gray-800 rounded-lg p-4 border border-gray-700 shadow-md overflow-hidden">
       
       <div className="relative">
-        <div className="flex items-center space-x-2 mb-3">
-          <span className="text-purple-400 font-medium">Thinking</span>
+        <div className="flex items-center mb-3">
           <AnimatedTimeline items={thoughts.map((thought, index) => ({ id: index, summary: thought.summary }))} />
         </div>
         
@@ -27,17 +25,23 @@ export const FadeThoughts = memo(({ thoughts }: ThoughtStreamProps) => {
                   : 'opacity-0 scale-95 -translate-y-2'
               }`}
             >
-              <div className="bg-gray-700/50 backdrop-blur-sm rounded-lg p-3 border border-purple-500/20">
-                <div className="relative overflow-hidden">
+              <div className="bg-gray-900 rounded-lg p-3 border border-gray-700 shadow-md relative overflow-hidden">
+                <div className="prose prose-sm text-gray-300 relative z-10">
                   {thought.summary}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
+                </div>
+                {/* The shimmer effect layer as a separate absolutely positioned element */}
+                <div className="absolute inset-0 overflow-hidden">
+                  <div 
+                    className="w-[200%] h-full absolute top-0 right-0 bg-gradient-to-r from-transparent via-gray-400/10 to-transparent -translate-x-full animate-shimmer" 
+                    style={{ backgroundSize: '200% 100%' }}
+                  />
                 </div>
               </div>
             </div>
           ))}
         </div>
         
-        <div className="mt-2 text-xs text-purple-400/60">
+        <div className="mt-2 text-xs text-gray-500">
           {thoughts.length}
         </div>
       </div>

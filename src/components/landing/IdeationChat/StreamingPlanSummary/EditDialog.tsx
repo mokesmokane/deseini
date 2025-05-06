@@ -35,12 +35,12 @@ export const EditDialog = ({
       aria-labelledby="dialog-title"
     >
       <div
-        className="bg-white text-gray-900 rounded-xl shadow-xl max-w-[98vw] max-h-[80vh] w-[1000px] p-8 overflow-auto relative font-mono text-base border-[1.5px] border-gray-900 flex flex-col"
+        className="bg-white text-black rounded-xl shadow-sm max-w-[98vw] max-h-[80vh] w-[1000px] p-8 overflow-auto relative font-mono text-base border-[1.5px] border-gray-200 flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         <button
           onClick={() => createPlanFromMarkdownString(text)}
-          className="absolute top-3 right-14 bg-white text-gray-900 border-[1.5px] border-gray-900 rounded-md py-1 px-4 font-semibold text-base cursor-pointer transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="absolute top-3 right-14 bg-white text-black border-[1.5px] border-gray-200 rounded-md py-1 px-4 font-semibold text-base cursor-pointer transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300"
           aria-label="Regenerate plan from edited text"
         >
           Regenerate
@@ -48,7 +48,7 @@ export const EditDialog = ({
         
         <button
           onClick={onClose}
-          className="absolute top-3 right-4 bg-transparent border-none text-xl cursor-pointer text-gray-900 font-bold p-0 leading-none hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 rounded-md"
+          className="absolute top-3 right-4 bg-transparent border-none text-xl cursor-pointer text-black font-bold p-0 leading-none hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded-md"
           aria-label="Close dialog"
         >
           ×
@@ -56,7 +56,7 @@ export const EditDialog = ({
         
         <div 
           id="dialog-title"
-          className="font-bold mb-4 text-lg tracking-wide"
+          className="font-bold mb-4 text-lg tracking-wide text-black"
         >
           {title}
         </div>
@@ -66,8 +66,8 @@ export const EditDialog = ({
             onClick={contextActions.handleShowFullText}
             className={`text-sm px-3 py-1 rounded-md transition-colors ${
               title === 'Full Streamed Text' 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                ? 'bg-black text-white' 
+                : 'bg-gray-100 text-black hover:bg-gray-200'
             }`}
           >
             Full Text
@@ -77,8 +77,8 @@ export const EditDialog = ({
             onClick={contextActions.handleShowChartSyntax}
             className={`text-sm px-3 py-1 rounded-md transition-colors ${
               title === 'Mermaid Syntax' 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                ? 'bg-black text-white' 
+                : 'bg-gray-100 text-black hover:bg-gray-200'
             }`}
           >
             Chart Syntax
@@ -88,7 +88,7 @@ export const EditDialog = ({
         <textarea
           value={text}
           onChange={e => onTextChange(e.target.value)}
-          className="bg-gray-50 text-gray-900 rounded-lg p-4 overflow-auto font-mono text-sm m-0 box-border whitespace-pre-wrap flex-1 border-[1.5px] border-gray-900 w-full min-h-[300px] resize-y outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+          className="bg-white text-black rounded-lg p-4 overflow-auto font-mono text-sm m-0 box-border whitespace-pre-wrap flex-1 border-[1.5px] border-gray-200 w-full min-h-[300px] resize-y outline-none transition-all focus:border-black focus:ring-2 focus:ring-gray-300"
           aria-label="Edit plan text"
           spellCheck={false}
         />

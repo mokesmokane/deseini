@@ -6,7 +6,7 @@ const MIN_DOT_SPACING = 50; // Minimum spacing between dots
 
 const AnimatedTimeline: React.FC<AnimatedTimelineProps> = ({
   items,
-  primaryColor = '#3B82F6',
+  primaryColor = '#000000',
   lineHeight = 4,
   dotSize = 12,
   animationDuration = 500,

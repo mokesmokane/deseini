@@ -65,7 +65,8 @@ export default {
   		animation: {
   			slideDown: 'slideDown 0.3s ease-out forwards',
             fadeIn: 'fadeIn 0.5s ease-in-out forwards',
-            blink: 'blink 1s step-end infinite'
+            blink: 'blink 1s step-end infinite',
+            shimmer: 'shimmer 2s linear infinite'
   		},
   		keyframes: {
   			slideDown: {
@@ -85,6 +86,17 @@ export default {
             blink: {
                 '0%, 100%': { opacity: 1 },
                 '50%': { opacity: 0 }
+            },
+            shimmer: {
+                '0%': { 
+                    transform: 'translateX(-100%)' 
+                },
+                '50%': { 
+                    transform: 'translateX(0%)' 
+                },
+                '100%': { 
+                    transform: 'translateX(100%)' 
+                }
             }
   		},
   		borderRadius: {
