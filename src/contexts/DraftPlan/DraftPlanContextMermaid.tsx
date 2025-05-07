@@ -20,6 +20,7 @@ import { debounce } from 'lodash';
 import { ensureDate } from '../../hooks/utils';
 import { useProject } from '../ProjectContext';
 import { streamToStreams } from '../../utils/stream';
+import { draftPlanToMermaid } from '../../utils/mermaidParser';
 
 // gantt
 //     section Phase 1
@@ -38,6 +39,7 @@ interface DraftPlanMermaidContextType {
   x0Date: Date | null;
   createPlanFromMarkdownStream: (markdownStream: ReadableStream<Uint8Array>) => Promise<void>;
   createPlanFromMarkdownString: (markdownString: string) => Promise<void>;
+  createPlanFromPureMarkdownStream: (stream: ReadableStream<string>) => Promise<void>;
   isLoading: boolean;
   streamProgress: number;
   mermaidSyntax: string;
@@ -55,6 +57,7 @@ interface DraftPlanMermaidContextType {
   updateTaskDuration: (taskId: string, newDuration: number) => void;
   newSummary: StreamSummary | undefined;
   sketchSummary: SketchSummary | undefined;
+  getMermaidMarkdown: () => string;
 }
 
 interface DraftPlanMermaidProviderProps {
@@ -462,8 +465,80 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     };
   }, [nextAction]);
 
-  // Function to create plan from markdown stream
-  const createPlanFromMarkdownStream = async (stream: ReadableStream<Uint8Array>): Promise<void> => {
+
+  const createPlanFromPureMarkdownStream = async (stream: ReadableStream<string>): Promise<void> => {
+    try{
+    setIsLoading(true);
+      setStreamProgress(0);
+      setProcessingBufferProgress(0);
+
+      // Reset data
+      setSections([]);
+      setMermaidSyntax('');
+      setFullSyntax('');
+      setStreamSummary('');
+      
+      // Reset refs
+      streamStateRef.current = {
+        mermaidData: '',
+        completeLines: [],
+        inMermaidBlock: false,
+        currentSection: null,
+        allSections: new Set(),
+        lastHeader: null,
+        streamSummary: {
+          thinking: []
+          // drawing will be added when we start processing chart data
+        }
+      };
+      taskDictionaryRef.current = {};
+      actionBufferRef.current = [];
+      isProcessingBufferRef.current = false;
+      setSketchSummaryState(undefined);
+      
+      const linesStream = streamByLine(stream);
+      const mermaidReader = linesStream.getReader();
+
+      const mainTask = (async () => {
+        try {
+          while (true) {
+            const { value, done } = await mermaidReader.read();
+            if (done) break;
+            try {
+              handleMermaidStreamData(value);
+            } catch (error) {
+              console.error('Error processing main stream:', error);
+              setIsLoading(false);
+            }
+          }
+        } finally {
+          mermaidReader.releaseLock();
+        }
+      })();
+
+      // Await both streams to finish
+      await Promise.all([mainTask]);
+
+      processDependencies();
+      
+      // Process all actions in the buffer and wait for completion
+      try {
+        await processAllBuffer();
+        debouncedSave();
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error processing buffer:', error);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Error creating plan from markdown:', error);
+      setIsLoading(false);
+    }
+  };
+
+
+
+  const createPlanFromStream = async (stream: ReadableStream<string>): Promise<void> => {
     try {
       setIsLoading(true);
       setStreamProgress(0);
@@ -492,10 +567,8 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
       actionBufferRef.current = [];
       isProcessingBufferRef.current = false;
       setSketchSummaryState(undefined);
-
-      // Process the stream using our pure function
-      const textStream = sseStreamToText(stream, 'content');
-      const linesStream = streamByLine(textStream);
+      
+      const linesStream = streamByLine(stream);
       const { mainStream, codeBlockStreams } = streamToStreams(linesStream, ["mermaid"]);
       const mermaidStream = codeBlockStreams["mermaid"];
 
@@ -557,6 +630,12 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     }
   };
 
+  // Function to create plan from markdown stream
+  const createPlanFromMarkdownStream = async (stream: ReadableStream<Uint8Array>): Promise<void> => {
+      const textStream = sseStreamToText(stream, 'content');
+      createPlanFromStream(textStream);
+  };
+
   const createPlanFromMarkdownString = async (markdownString: string): Promise<void> => {
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -571,6 +650,14 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     await createPlanFromMarkdownStream(stream);
   };
 
+  // Get the current mermaid markdown for the draft plan
+  const getMermaidMarkdown = useCallback(() => {
+    if (sections.length > 0) {
+      return draftPlanToMermaid({ sections, timeline });
+    }
+    return mermaidSyntax || '';
+  }, [sections, timeline, mermaidSyntax]);
+
   // Helper function to prepare context value
   const contextValue: DraftPlanMermaidContextType = {
     sections,
@@ -578,6 +665,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     x0Date,
     createPlanFromMarkdownStream,
     createPlanFromMarkdownString,
+    createPlanFromPureMarkdownStream,
     isLoading,
     streamProgress,
     mermaidSyntax,
@@ -586,15 +674,16 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     processingBufferProgress,
     startProcessingBuffer,
     processAllBuffer,
+    TIMELINE_PIXELS_PER_DAY,
+    setTIMELINE_PIXELS_PER_DAY,
     actionBufferLength,
     nextAction,
     actionBuffer: actionBufferRef.current,
+    updateTaskStartDate,
+    updateTaskDuration,
     newSummary,
     sketchSummary: sketchSummaryState,
-    TIMELINE_PIXELS_PER_DAY,
-    setTIMELINE_PIXELS_PER_DAY,
-    updateTaskStartDate,
-    updateTaskDuration
+    getMermaidMarkdown,
   };
 
   return (

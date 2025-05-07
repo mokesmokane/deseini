@@ -228,4 +228,125 @@ export class SimpleSectionProcessor {
     // Add the new state
     this.updateState.sectionUpdateStates.push({ sectionId, state });
   }
+
+  /**
+   * Process a reader stream directly with callbacks for updates
+   * Similar to processStream but replaces existing sections instead of throwing an error
+   * @param lineReader - A ReadableStreamDefaultReader that yields lines
+   * @param onUpdate - Callback function called on each significant update
+   * @returns Promise that resolves when processing is complete
+   */
+  public async processStreamWithUpdates(
+    lineReader: ReadableStreamDefaultReader<string>,
+    onUpdate: ProcessUpdateCallback
+  ): Promise<SectionData[]> {
+    let reading = true;
+    while (reading) {
+      const { done, value } = await lineReader.read();
+      
+      if (done) {
+        reading = false;
+        // Process any remaining content in the buffer
+        const finalSection = this.processLineBuffer();
+        this.isCreatingSection = false;
+        // Final update if we have a section from the buffer
+        if (finalSection) {
+          this.setSectionState(finalSection.id, 'created');
+          onUpdate({
+            section: finalSection,
+            updateState: this.updateState,
+            currentSectionId: this.lastSectionId,
+            creating: this.isCreatingSection
+          });
+        }
+        break;
+      }
+      
+      if (!value) continue;
+      
+      // Before processing the new line, check if it is a header and if so, emit creating=false for the previous section
+      const isHeader = value.match(/^(#)\s+(.+)$/);
+      if (isHeader && this.sections.length > 0) {
+        // Emit update for previous section with creating=false
+        const prevSection = this.sections[this.sections.length - 1];
+        this.setSectionState(prevSection.id, 'created');
+        onUpdate({
+          section: prevSection,
+          updateState: this.updateState,
+          currentSectionId: prevSection.id,
+          creating: false
+        });
+      }
+
+      // Process this line but handle duplicates for the "WithUpdates" version
+      const headerMatch = value.match(/^(#)\s+(.+)$/);
+      let currentSectionId: string | null = null;
+      
+      if (headerMatch && headerMatch[1] === '#') {
+        // This is a new top-level section - process any content we've accumulated
+        this.processLineBuffer();
+        this.isCreatingSection = true;
+        
+        // Start a new section
+        const title = headerMatch[2].trim();
+        const id = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        
+        // Check for duplicate section - in this version we REPLACE rather than throw error
+        const existingIndex = this.sections.findIndex(section => section.id === id);
+        
+        this.currentLineBuffer = [value]; // Start with the header line
+        
+        // Create the new section data
+        const newSection: SectionData = {
+          id,
+          title,
+          sectionIndex: existingIndex >= 0 ? existingIndex : this.sections.length,
+          content: value,
+          updatedAt: new Date()
+        };
+        
+        // Replace or add the section
+        if (existingIndex >= 0) {
+          this.sections[existingIndex] = newSection;
+        } else {
+          this.sections.push(newSection);
+        }
+        
+        this.lastSectionId = id;
+        currentSectionId = id;
+      } else {
+        // Regular line processing (same as in processLine)
+        this.currentLineBuffer.push(value);
+        
+        // If we have at least one section, update its content for live preview
+        if (this.sections.length > 0) {
+          const currentSection = this.sections[this.sections.length - 1];
+          currentSection.content = this.currentLineBuffer.join('\n');
+          currentSectionId = currentSection.id;
+        }
+      }
+
+      // Get the current section that was updated
+      let updatedSection: SectionData | undefined;
+      if (currentSectionId) {
+        updatedSection = this.getSectionById(currentSectionId);
+        // If this is a header, mark as creating
+        if (isHeader && updatedSection) {
+          this.setSectionState(updatedSection.id, 'creating');
+        }
+      }
+      
+      // Only call the update callback if we have an updated section
+      if (updatedSection) {
+        // Call the update callback with the single updated section
+        onUpdate({
+          section: updatedSection,
+          updateState: this.updateState,
+          currentSectionId,
+          creating: this.isCreatingSection
+        });
+      }
+    }
+    return this.sections;
+  }
 }

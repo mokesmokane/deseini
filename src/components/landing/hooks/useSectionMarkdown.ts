@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useDraftMarkdown } from '../DraftMarkdownProvider';
+import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
 import { MarkdownSectionAnalyzer } from '../../../utils/MarkdownSections';
 
 /**

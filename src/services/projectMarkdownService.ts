@@ -183,6 +183,8 @@ export const projectMarkdownService = {
         .select('version')
         .eq('project_id', projectId)
         .eq('section_id', sectionId)
+        .order('version', { ascending: false })
+        .limit(1)
         .maybeSingle();
       
       if (fetchError) {

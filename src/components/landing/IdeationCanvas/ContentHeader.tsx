@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
-import { useDraftMarkdown } from '../../../components/landing/DraftMarkdownProvider';
+import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
 
 
 const ContentHeader: React.FC = () => {

@@ -123,7 +123,6 @@ export function streamToStreams<T extends string | Uint8Array>(
                 inCodeBlock = false;
                 currentLang = '';
               } else {
-                console.log('[Handle mermaid stream] enqueuing line', l);
                 codeControllers[currentLang].enqueue(l + '\n');
               }
             }

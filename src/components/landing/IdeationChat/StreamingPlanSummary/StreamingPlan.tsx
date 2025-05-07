@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { PlanSummary } from './PlanSummary';
-import { formatDate, formatDuration } from './utils';
 import { FadeThoughts } from './FadeThoughts';
 import { StreamSummary, SketchSummary } from '@/utils/types';
 
@@ -58,8 +57,6 @@ export const StreamingPlan = ({ data, newSummary, sketchSummary }: StreamingPlan
           <div className={`transition-all duration-500 ease-in-out ${!isLoading ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-4'}`}>
             {newSummary?.sketchSummary && (
               <PlanSummary 
-                formatDate={formatDate}
-                formatDuration={formatDuration}
                 newSummary={newSummary}
                 sketchSummary={sketchSummary}
               />

@@ -5,7 +5,7 @@ import AccountDropdown  from './components/AccountDropdown';
 import { ProjectsDropdown } from './components/ProjectsDropdown';
 import { useProject } from './contexts/ProjectContext';
 import { useMessaging } from './contexts/Messaging/MessagingProvider';
-import { useDraftMarkdown } from './components/landing/DraftMarkdownProvider';
+import { useDraftMarkdown } from './contexts/DraftMarkdownProvider';
 import { useAuth } from './hooks/useAuth';
 
 

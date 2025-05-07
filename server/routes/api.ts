@@ -81,6 +81,11 @@ export function createApiRouter(apiKey: string): express.Router {
   router.post('/project-consultant-chat', (req: express.Request, res: express.Response) => {
     taskController.projectConsultantChat(req, res);
   });
+
+  // Edit project chat endpoint
+  router.post('/edit-project-chat', (req: express.Request, res: express.Response) => {
+    taskController.editProjectChat(req, res);
+  });
   
   return router;
 }

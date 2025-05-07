@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ContentSidebar from './ContentSidebar';
 import ContentArea from './ContentArea';
-import { useDraftMarkdown } from '../DraftMarkdownProvider';
+import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
 import { Share2 } from 'lucide-react';
 import TabSelector from './TabSelector';
 import ContentHeader from './ContentHeader';

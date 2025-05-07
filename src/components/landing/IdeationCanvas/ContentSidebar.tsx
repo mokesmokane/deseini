@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FileText } from 'lucide-react';
-import { useDraftMarkdown } from '../DraftMarkdownProvider';
+import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
 
 interface SidebarProps {
   currentSectionId: string;

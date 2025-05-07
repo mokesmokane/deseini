@@ -15,7 +15,6 @@ export const processMainStreamData = (
   updatedStreamState: StreamState;
   newStreamSummary?: string;
 } => {
-  console.log('[Main stream] content:', content);
   const updatedStreamState: StreamState = {
     ...streamState,
     streamSummary: {
@@ -43,7 +42,6 @@ export const processMainStreamData = (
       }
     }
   }
-  console.log('[Main stream] newStreamSummary:', newStreamSummary);
   return { updatedStreamState, newStreamSummary };
 };
 
@@ -261,6 +259,104 @@ export const processMermaidStreamData = (
       // Push action and update dictionary
       updatedActionBuffer.push({ type: actionType, payload, timestamp: Date.now() });
       updatedTaskDictionary[task.id] = task;
+      
+      // Process any pending tasks that depend on this task
+      if (updatedStreamState.pendingLines && updatedStreamState.pendingLines[task.id]) {
+        const pendingDependentTasks = updatedStreamState.pendingLines[task.id];
+        delete updatedStreamState.pendingLines[task.id];
+        
+        // Process each pending task that was waiting for this task
+        for (const pendingTask of pendingDependentTasks) {
+          console.log('[Mermaid stream] processing pending task with dependency on:', task.id, pendingTask.line);
+          try {
+            // Re-process now that the dependency exists
+            const pendingResult = parseMermaidLine(
+              pendingTask.line, 
+              pendingTask.section, 
+              updatedTaskDictionary,
+              updatedStreamState.lastMilestoneId
+            );
+            
+            if (pendingResult.type === 'task' || pendingResult.type === 'milestone') {
+              const pendingActionType: ActionType = pendingResult.type === 'task' ? 'ADD_TASK' : 'ADD_MILESTONE';
+              const pendingPayload = { ...pendingResult.payload };
+              const pendingTaskObj = pendingResult.type === 'task' ? pendingPayload.task : pendingPayload.milestone;
+              
+              // Resolve dependencies for the pending task
+              if (pendingTaskObj.dependencies?.length) {
+                const updatedPendingTask = calculateDatesFromDependencies(pendingTaskObj, updatedTaskDictionary);
+                if (pendingResult.type === 'task') pendingPayload.task = updatedPendingTask;
+                else pendingPayload.milestone = updatedPendingTask;
+              }
+              
+              // Update timeline for the pending task
+              const pendingStart = pendingTaskObj.startDate!;
+              const pendingEnd = pendingTaskObj.endDate ?? pendingTaskObj.startDate!;
+              
+              // Track min/max for sketch summary
+              if (!minStart || pendingStart < minStart) minStart = pendingStart;
+              if (!maxEnd || pendingEnd > maxEnd) maxEnd = pendingEnd;
+              
+              if (!updatedTimeline || pendingStart < updatedTimeline.startDate || pendingEnd > updatedTimeline.endDate) {
+                const newTimeline = updatedTimeline
+                  ? {
+                      startDate: new Date(Math.min(updatedTimeline.startDate.getTime(), pendingStart.getTime())),
+                      endDate: new Date(Math.max(updatedTimeline.endDate.getTime(), pendingEnd.getTime()))
+                    }
+                  : { startDate: pendingStart, endDate: pendingEnd };
+                
+                updatedTimeline = newTimeline;
+                updatedActionBuffer.push({ 
+                  type: 'UPDATE_TIMELINE', 
+                  payload: { timeline: newTimeline }, 
+                  timestamp: Date.now() 
+                });
+                
+                const ms = newTimeline.endDate.getTime() - newTimeline.startDate.getTime();
+                updatedStreamState.streamSummary.sketchSummary!.duration = Math.ceil(ms / (1000 * 60 * 60 * 24));
+              }
+              
+              // Update counts
+              if (pendingResult.type === 'task') updatedStreamState.streamSummary.sketchSummary!.totalTasks += 1;
+              else updatedStreamState.streamSummary.sketchSummary!.totalMilestones += 1;
+              
+              // Push action and update dictionary
+              updatedActionBuffer.push({ type: pendingActionType, payload: pendingPayload, timestamp: Date.now() });
+              updatedTaskDictionary[pendingTaskObj.id] = pendingTaskObj;
+              
+              // Recursively process any tasks that might depend on this newly added task
+              if (updatedStreamState.pendingLines && updatedStreamState.pendingLines[pendingTaskObj.id]) {
+                // Re-run the function with the current state to handle chained dependencies
+                const recursiveResult = processMermaidStreamData(
+                  '', // No new content
+                  updatedStreamState,
+                  updatedActionBuffer,
+                  updatedTimeline,
+                  updatedTaskDictionary
+                );
+                
+                // Update all state from recursive processing - use the result but don't try to reassign constants
+                updatedActionBuffer = recursiveResult.updatedActionBuffer;
+                updatedTimeline = recursiveResult.updatedTimeline;
+                Object.assign(updatedTaskDictionary, recursiveResult.updatedTaskDictionary);
+                
+                // Copy over pendingLines and other updated values manually
+                if (recursiveResult.updatedStreamState.pendingLines) {
+                  updatedStreamState.pendingLines = recursiveResult.updatedStreamState.pendingLines;
+                }
+                // Copy over streamSummary for consistent counts
+                updatedStreamState.streamSummary = recursiveResult.updatedStreamState.streamSummary;
+                updatedStreamState.lastMilestoneId = recursiveResult.updatedStreamState.lastMilestoneId;
+              }
+            }
+          } catch (err) {
+            console.error('[Mermaid stream] Error processing pending task:', err);
+            // Re-add to pending queue if there's still an issue
+            updatedStreamState.pendingLines[task.id] = updatedStreamState.pendingLines[task.id] || [];
+            updatedStreamState.pendingLines[task.id].push(pendingTask);
+          }
+        }
+      }
     }
   }
 

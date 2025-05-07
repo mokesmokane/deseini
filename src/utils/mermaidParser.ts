@@ -1,5 +1,6 @@
-import { Task } from '../contexts/DraftPlan/types';
+import { DraftPlan, Section, Task } from '../contexts/DraftPlan/types';
 import { createTask } from './taskUtils';
+
 /**
  * Find a task's end date by its ID across all sections
  * @param taskId ID of the task to find
@@ -27,6 +28,7 @@ export function findTaskEndDateById(taskId: string, tasks: Record<string, Task>)
   }
   return undefined;
 }
+
 /**
  * Creates a milestone ID from the milestone name
  * @param name Milestone name
@@ -330,3 +332,72 @@ export const processMultipleMermaidLines = (lines: string[]): {
   
   return { sections, tasks, parsedResults };
 };
+
+/**
+ * Converts a DraftPlan object to Mermaid Gantt chart markdown.
+ * @param plan The DraftPlan to convert.
+ * @returns Mermaid markdown string.
+ */
+export function draftPlanToMermaid(plan: DraftPlan): string {
+  const lines: string[] = [];
+  lines.push('```mermaid');
+  lines.push('gantt');
+  lines.push('    title Compostable Packaging Material Project Timeline');
+  lines.push('    dateFormat YYYY-MM-DD');
+  if (plan.timeline) {
+    //check if startdate s a date string
+    let start: string;
+    if (typeof plan.timeline.startDate === 'string') {
+      start = plan.timeline.startDate;
+    } else {
+      start = plan.timeline.startDate.toISOString().slice(0, 10);
+
+    }
+    let end: string;
+    if (typeof plan.timeline.endDate === 'string') {
+      end = plan.timeline.endDate;
+    } else {
+      end = plan.timeline.endDate.toISOString().slice(0, 10);
+    }
+    lines.push(`    %% Timeline: ${start} to ${end}`);
+  }
+  
+  const renderSection = (section: Section) => {
+    lines.push(`    section ${section.name}`);
+    for (const task of section.tasks) {
+      if (task.type === 'milestone') {
+        if (task.dependencies && task.dependencies.length) {
+          const dep = task.dependencies[0];
+          lines.push(`        ${task.label}: milestone, after ${dep}`);
+        } else {
+          const date = task.startDate.toISOString().slice(0, 10);
+          lines.push(`        ${task.label}: milestone, ${date}`);
+        }
+      } else {
+        if (task.dependencies && task.dependencies.length) {
+          const dep = task.dependencies[0];
+          if (task.duration != null) {
+            lines.push(`        ${task.label}: ${task.id}, after ${dep}, ${task.duration}d`);
+          } else {
+            lines.push(`        ${task.label}: ${task.id}, after ${dep}`);
+          }
+        } else {
+          const date = (typeof task.startDate === 'string') ? task.startDate : task.startDate.toISOString().slice(0, 10);
+          if (task.duration != null) {
+            lines.push(`        ${task.label}: ${task.id}, ${date}, ${task.duration}d`);
+          } else {
+            lines.push(`        ${task.label}: ${task.id}, ${date}`);
+          }
+        }
+      }
+    }
+    if (section.section) {
+      renderSection(section.section);
+    }
+  };
+  for (const sec of plan.sections) {
+    renderSection(sec);
+  }
+  lines.push('```');
+  return lines.join('\n');
+}

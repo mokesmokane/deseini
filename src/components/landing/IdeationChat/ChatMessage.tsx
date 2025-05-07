@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Message } from '../types';
 import { MessageSection } from './MessageSection';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
-import { useDraftMarkdown } from '../DraftMarkdownProvider';
+import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
-import styles from './ChatMessage.module.css';
-import { SectionUpdateState } from '../types';
-// import Generate from './Generate';
-import { StreamingPlan } from './StreamingPlanSummary/StreamingPlan';
+// import Generate from './Generate'; // legacy placeholder, can remove if unused
+import Placeholder from './Placeholder';
+import CodeBlock from './CodeBlock';
+import ProjectPlanBlock from './ProjectPlanBlock';
+import ProjectPlanUpdateBlock from './ProjectPlanUpdateBlock';
+import MermaidSyntaxUpdateBlock from './MermaidSyntaxUpdateBlock';
 
 interface ChatMessageProps {
   message: Message;
@@ -33,112 +35,135 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
     }
   }, [isStreaming, currentStreamingContent, message.content]);
   
-  const renderContentWithProjectPlan = (content: string = '') => {
-    const marker = '[[CREATE_PROJECT_GANTT]]';
-    const hasPlan = Array.isArray(sections) && sections.length > 0;
-
-    // Split by the marker to allow text before/after
-    const parts = content.split(marker);
+  const renderContent = (content: string = '') => {
     const nodes: React.ReactNode[] = [];
-
-    parts.forEach((part, idx) => {
-      // Look for ```ProjectPlan ... ```
-      const openFence = '```ProjectPlan\n';
-      const startIndex = part.indexOf(openFence);
-      if (startIndex !== -1) {
-        // Text before the code block
-        if (startIndex > 0) {
-          nodes.push(<span key={`before-plan-${idx}`}>{part.substring(0, startIndex)}</span>);
-        }
-        // Extract code block
-        const afterOpen = part.substring(startIndex + openFence.length);
-        const closeFencePos = afterOpen.indexOf('```');
-        if (closeFencePos !== -1) {
-          // Code block extraction logic here
-        } else {
-          // Handle case when closing fence is not found
-        }
-        // Render project plan block
-        nodes.push(
-          <pre
-            key={`plan-${idx}`}
-            className="bg-gray-800 text-white p-4 rounded font-mono whitespace-pre-wrap overflow-auto"
-          >
-            {stateUpdates && message && message.id && stateUpdates[message.id]?.sectionUpdateStates
-              ? (
-                  <ul className="list-none p-0 m-0">
-                    {stateUpdates[message.id].sectionUpdateStates.map((update: SectionUpdateState, index: number) => {
-                      let icon, iconClass, label;
-                      const sectionId = update.sectionId ?? 'section';
-                      if (update.state === "created" || update.state === "updated") {
-                        icon = "✓";
-                        iconClass = "text-green-400 font-bold";
-                        label = `Create ${sectionId}`;
-                      } else if (update.state === "creating" || update.state === "updating") {
-                        icon = <span className={`spinner mr-1 ${styles.spinner}`}></span>;
-                        iconClass = "text-gray-300";
-                        label = `Create ${sectionId}`;
-                      } else if (update.state === "deleted" || update.state === "deleting") {
-                        icon = "✗";
-                        iconClass = "text-red-400";
-                        label = `Delete ${sectionId}`;
-                      } else if (update.state === "error") {
-                        icon = "!";
-                        iconClass = "text-yellow-400";
-                        label = `Error ${sectionId}`;
-                      }
-                      return (
-                        <li key={index} className="flex items-center mb-1">
-                          <button
-                            className={`inline-flex items-center mr-2 ${iconClass} focus:outline-none focus:ring-2 focus:ring-white/70 rounded transition`}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                            onClick={() => setCurrentSectionId && update.sectionId && setCurrentSectionId(update.sectionId)}
-                            tabIndex={0}
-                            aria-label={`Set current section to ${sectionId}`}
-                            type="button"
-                          >
-                            {icon}
-                          </button>
-                          <span className="text-white/90 text-sm cursor-pointer" onClick={() => setCurrentSectionId && update.sectionId && setCurrentSectionId(update.sectionId)}>{label}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )
-              : <span>No updates available.</span>}
-          </pre>
-        );
-        // Text after the code block
-        if (closeFencePos !== -1 && closeFencePos + 3 < afterOpen.length) {
+    const hasPlan = Array.isArray(sections) && sections.length > 0;
+    let idx = 0;
+    let i = 0;
+    while (i < content.length) {
+      // Handle [[PLACEHOLDER]]
+      if (content.startsWith('[[', i)) {
+        const end = content.indexOf(']]', i + 2);
+        if (end !== -1) {
+          const action = content.slice(i + 2, end);
           nodes.push(
-            <span key={`after-plan-${idx}`}>
-              {afterOpen.substring(closeFencePos + 3)}
-            </span>
+            <Placeholder
+              key={`placeholder-${idx}`}
+              action={action}
+              idx={idx}
+              hasPlan={hasPlan}
+              newSummary={newSummary}
+              sketchSummary={sketchSummary}
+            />
           );
+          idx++;
+          i = end + 2;
+          continue;
         }
+      }
+      // Handle ``` blocks
+      if (content.startsWith('```', i)) {
+        // Find language
+        const newline = content.indexOf('\n', i + 3);
+        let lang = '';
+        if (newline !== -1) {
+          lang = content.slice(i + 3, newline).trim();
+        }
+        // Find closing ```
+        const close = content.indexOf('```', newline + 1);
+        if (lang.toLowerCase() === 'projectplan') {
+          nodes.push(
+            <ProjectPlanBlock
+              key={`code-${idx}`}
+              messageId={message.id}
+              setCurrentSectionId={setCurrentSectionId}
+            />
+          );
+          idx++;
+          // If closing found, skip to after it, else to end
+          if (close !== -1) {
+            i = close + 3;
+          } else {
+            // No closing, treat rest as inside block (streaming case)
+            break;
+          }
+          continue;
+        } else if (lang.toLowerCase() === 'editedprojectplan') {
+          nodes.push(
+            <ProjectPlanUpdateBlock
+              key={`code-${idx}`}
+              messageId={message.id}
+              setCurrentSectionId={setCurrentSectionId}
+            />
+          );
+          idx++;
+          // If closing found, skip to after it, else to end
+          if (close !== -1) {
+            i = close + 3;
+          } else {
+            // No closing, treat rest as inside block (streaming case)
+            break;
+          }
+          continue;
+        } else if (lang.toLowerCase() === 'editedmermaidmarkdown') {
+          nodes.push(
+            <MermaidSyntaxUpdateBlock
+              key={`code-${idx}`}
+              messageId={message.id}
+            />
+          );
+          idx++;
+          // If closing found, skip to after it, else to end
+          if (close !== -1) {
+            i = close + 3;
+          } else {
+            // No closing, treat rest as inside block (streaming case)
+            break;
+          }
+          continue;
+        } else {
+          // Not ProjectPlan, treat as generic code block
+          let codeContent = '';
+          if (newline !== -1 && close !== -1) {
+            codeContent = content.slice(newline + 1, close);
+            nodes.push(
+              <CodeBlock key={`code-${idx}`} lang={lang} content={codeContent} />
+            );
+            idx++;
+            i = close + 3;
+            continue;
+          } else {
+            // No closing, treat rest as code
+            codeContent = content.slice(newline + 1);
+            nodes.push(
+              <CodeBlock key={`code-${idx}`} lang={lang} content={codeContent} />
+            );
+            break;
+          }
+        }
+      }
+      // Otherwise, emit next chunk of text until next [[ or ```
+      const nextSpecial = (() => {
+        const nextBracket = content.indexOf('[[', i);
+        const nextFence = content.indexOf('```', i);
+        if (nextBracket === -1 && nextFence === -1) return content.length;
+        if (nextBracket === -1) return nextFence;
+        if (nextFence === -1) return nextBracket;
+        return Math.min(nextBracket, nextFence);
+      })();
+      if (nextSpecial > i) {
+        nodes.push(<span key={`text-${idx}`}>{content.slice(i, nextSpecial)}</span>);
+        idx++;
+        i = nextSpecial;
       } else {
-        // Just normal text
-        if (part) nodes.push(<span key={`text-${idx}`}>{part}</span>);
+        // Should not happen, but avoid infinite loop
+        i++;
       }
-      // After every part except the last, insert the Generate button/plan
-      if (idx < parts.length - 1) {
-        nodes.push(
-          <StreamingPlan
-            key={`generate-gantt-${idx}`}
-            data={{
-              label: hasPlan ? 'Regenerate Project Plan' : 'Generate Project Plan',
-              isVisible: true
-            }}
-            newSummary={newSummary}
-            sketchSummary={sketchSummary}
-          />
-        );
-      }
-    });
-
+    }
     return nodes;
   };
-  
+
+
   return (
     <div 
       className={`
@@ -180,7 +205,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
               ? 'text-black text-md font-mono break-words whitespace-pre-wrap' 
               : 'text-white break-words whitespace-pre-wrap'
             }>
-              {renderContentWithProjectPlan(isStreaming ? currentStreamingContent : displayContent)}
+              {renderContent(isStreaming ? currentStreamingContent : displayContent)}
               {isStreaming && (
                 <span className="inline-block ml-1 h-4 w-1 bg-white animate-blink"></span>
               )}

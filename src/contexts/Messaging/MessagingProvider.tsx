@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Message, MessageStatus } from '../../components/landing/types';
-import { useDraftMarkdown } from '../../components/landing/DraftMarkdownProvider';
+import { useDraftMarkdown } from '../DraftMarkdownProvider';
 import { projectService } from '@/services/projectService';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,6 +10,7 @@ import { getPlanToGanttStream } from '../../services/planConversionService';
 import { streamToStreams, streamToStringStream } from '../../utils/stream';
 import {SectionData } from '../../components/landing/types';
 import { fetchApi } from '@/utils/api';
+import { useUpdateBlock } from '../MessageBlocksContext';
 
 interface MessagingContextProps {
   messages: Message[];
@@ -49,8 +50,9 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
   const {project, projectConversations, setProject} = useProject();
-  const { createProjectPlan, sections } = useDraftMarkdown();
-  const { createPlanFromMarkdownStream: createMermaidPlan} = useDraftPlanMermaidContext();
+  const { createProjectPlan, updateProjectPlan, sections } = useDraftMarkdown();
+  const { createPlanFromMarkdownStream: createMermaidPlan, getMermaidMarkdown, } = useDraftPlanMermaidContext();
+  const updateBlock = useUpdateBlock();
 
   // Load conversation messages when conversation ID changes
   useEffect(() => {
@@ -114,16 +116,24 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         const stringReader = streamToStringStream(reader);
         const { mainStream, codeBlockStreams } = streamToStreams<string>(stringReader, projectId ? ["projectplan", "ProjectPlan"] : []);
         
+        // Subscribe each code block stream to MessageBlocksContext
+        const streams: Record<string, ReadableStream<string>> = {};
+        Object.entries(codeBlockStreams).forEach(([lang, stream]) => {
+          const [stream1,stream2] = stream.tee();
+          streams[lang] = stream1;
+          updateBlock(lang, aiMessage.id, stream2);
+        });
+
         // Process the main content stream
         const mainReader = mainStream.getReader();
         let accumulatedMainContent = '';
         
         // Check if we have a ProjectPlan stream and set up a reader for it if it exists
-        const projectPlanStream = codeBlockStreams["projectplan"] || codeBlockStreams["ProjectPlan"];
+        const projectPlanStream = streams["projectplan"] || streams["ProjectPlan"];
         let newSections: null | Promise<SectionData[]> = null;
 
         if (projectPlanStream && projectId) {
-          newSections = createProjectPlan(projectPlanStream, projectId, aiMessage.id);
+          newSections = createProjectPlan(streams["projectplan"], projectId, aiMessage.id);
         }
             
         // Process the main stream
@@ -204,6 +214,118 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
       );
     }
   };
+  
+  const editProjectChat = async (messageHistory: Message[], aiMessage: Message, projectId: string, conversationId: string, projectMarkdown: string, mermaidMarkdown: string) => {
+    try {
+      const msg = JSON.stringify({
+        messageHistory, 
+        projectMarkdown,
+        mermaidMarkdown
+      });
+      setCurrentStreamingContent('');
+      const response = await fetchApi('/api/edit-project-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: msg,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      // Process as SSE (Server-Sent Events)
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Response body is null');
+
+      try {
+        // Use the new streaming API
+        const stringReader = streamToStringStream(reader);
+        const { mainStream, codeBlockStreams } = streamToStreams<string>(stringReader, ["EditedProjectPlan", "EditedMermaidMarkdown"]);
+        const streams: Record<string, ReadableStream<string>> = {};
+        // Subscribe each code block stream to MessageBlocksContext
+        Object.entries(codeBlockStreams).forEach(([lang, stream]) => {
+          const [stream1,stream2] = stream.tee();
+          streams[lang] = stream1;
+          updateBlock(lang, aiMessage.id, stream2);
+        });
+
+        // Process the main content stream
+        const mainReader = mainStream.getReader();
+        let accumulatedMainContent = '';
+
+            
+        // Process the main stream
+        while (true) {
+          const { done, value } = await mainReader.read();
+          if (done) break;
+          // Update accumulated content
+          accumulatedMainContent += value;
+          // Update the UI with the latest content
+          setCurrentStreamingContent(accumulatedMainContent);
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === aiMessage.id 
+                ? { ...msg, content: accumulatedMainContent } 
+                : msg
+            )
+          );
+          
+        }
+
+        setCurrentStreamingContent('');
+        // Mark message as complete
+        setCurrentStreamingMessageId(null);
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === aiMessage.id 
+              ? { ...msg, content: accumulatedMainContent, status: 'sent', isTyping: false } 
+              : msg
+          )
+        );
+
+      
+        try {
+          await projectService.addMessagesToConversation(
+            conversationId,
+            [{
+              content: accumulatedMainContent,
+              role: 'assistant',
+              timestamp: new Date(),
+              id: uuidv4(),
+            }
+            ]
+          );
+        } catch (error) {
+          console.error('Error adding AI response to conversation:', error);
+        }
+        
+      } catch (error) {
+        console.error('Error processing streams:', error);
+        // Mark message as error
+        setCurrentStreamingMessageId(null);
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === aiMessage.id 
+              ? { ...msg, content: 'Error: Failed to get response.', status: 'error', isTyping: false } 
+              : msg
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error in projectConsultantChat:', error);
+      // Mark message as error
+      setCurrentStreamingMessageId(null);
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === aiMessage.id 
+            ? { ...msg, content: 'Error: Failed to get response.', status: 'error', isTyping: false } 
+            : msg
+        )
+      );
+    }
+  };
 
 
   // Load messages for a specific conversation
@@ -256,6 +378,106 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+    // Judge project readiness
+  const judgeProjectDraftReadiness = async (messages: Message[], userMessage: Message) => {
+      try {
+        const response = await fetchApi('/api/judge-project-draft-readiness', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messageHistory: [...messages, userMessage].map(m => ({
+              content: m.content,
+              role: m.role
+            })),
+          }),
+        });
+        const result = await response.json();
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        return {
+          projectReady: result.projectReady,
+          projectReadyReason: result.projectReadyReason,
+          percentageComplete: result.percentageComplete,
+          projectReadyRecommendations: result.projectReadyRecommendations,
+          projectNameSuggestion: result.projectNameSuggestion,
+          conversationNameSuggestion: result.conversationNameSuggestion
+        };
+      } catch (error) {
+        console.error('Error judging project draft readiness:', error);
+        return { error: error instanceof Error ? error.message : 'An unknown error occurred' };
+      }
+  };
+
+  const preProjectReply = async (messages: Message[], userMessage: Message, aiMessage: Message) => {
+    const result = await judgeProjectDraftReadiness(messages, userMessage);
+      if (result.error) {
+        setCurrentStreamingMessageId(null);
+        throw new Error(result.error);
+      }
+
+      // Update state with project readiness data
+      const wasntReady = !projectIsReady;
+      setProjectIsReady(result.projectReady);
+      setProjectReadyReason(result.projectReadyReason);
+      setPercentageComplete(result.percentageComplete);
+
+      setProjectReadyRecommendations(result.projectReadyRecommendations || []);
+      // setMessages(prev => [...prev, aiMessage]);
+      // Since we've checked for the error case above, we can safely assert the type now
+      const { projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, projectNameSuggestion, conversationNameSuggestion } = result as {
+        projectReady: boolean; 
+        projectReadyReason: string; 
+        percentageComplete: number; 
+        projectReadyRecommendations: string[]; 
+        projectNameSuggestion: string; 
+        conversationNameSuggestion: string;
+      };
+
+      if (projectReady && wasntReady) {
+        // If this is the first message, create a new project and conversation
+
+        try {
+          console.log('Creating new project and conversation for first message');
+          const result = await projectService.initializeProjectWithFirstMessages(
+            [...messages, userMessage],
+            projectNameSuggestion || 'Project from Chat',
+            conversationNameSuggestion || 'Conversation from Chat'
+          );
+          
+          if (result) {
+            setProject(result.project);
+            setCurrentProjectId(result.project.id);
+            
+            // Generate project plan using the specific project ID directly
+            // This avoids React state dependency issues
+            console.log('Project is ready!');
+            setIsCanvasVisible(true);
+            
+            await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage, result.project.id, result.conversationId);
+          } else {
+            console.error('Failed to create project and conversation');
+          }
+        } catch (error) {
+          console.error('Error creating project and conversation:', error);
+        }
+      } else {
+        await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage);
+      }
+  };
+
+  const postProjectReply = async (messages: Message[], userMessage: Message, aiMessage: Message, conversationId: string, projectMarkdown: string, mermaidMarkdown: string) => {
+    
+    try {
+        console.log('Creating new project and conversation for first message');
+        editProjectChat([...messages, userMessage], aiMessage, project?.id || '', conversationId, projectMarkdown, mermaidMarkdown);
+      } catch (error) {
+        console.error('Error creating project and conversation:', error);
+      }
+  };
+
   // Add a message and get AI response
   const addMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -305,96 +527,16 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
     setCurrentStreamingMessageId(aiMessage.id);
     
     if(sections.length === 0){
-    // Judge project readiness
-    const judgeProjectDraftReadiness = async () => {
-      try {
-        const response = await fetchApi('/api/judge-project-draft-readiness', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messageHistory: [...messages, userMessage].map(m => ({
-              content: m.content,
-              role: m.role
-            })),
-          }),
-        });
-        const result = await response.json();
-        if (result.error) {
-          throw new Error(result.error);
-        }
-        return {
-          projectReady: result.projectReady,
-          projectReadyReason: result.projectReadyReason,
-          percentageComplete: result.percentageComplete,
-          projectReadyRecommendations: result.projectReadyRecommendations,
-          projectNameSuggestion: result.projectNameSuggestion,
-          conversationNameSuggestion: result.conversationNameSuggestion
-        };
-      } catch (error) {
-        console.error('Error judging project draft readiness:', error);
-        return { error: error instanceof Error ? error.message : 'An unknown error occurred' };
-      }
-    };
-
-    // Get project readiness from special endpoint
-    const result = await judgeProjectDraftReadiness();
-    if (result.error) {
-      setCurrentStreamingMessageId(null);
-      throw new Error(result.error);
-    }
-
-    // Update state with project readiness data
-    const wasntReady = !projectIsReady;
-    setProjectIsReady(result.projectReady);
-    setProjectReadyReason(result.projectReadyReason);
-    setPercentageComplete(result.percentageComplete);
-
-    setProjectReadyRecommendations(result.projectReadyRecommendations || []);
-    // setMessages(prev => [...prev, aiMessage]);
-    // Since we've checked for the error case above, we can safely assert the type now
-    const { projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, projectNameSuggestion, conversationNameSuggestion } = result as {
-      projectReady: boolean; 
-      projectReadyReason: string; 
-      percentageComplete: number; 
-      projectReadyRecommendations: string[]; 
-      projectNameSuggestion: string; 
-      conversationNameSuggestion: string;
-    };
-
-    if (projectReady && wasntReady) {
-      // If this is the first message, create a new project and conversation
-
-      try {
-        console.log('Creating new project and conversation for first message');
-        const result = await projectService.initializeProjectWithFirstMessages(
-          [...messages, userMessage],
-          projectNameSuggestion || 'Project from Chat',
-          conversationNameSuggestion || 'Conversation from Chat'
-        );
-        
-        if (result) {
-          setProject(result.project);
-          setCurrentProjectId(result.project.id);
-          
-          // Generate project plan using the specific project ID directly
-          // This avoids React state dependency issues
-          console.log('Project is ready!');
-          setIsCanvasVisible(true);
-          
-          await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage, result.project.id, result.conversationId);
-        } else {
-          console.error('Failed to create project and conversation');
-        }
-      } catch (error) {
-        console.error('Error creating project and conversation:', error);
-      }
-    } else {
-      await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage);
-    }
-  } 
-};
+      // Get project readiness from special endpoint
+      preProjectReply(messages, userMessage, aiMessage);
+    } else if(currentConversationId) {
+      //get project markdown
+      const projectMarkdown = sections.map(section => section.content).join('\n\n');
+      //get mermaid markdown
+      const mermaidMarkdown = getMermaidMarkdown();
+      postProjectReply(messages, userMessage, aiMessage, currentConversationId, projectMarkdown, mermaidMarkdown);
+    } 
+  };
 
   const reset = () => {
     setMessages([]);

@@ -2,7 +2,8 @@ import { Outlet } from 'react-router-dom';
 import Deseini from './Deseini';
 import { LogoCarouselProvider } from './components/LogoCarouselContext';
 import { MessagingProvider } from './contexts/Messaging/MessagingProvider';
-import { DraftMarkdownProvider } from './components/landing/DraftMarkdownProvider';
+import { MessageBlocksProvider } from './contexts/MessageBlocksContext';
+import { DraftMarkdownProvider } from './contexts/DraftMarkdownProvider';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { ChartsListProvider } from './contexts/ChartsListContext';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -87,10 +88,12 @@ const StateManager = () => {
               <DraftPlanFlowProvider>
                 <FinalPlanProvider>
                   <ChartsListProvider>
-                    <MessagingProvider>
-                      {/* Using key to force remounting and state reset */}
-                      <AppContent key={stateKey} />
-                    </MessagingProvider>
+                    <MessageBlocksProvider>
+                      <MessagingProvider>
+                        {/* Using key to force remounting and state reset */}
+                        <AppContent key={stateKey} />
+                      </MessagingProvider>
+                    </MessageBlocksProvider>
                   </ChartsListProvider>
                 </FinalPlanProvider>
               </DraftPlanFlowProvider>

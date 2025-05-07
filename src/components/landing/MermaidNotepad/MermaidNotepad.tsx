@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import DraftPlanMermaid from '../../draft_plan_mermaid/DraftPlanMermaid';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useNavigate } from 'react-router-dom';
+import { draftPlanToMermaid } from '../../../utils/mermaidParser';
 
 const MermaidNotepad: React.FC = () => {
   const [mermaidInput, setMermaidInput] = useState(`
@@ -53,7 +54,7 @@ gantt
       Final project documentation & closure: t16, after t11, 10d
 \`\`\`    `);
   const [hasRendered, setHasRendered] = useState(false);
-  const { createPlanFromMarkdownStream, isLoading } = useDraftPlanMermaidContext();
+  const { createPlanFromMarkdownStream, isLoading, sections, timeline } = useDraftPlanMermaidContext();
   const navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -75,6 +76,12 @@ gantt
       await createPlanFromMarkdownStream(stream);
       setHasRendered(true);
     }
+  };
+
+  const handleExport = () => {
+    const plan = { sections, timeline };
+    const markdown = draftPlanToMermaid(plan);
+    setMermaidInput(markdown);
   };
 
   const handleBackToSidebar = () => {
@@ -101,6 +108,13 @@ gantt
             disabled={!mermaidInput.trim() || isLoading}
           >
             {isLoading ? 'Processing...' : 'Render Diagram'}
+          </button>
+          <button
+            onClick={handleExport}
+            className="ml-2 px-4 py-2 border border-black text-black rounded-md hover:bg-gray-100 transition-colors"
+            disabled={!hasRendered}
+          >
+            Export Markdown
           </button>
         </div>
       </header>

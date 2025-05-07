@@ -2,17 +2,17 @@ import { memo, useState } from 'react';
 import { EditDialog } from './EditDialog';
 import { StreamSummary, SketchSummary } from '@/utils/types';
 import { Calendar, CheckSquare, Flag } from 'lucide-react';
+import { formatDate, formatDuration } from './utils';
 
 interface PlanSummaryProps {
-  formatDate: (date?: Date) => string;
-  formatDuration: (days: number) => string;
   newSummary?: StreamSummary;
   sketchSummary?: SketchSummary;
 }
 
-export const PlanSummary = memo(({ formatDate, formatDuration, newSummary, sketchSummary }: PlanSummaryProps) => {
+export const PlanSummary = memo(({ newSummary, sketchSummary }: PlanSummaryProps) => {
   // Split the formatted duration into number and unit for better styling
-  const durationParts = formatDuration(sketchSummary!.duration).split(' ');
+  const duration = sketchSummary?.duration ? formatDuration(sketchSummary!.duration) : '';
+  const durationParts = duration.split(' ');
   const durationNumber = durationParts[0];
   const durationUnit = durationParts[1] || 'days';
 
@@ -62,6 +62,7 @@ export const PlanSummary = memo(({ formatDate, formatDuration, newSummary, sketc
                 <div className="text-gray-400 text-sm -mt-1">{durationUnit}</div>
               </div>
             </div>
+            {sketchSummary && (
             <div className="flex flex-wrap md:flex-nowrap justify-between items-center">
               <div className="mr-4">
                 <div className="text-gray-400 text-sm">Start</div>
@@ -73,10 +74,12 @@ export const PlanSummary = memo(({ formatDate, formatDuration, newSummary, sketc
                 <div className="text-white">{formatDate(sketchSummary!.endDate)}</div>
               </div>
             </div>
+            )}
           </div>
         </div>
 
         {/* Tasks and Milestones cards */}
+        {sketchSummary && (
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <div className="relative bg-gray-900 rounded-lg p-4 shadow h-full">
@@ -97,6 +100,7 @@ export const PlanSummary = memo(({ formatDate, formatDuration, newSummary, sketc
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Edit Dialog */}

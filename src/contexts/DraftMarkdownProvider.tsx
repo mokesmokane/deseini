@@ -1,20 +1,19 @@
 import { createContext, useContext, useState, useRef, useCallback, ReactNode, useEffect } from 'react';
-import { ChatMessage } from '../../types';
+import { ChatMessage } from '../types';
 import toast from 'react-hot-toast';
-import { getCleanProjectPlanStream } from '../../services/projectPlanService';
-import { createLineReader } from '../../utils/streamToLines';
-import { useProject } from '../../contexts/ProjectContext';
-import { projectMarkdownService } from '../../services/projectMarkdownService';
-import { SimpleSectionProcessor } from './SimpleSectionProcessor';
-import { SectionData, ProcessUpdateEvent, UpdateState } from './types';
+import { getCleanProjectPlanStream } from '../services/projectPlanService';
+import { createLineReader } from '../utils/streamToLines';
+import { useProject } from './ProjectContext';
+import { projectMarkdownService } from '../services/projectMarkdownService';
+import { SimpleSectionProcessor } from '../components/landing/SimpleSectionProcessor';
+import { SectionData, ProcessUpdateEvent, UpdateState } from '../components/landing/types';
 
 interface DraftMarkdownContextProps {
   // Core data
   sections: SectionData[];
   currentSectionId: string | null;
   isStreaming: boolean;
-  
-  
+
   // State updates
   stateUpdates: Record<string, UpdateState>;
   
@@ -22,6 +21,7 @@ interface DraftMarkdownContextProps {
   generateProjectPlan: (currentMessages: ChatMessage[]) => Promise<SectionData[]>;
   generateProjectPlanForProjectId: (currentMessages: ChatMessage[], projectId: string) => Promise<SectionData[]>;
   createProjectPlan: (projectMarkdownStream: ReadableStream<string>, projectId: string, seedMessageId?: string) => Promise<SectionData[]>;
+  updateProjectPlan: (projectMarkdownStream: ReadableStream<string>, projectId: string, seedMessageId?: string) => Promise<SectionData[]>;
   resetMarkdown: () => void;
   selectSection: (id: string | null) => void;
   setCurrentSectionId: (id: string | null) => void;
@@ -118,40 +118,81 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
   }, [updateSection, setCurrentSectionId, isStreaming]);
 
   const createProjectPlan = useCallback(async (projectMarkdownStream: ReadableStream<string>, projectId: string, seedMessageId?: string): Promise<SectionData[]> => {
-     // Transform into a line-by-line reader
-     const lineReader = createLineReader(projectMarkdownStream.getReader());
+    // Transform into a line-by-line reader
+    const lineReader = createLineReader(projectMarkdownStream.getReader());
+    
+    // Process the stream directly with the section processor
+    await sectionProcessor.current.processStream(lineReader, (update: ProcessUpdateEvent) => {
+      updateSection(update.section);
       
-     // Process the stream directly with the section processor
-     await sectionProcessor.current.processStream(lineReader, (update: ProcessUpdateEvent) => {
-       updateSection(update.section);
-       
-       // Update the update state
-       const updateState = update.updateState;
-       if (seedMessageId) {
-        console.log('MOKES updateState', updateState);
-         setStateUpdates(prev => ({ ...prev, [seedMessageId]: updateState}));
-       }
-       
-       // Update the current section ID if provided
-       if (update.currentSectionId) {
-         setCurrentSectionId(update.currentSectionId);
-       }
-     });
-     
-     // Save to database using the provided project ID
-     const sectionsToSave = sectionProcessor.current.getSections().map(section => ({
-       sectionId: section.id,
-       content: section.content,
-       sectionIndex: section.sectionIndex || 0,
-       updatedAt: new Date()
-     }));
-     
-     const success = await projectMarkdownService.saveSections(projectId, sectionsToSave);
-     if (!success) {
-       console.error(`[DraftMarkdownProvider] Failed to save sections to database for project ${projectId}`);
-     }
-     return sectionProcessor.current.getSections();
-  }, [isStreaming, project]);
+      // Update the update state
+      const updateState = update.updateState;
+      if (seedMessageId) {
+       console.log('MOKES updateState', updateState);
+        setStateUpdates(prev => ({ ...prev, [seedMessageId]: updateState}));
+      }
+      
+      // Update the current section ID if provided
+      if (update.currentSectionId) {
+        setCurrentSectionId(update.currentSectionId);
+      }
+    });
+    
+    // Save to database using the provided project ID
+    const sectionsToSave = sectionProcessor.current.getSections().map(section => ({
+      sectionId: section.id,
+      content: section.content,
+      sectionIndex: section.sectionIndex || 0,
+      updatedAt: new Date()
+    }));
+    
+    const success = await projectMarkdownService.saveSections(projectId, sectionsToSave);
+    if (!success) {
+      console.error(`[DraftMarkdownProvider] Failed to save sections to database for project ${projectId}`);
+    }
+    return sectionProcessor.current.getSections();
+ }, [isStreaming, project]);
+
+  // Update existing project plan sections or add new ones based on markdown stream
+  const updateProjectPlan = useCallback(async (
+    projectMarkdownStream: ReadableStream<string>,
+    projectId: string,
+    seedMessageId?: string
+  ): Promise<SectionData[]> => {
+    // Transform into a line-by-line reader
+    const lineReader = createLineReader(projectMarkdownStream.getReader());
+    //setup new section processor
+    sectionProcessor.current.reset();
+    await sectionProcessor.current.processStreamWithUpdates(lineReader, (update: ProcessUpdateEvent) => {
+      updateSection(update.section);
+      
+      // Update the update state
+      const updateState = update.updateState;
+      if (seedMessageId) {
+       console.log('MOKES updateState', updateState);
+        setStateUpdates(prev => ({ ...prev, [seedMessageId]: updateState}));
+      }
+      
+      // Update the current section ID if provided
+      if (update.currentSectionId) {
+        setCurrentSectionId(update.currentSectionId);
+      }
+    });
+    
+    // Save to database using the provided project ID
+    const sectionsToSave = sectionProcessor.current.getSections().map(section => ({
+      sectionId: section.id,
+      content: section.content,
+      sectionIndex: section.sectionIndex || 0,
+      updatedAt: new Date()
+    }));
+    
+    const success = await projectMarkdownService.saveSections(projectId, sectionsToSave);
+    if (!success) {
+      console.error(`[DraftMarkdownProvider] Failed to save sections to database for project ${projectId}`);
+    }
+    return sectionProcessor.current.getSections();
+  }, [sections, updateSection]);
 
   // Generate a new project plan
   const generateProjectPlan = useCallback(async (currentMessages: ChatMessage[]): Promise<SectionData[]> => {
@@ -190,6 +231,7 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
     createProjectPlan,
     generateProjectPlan,
     generateProjectPlanForProjectId,
+    updateProjectPlan,
     resetMarkdown,
     selectSection,
     getSectionById,

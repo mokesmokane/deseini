@@ -2,6 +2,7 @@ import { OpenAI } from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 import type { ChatCompletionMessageParam, ChatCompletionChunk } from 'openai/resources';
 export type { ChatCompletionChunk };
+import { createProjectPlanPrompt } from './codePrompts.ts';
 
 // Interface segregation - defining clear interfaces
 export interface RoleInfo {
@@ -1753,56 +1754,7 @@ Please ONLY return the edited version of this specific section, not the entire d
     projectReadyRecommendations: string
   ): Promise<ConversationResponse> {
       // Construct prompt for OpenAI with clear instructions
-      const readyPrompt = projectReady ? `
-      Once the project is ready, you should create a project plan. Here is how you do it:
-
-      Relpy to the user letting them know that you have anough information and that you will create a project plan.
-
-      In that response, you should also include the project plan. 
-
-      The project plan should be between three backticks. (\`\`\`)
-      You must follow the first three backticks with "ProjectPlan".
-
-      Create initial consultation notes in Markdown format based on the conversation.
-        
-      Structure your plan using these specific sections:
-      # Timescales
-      Capture information about project duration, deadlines, milestones, and any timing constraints.
-
-      # Scope
-      Document what is included and excluded from the project, key deliverables, and any scope boundaries discussed.
-
-      # Tasks
-      List the tasks that need to be completed by the roles to deliver the project. Tend towards 2 levels, a set of high level tasks and a set of subtasks indented under each high level task that requires subtasks.
-
-      # Milestones
-      List the key milestones or events that need to be completed for the project.
-
-      # Roles
-      Note the key stakeholders, team members, and their responsibilities within the project.
-
-      # Dependencies
-      Record any external or internal dependencies that might impact the project timeline or success.
-
-      # Deliverables
-      List the specific outputs, products, or services that will be created during the project.
-
-      Write in a concise, consultant-style note-taking format rather than a formal project plan. Use bullet points liberally for clarity. Focus on recording information as it emerges in the conversation rather than trying to create a comprehensive plan at this stage.
-
-      If there is no information yet on a particular section, include the section heading with a brief placeholder like: "No information gathered yet."
-
-      An example start of a project plan is:
-
-      \`\`\`ProjectPlan
-      # Timescales
-      ...
-      \`\`\`
-
-      at the end of your message you should finish with [[CREATE_PROJECT_GANTT]]
-
-      This will trigger the creation of a project gantt chart by another ai.
-
-      ` : '';
+      const readyPrompt = projectReady ? createProjectPlanPrompt : '';
       let systemContent = `You are an AI assistant specializing in creating a project plan from a conversation with a user.
       You need to ask the right questions to the user to create a project plan.
       
@@ -1826,6 +1778,83 @@ Please ONLY return the edited version of this specific section, not the entire d
           PERCENTAGE COMPLETE: ${percentageComplete}
           PROJECT READY RECOMMENDATIONS: ${projectReadyRecommendations}
           `
+        }
+      ];
+
+      //thoproughly log the messages
+      console.log('Messages:', messages);
+
+      const stream = await this.client.chat.completions.create({
+        model: 'gpt-4.1',
+        messages,
+        temperature: 0.7,
+        max_tokens: 2000,
+        stream: true
+      });
+
+      return { stream };
+  }
+
+  async editProjectChat(
+    messageHistory: ChatMessage[],
+    projectMarkdown: string,
+    mermaidMarkdown: string
+  ): Promise<ConversationResponse> {
+      // Construct prompt for OpenAI with clear instructions
+      const editPrompt = `
+      The current project plan is:
+      ${projectMarkdown}
+      
+      The current mermaid markdown (gantt chart) is:
+      ${mermaidMarkdown}
+      
+      `;
+      let systemContent = `You are an insightful consultant that has been asked to edit a project plan.
+      
+      You will see the conversation history, but you will also see the current project plan and mermaid markdown (gantt chart).
+
+      The plan consists of two parts:
+      1. ProjectMarkdown
+      2. MermaidMarkdown
+
+      The edited project plan should be bracketed between three backticks at the start and end. (\`\`\`)
+      You must follow the first three backticks with "EditedProjectPlan".
+
+      You should only change the parts of the project plan that are relevant to the change the user has asked you to make.
+
+      If you make changes in a section you must rewrite the entire section. BUT still keep things the same withinthe section that do not need to be changed.
+
+      For instance if you're adding a task to the tasks section you shold keep all the existing tasks in the same wording and just add the new task.
+
+      So the sections you provide will replace the sections of the same name in the original project plan.
+
+      You can add new sections to the project plan, but only do so if the user has asked you to, or you cannot make sense of the project plan without it.
+
+
+      The edited mermaid markdown should be bracketed between three backticks at the start and end. (\`\`\`)
+      You must follow the first three backticks with "EditedMermaidMarkdown".
+
+      The edited mermaid markdown should be based on the original mermaid markdown and the edited project plan.
+
+      For the mermaid markdown you must provide the entire mermaid markdown, not just the changes. 
+
+      You should only change the parts of the mermaid markdown that are relevant to the change the user has asked you to make.
+
+      You should keep as much the same as possible - ie keep tasks the same (with the same wording) if they are not relevant to the change the user has asked you to make.
+
+
+      You should explain what you are changing and WHY you are changing it before each of the markdown blocks.
+      `
+
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content: systemContent
+        },
+        ...messageHistory,
+        {
+          role: 'assistant',
+          content: editPrompt
         }
       ];
 

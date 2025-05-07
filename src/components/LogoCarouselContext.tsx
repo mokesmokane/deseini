@@ -12,12 +12,12 @@ const logoFiles = [
   'DeseiniWestern.png',
 ];
 
-interface LogoCarouselContextValue {
-  currentIndex: number;
-  logoFiles: string[];
-}
+  interface LogoCarouselContextValue {
+    currentIndex: number;
+    logoFiles: string[];
+  }
 
-const LogoCarouselContext = createContext<LogoCarouselContextValue | undefined>(undefined);
+  const LogoCarouselContext = createContext<LogoCarouselContextValue | undefined>(undefined);
 
 interface LogoCarouselProviderProps {
   autoRotateInterval?: number;

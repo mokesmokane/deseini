@@ -793,4 +793,73 @@ export class TaskController {
       }
     }
   }
+
+
+  async editProjectChat(req: express.Request, res: express.Response): Promise<void> {
+    try {
+      const { messageHistory, projectMarkdown, mermaidMarkdown } = req.body;
+
+      const result = await this.aiService.editProjectChat(
+        messageHistory,
+        projectMarkdown,
+        mermaidMarkdown
+      );
+
+      if (result.error || !result.stream) {
+        console.error('Project consultant chat error:', result.error);
+        res.status(500).json({ error: result.error || 'Failed to start chat stream' });
+        return;
+      }
+
+      // Set headers for Server-Sent Events (SSE)
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders(); // Flush headers to establish connection
+
+      let accumulatedContent = '';
+
+      try {
+        // Iterate over the stream and send chunks to the client
+        for await (const chunk of result.stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            accumulatedContent += content;
+            res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
+          }
+        }
+        
+        // Send a final event to signal stream completion
+        res.write(`event: stream_end\ndata: ${JSON.stringify({ message: 'Stream ended', fullContent: accumulatedContent })}\n\n`);
+        console.log('Chat stream ended. Closing connection.');
+        console.log('Accumulated content:', accumulatedContent);
+      } catch (streamError) {
+        console.error('Error processing chat stream:', streamError);
+        // Attempt to send an error event if possible
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error processing chat stream' });
+        } else if (!res.writableEnded) {
+          res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Stream processing failed' })}\n\n`);
+        }
+      } finally {
+        console.log('Chat stream ended. Closing connection.');
+        res.end(); // End the response stream
+      }
+    } catch (error) {
+      console.error('API Controller Error (projectConsultantChat):', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'An unknown internal server error occurred'
+        });
+      } else if (!res.writableEnded) {
+        try {
+          res.write(`event: stream_error\ndata: ${JSON.stringify({ error: 'Internal server error processing chat' })}\n\n`);
+          res.end();
+        } catch (writeError) {
+          console.error("Failed to write stream error event:", writeError);
+          res.end(); // Force end if write fails
+        }
+      }
+    }
+  }
 }
