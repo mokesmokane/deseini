@@ -5,6 +5,7 @@ import { CustomDropdownMenu } from '../dropdowns/CustomDropdownMenu';
 
 interface SectionButtonsProps {
   lineNumber: number;
+  activeLines: Set<number>; // NEW: all currently hovered/active lines
   isLocked: boolean;
   isLineEditing: boolean;
   isDropdownOpen: boolean;
@@ -15,11 +16,12 @@ interface SectionButtonsProps {
   setOpenDropdownLine: (callback: ((prevLine: number | null) => number | null) | number | null) => void;
   handleLineHover: (lineNumber: number) => void;
   handleOptionSelect: (option: string, lineNumber: number, customInstruction?: string) => void;
-  handleChatOptionSelect: (option: string, lineNumber: number, customMessage?: string) => void;
+  handleChatOptionSelect: (option: string, lineNumbers: number[], customMessage?: string) => void;
 }
 
 export const SectionButtons: React.FC<SectionButtonsProps> = ({
   lineNumber,
+  activeLines,
   isLocked,
   isLineEditing,
   isDropdownOpen,
@@ -70,8 +72,8 @@ export const SectionButtons: React.FC<SectionButtonsProps> = ({
           e.preventDefault();
           
           if (!isLocked) {
-            // Instead of showing a dropdown, directly create a quote
-            handleChatOptionSelect('quote', lineNumber);
+            // Instead of showing a dropdown, directly create a quote for all hovered/active lines
+            handleChatOptionSelect('quote', Array.from(activeLines));
             // Visual feedback that the quote was created
             const button = chatButtonRef.current;
             if (button) {

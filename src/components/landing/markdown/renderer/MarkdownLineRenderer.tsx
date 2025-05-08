@@ -2,6 +2,7 @@ import React from 'react';
 import { SectionButtons, LockOnlyButtons } from '../buttons/SectionButtons';
 
 interface MarkdownLineProps {
+  activeLines: Set<number>; // NEW: all currently hovered/active lines
   line: string;
   lineNumber: number;
   isHeader: boolean;
@@ -20,7 +21,7 @@ interface MarkdownLineProps {
   handleLineHover: (lineNumber: number) => void;
   handleLineLeave: () => void;
   handleOptionSelect: (option: string, lineNumber: number, customInstruction?: string) => void;
-  handleChatOptionSelect: (option: string, lineNumber: number, customMessage?: string) => void;
+  handleChatOptionSelect: (option: string, lineNumbers: number[], customMessage?: string) => void;
   setOpenDropdownLine: (callback: ((prevLine: number | null) => number | null) | number | null) => void;
   setOpenChatDropdownLine: (callback: ((prevLine: number | null) => number | null) | number | null) => void;
   toggleLock: (lineNumber: number) => void;
@@ -30,6 +31,7 @@ interface MarkdownLineProps {
 }
 
 export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
+  activeLines,
   line,
   lineNumber,
   isHeader,
@@ -118,6 +120,7 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
       {isTopLineEditing && (
         <SectionButtons
           lineNumber={lineNumber}
+          activeLines={activeLines}
           isLocked={isLocked}
           isLineEditing={isLineEditing(lineNumber)}
           isDropdownOpen={isDropdownOpen}
@@ -135,6 +138,7 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
       {!isEditing && shouldShowButtons && (
         <SectionButtons
           lineNumber={lineNumber}
+          activeLines={activeLines}
           isLocked={isLocked}
           isLineEditing={isLineEditing(lineNumber)}
           isDropdownOpen={isDropdownOpen}

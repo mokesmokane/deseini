@@ -20,7 +20,6 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     isLineLocked,
     toggleLock, 
     unlockSection,
-    getSectionRange,
     editMarkdownSection,
     contentVersion
   } = useSectionMarkdown(section);
@@ -84,7 +83,7 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
   }, [openDropdownLine]);
 
   // Handle line hover states
-  const handleLineHover = useCallback((lineNumber: number | null) => {
+  const handleLineHover = useCallback((lineNumber: number) => {
     if (lineNumber === null) {
       setLineHovered(null);
       return;
@@ -199,7 +198,10 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     
     // Get the section range for the clicked line
     const lineInfo = getLineInfo(lineNumber);
-    const sectionRange = getSectionRange(lineNumber, lineInfo);
+    // Compute a section range based on lineInfo
+    const sectionRange = lineInfo.sections.length > 0 
+      ? { start: lineInfo.sections[0].start, end: lineInfo.sections[0].end }
+      : { start: lineNumber, end: lineNumber };
     
     setEditingSection(sectionRange);
     
@@ -236,52 +238,33 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
   const { addQuote } = useQuotes();
 
   // Handle chat button click to create quotes
-  const handleChatOptionSelect = useCallback((
+  // Accept an array of line numbers for quoting
+  const handleChatOptionSelect = useCallback<(option: string, lineNumbers: number[], customMessage?: string) => void>((
     option: string,
-    lineNumber: number
+    lineNumbers: number[]
   ) => {
-    // Get section information
-    const info = getLineInfo(lineNumber);
-    let content = '';
-    let sectionRange = { start: lineNumber, end: lineNumber };
+    // Quote all hovered/active lines in order
+    const lines = getAllLines();
+    const sortedLines = Array.from(new Set(lineNumbers)).sort((a, b) => a - b);
+    const content = sortedLines.map(i => lines[i]).join('\n');
+    // Compute section range (contiguous block, or min/max)
+    const sectionRange = { start: sortedLines[0], end: sortedLines[sortedLines.length - 1] };
+    // Use the top-level section header if available, else fallback to first line
     let sectionTitle = '';
-    
-    if (info.sections.length > 0) {
-      // Use the top-most section (first in array) for quoting
-      const topSection = info.sections[0];
-      const lines = getAllLines();  
-      content = lines.slice(topSection.start, topSection.end + 1).join('\n');
-      sectionRange = { start: topSection.start, end: topSection.end };
-      // Extract title from the first line of the section if it's a header
-      const headerLine = lines[topSection.start];
-      sectionTitle = headerLine.replace(/^#+\s+/, '').trim();
-    } else if (info.isList) {
-      const range = findListItemRange(lineNumber);
-      if (range) {
-        const lines = getAllLines();
-        content = lines.slice(range.start, range.end + 1).join('\n');
-        sectionRange = { start: range.start, end: range.end };
-        sectionTitle = lines[range.start].trim().replace(/^[\*\-]\s+/, '');
+    if (sortedLines.length > 0) {
+      const info = getLineInfo(sortedLines[0]);
+      if (info.sections.length > 0) {
+        const topSection = info.sections[0];
+        const headerLine = lines[topSection.start];
+        sectionTitle = headerLine.replace(/^#+\s+/, '').trim();
       } else {
-        const lines = getAllLines();
-        content = lines[lineNumber];
-        sectionTitle = content.trim().replace(/^[\*\-]\s+/, '');
+        sectionTitle = lines[sortedLines[0]].trim().replace(/^[\*\-]\s+/, '');
       }
-    } else {
-      const lines = getAllLines();
-      content = lines[lineNumber];
-      sectionTitle = content.trim();
     }
-    
     if (option === 'quote') {
-      // Add the quote using the QuoteProvider
-      addQuote(content, sectionRange, sectionTitle); // Now always uses top section header and range
-      
-      // Show a toast notification that the quote was added
+      addQuote(content, sectionRange, sectionTitle);
       toast.success('Added quote: ' + (sectionTitle.length > 25 ? 
         sectionTitle.substring(0, 25) + '...' : sectionTitle));
-      
-      // If onShowChat callback is provided, call it to show chat component
       if (onShowChat) {
         onShowChat();
       }
@@ -373,68 +356,6 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     return chatButtonRefs.current.get(lineNumber)!;
   }, []);
 
-  // Render markdown content
-  const renderMarkdown = useCallback(() => {
-    if (!getAllLines()) {
-      return <div className="markdown-empty">No content to display</div>;
-    }
-    
-    const lines = getSectionLines();
-    
-    // If a section is being direct edited, render the section editor
-    if (directEditingSection) {
-      const beforeLines = lines.slice(0, directEditingSection.start);
-      const afterLines = lines.slice(directEditingSection.end + 1);
-      
-      return (
-        <pre>
-          <code className="markdown-raw">
-            {beforeLines.map((line, index) => renderMarkdownLine(line, index))}
-            
-            <div className="direct-edit-container">
-              <MarkdownSectionEditor
-                content={directEditingSection.content}
-                onSave={saveDirectEdit}
-                onCancel={cancelDirectEdit}
-              />
-            </div>
-            
-            {afterLines.map((line, index) => renderMarkdownLine(line, index + directEditingSection.end + 1))}
-          </code>
-        </pre>
-      );
-    }
-    
-    return (
-      <pre>
-        <code className="markdown-raw">
-          {lines.map((line, index) => renderMarkdownLine(line, index))}
-        </code>
-      </pre>
-    );
-  }, [
-    activeLines, 
-    handleLineHover, 
-    handleLineLeave, 
-    isLineLocked, 
-    lineHovered, 
-    openDropdownLine, 
-    openChatDropdownLine, 
-    getSectionLines, 
-    getLineInfo,
-    toggleLock, 
-    deleteSection,
-    isLineEditing, 
-    isTopLineEditing,
-    handleOptionSelect,
-    handleChatOptionSelect,
-    getButtonRef,
-    getChatButtonRef,
-    directEditingSection,
-    saveDirectEdit,
-    cancelDirectEdit
-  ]);
-
   // Helper function to render markdown line
   const renderMarkdownLine = useCallback((line: string, index: number) => {
     const info = getLineInfo(index);
@@ -475,6 +396,7 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
         deleteSection={deleteSection}
         isLineEditing={isLineEditing}
         onDoubleClick={handleDoubleClick}
+        activeLines={activeLines}
       />
     );
   }, [
@@ -498,6 +420,47 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     directEditingSection,
     handleDoubleClick
   ]);
+  // Render markdown content
+  const renderMarkdown = useCallback(() => {
+    if (!getAllLines()) {
+      return <div className="markdown-empty">No content to display</div>;
+    }
+    
+    const lines = getSectionLines();
+    
+    // If a section is being direct edited, render the section editor
+    if (directEditingSection) {
+      const beforeLines = lines.slice(0, directEditingSection.start);
+      const afterLines = lines.slice(directEditingSection.end + 1);
+      
+      return (
+        <pre>
+          <code className="markdown-raw">
+            {beforeLines.map((line, index) => renderMarkdownLine(line, index))}
+            
+            <div className="direct-edit-container">
+              <MarkdownSectionEditor
+                content={directEditingSection.content}
+                onSave={saveDirectEdit}
+                onCancel={cancelDirectEdit}
+              />
+            </div>
+            
+            {afterLines.map((line, index) => renderMarkdownLine(line, index + directEditingSection.end + 1))}
+          </code>
+        </pre>
+      );
+    }
+    
+    return (
+      <pre>
+        <code className="markdown-raw">
+          {lines.map((line, index) => renderMarkdownLine(line, index))}
+        </code>
+      </pre>
+    );
+  }, [renderMarkdownLine]);
+  
 
   return (
     <div className="markdown-viewer-container" key={`section-${contentVersion || 0}`}>

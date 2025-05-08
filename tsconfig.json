@@ -3,34 +3,47 @@
     "target": "ES2020",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "skipLibCheck": true,
-    "jsx": "react-jsx",
-    "types": ["vitest"],
-
-
+    "jsx": "preserve",
+    "types": [
+      "vitest"
+    ],
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    
     /* For Express */
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
-    }
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "allowJs": true,
+    "incremental": true,
+    "resolveJsonModule": true
   },
-  "include": ["src", "server.ts", "server"]
+  "include": [
+    "src",
+    "server.ts",
+    "server"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
