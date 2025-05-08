@@ -10,7 +10,7 @@ import 'reactflow/dist/style.css';
 import TaskNode from './TaskNode';
 import MilestoneNode from './MilestoneNode';
 import TimelineNode from './TimelineNode';
-import { useDraftPlanContext } from '../../contexts/DraftPlanContext';
+import { useDraftPlanContext } from '../../contexts/DraftPlan/DraftPlanContext';
 import ErrorBoundary from '../ErrorBoundary';
 
 // Helper to ensure we're working with Date objects

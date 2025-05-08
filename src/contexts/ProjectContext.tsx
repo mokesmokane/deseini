@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo, useEffect } from 'react';
 import { Project, Chart, TreeTaskNode, ChatMessage, Role, Deliverable } from '../types';
 import { supabase } from '../lib/supabase';
-import toast from 'react-hot-toast';
+// import toast from 'react-hot-toast';
 import { fetchApi } from '@/utils/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -123,12 +123,12 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
       setProjectsList(projects);
       if (!silent) {
-        toast.success('Projects loaded successfully');
+        // toast.success('Projects loaded successfully');
       }
     } catch (error) {
       setProjectsList([]);
       console.error('Error fetching projects:', error);
-      toast.error('Failed to load projects');
+      // toast.error('Failed to load projects');
     } finally {
       setIsLoading(false);
     }
@@ -191,7 +191,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       }) || []);
     } catch (error) {
       console.error('Error fetching project charts:', error);
-      toast.error('Failed to load charts for this project');
+      // toast.error('Failed to load charts for this project');
       setUserCharts([]); // Ensure state is cleared on error
     }
   }, [supabase]);
@@ -301,7 +301,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       } catch (error) {
       console.error('Error fetching project details:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to load project');
-      toast.error('Failed to load project');
+      // toast.error('Failed to load project');
     } finally {
       setIsLoading(false);
     }
@@ -429,12 +429,12 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         });
       }
       
-      toast.success('Project saved successfully');
+      // toast.success('Project saved successfully');
       
       return savedProjectId;
     } catch (error) {
       console.error('Error saving project:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to save project');
+      // toast.error(error instanceof Error ? error.message : 'Failed to save project');
       return undefined;
     }
   };
@@ -458,7 +458,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     };
     setProject(clonedProjectData); // Should now match Project type if roles/deliverables types are correct
     navigate('/projects/new'); // Navigate to new project form
-    toast.success('Project cloned. Save to create a new entry.');
+    // toast.success('Project cloned. Save to create a new entry.');
     setDatabaseRoleIds(new Set()); // Reset DB IDs for the clone
   };
 
@@ -485,15 +485,15 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
             updated.delete(roleId);
             return updated;
         });
-        toast.success('Role deleted successfully');
+        // toast.success('Role deleted successfully');
       } catch (err) {
         console.error('Error deleting role from DB:', err);
-        toast.error('Failed to delete role from database. Reverting local change.');
+        // toast.error('Failed to delete role from database. Reverting local change.');
         // Revert local change on DB error
         fetchProject(project.id!);
       }
     } else {
-        toast.success('Role removed');
+        // toast.success('Role removed');
     }
   };
 
@@ -522,14 +522,14 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
                  .delete()
                  .eq('id', deliverableId);
              if (error) throw error;
-             toast.success('Deliverable deleted');
+             // toast.success('Deliverable deleted');
          } catch(err) {
              console.error('Error deleting deliverable from DB:', err);
-             toast.error('Failed to delete deliverable. Reverting local change.');
+             // toast.error('Failed to delete deliverable. Reverting local change.');
              fetchProject(project.id!);
          }
     } else {
-        toast.success('Deliverable removed');
+        // toast.success('Deliverable removed');
     }
   };
 
@@ -586,7 +586,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         setInitialTasksForDialog(responseData.tasks);
         setIsCreateChartDialogOpen(true);
         setIsGeneratingTasks(false);
-        toast.success('Tasks generated successfully! Ready to create chart.');
+        // toast.success('Tasks generated successfully! Ready to create chart.');
         return responseData.tasks;
       } else {
         console.warn("ProjectContext: Task generation succeeded but returned no tasks or invalid format.", responseData);
@@ -597,7 +597,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         console.error("ProjectContext: Error during task generation fetch/processing:", error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during task generation.';
         setTaskGenerationError(errorMessage);
-        toast.error(`Task Generation Failed: ${errorMessage}`);
+        // toast.error(`Task Generation Failed: ${errorMessage}`);
         setIsGeneratingTasks(false);
         setIsCreateChartDialogOpen(false);
         setInitialTasksForDialog([]);
@@ -622,37 +622,42 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
   };
 
   const fetchProjectConversations = useCallback(async (projectId: string) => {
-    setIsLoadingConversations(true);
-    try {
-      // Query the project_conversations table to get conversation IDs for this project
-      const { data: conversationsData, error: conversationsError } = await supabase
-        .from('project_conversations')
-        .select('*')
-        .eq('project_id', projectId);
+  // Prevent duplicate fetches
+  if (isLoadingConversations) return;
+  setIsLoadingConversations(true);
+  try {
+    const { data: conversationsData, error: conversationsError } = await supabase
+      .from('project_conversations')
+      .select('*')
+      .eq('project_id', projectId);
 
-      if (conversationsError) throw conversationsError;
+    if (conversationsError) throw conversationsError;
 
-      const conversations: ProjectConversation[] = conversationsData?.map(conversation => ({
-        id: conversation.conversation_id,
-        projectId: conversation.project_id,
-        createdAt: conversation.created_at,
-      })) || [];
+    const conversations: ProjectConversation[] = conversationsData?.map(conversation => ({
+      id: conversation.conversation_id,
+      projectId: conversation.project_id,
+      createdAt: conversation.created_at,
+    })) || [];
 
-      setProjectConversations(conversations);
-      
-      if (conversations.length > 0) {
-        toast.success(`Found ${conversations.length} conversation${conversations.length === 1 ? '' : 's'} for this project`);
-      } else {
-        toast.success('No conversations found for this project');
+    // Only show toast if the conversation count has changed
+    setProjectConversations(prev => {
+      if (prev.length !== conversations.length) {
+        // toast.success(
+        //   conversations.length > 0
+        //     ? `Found ${conversations.length} conversation${conversations.length === 1 ? '' : 's'} for this project`
+        //     : 'No conversations found for this project'
+        // );
       }
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-      toast.error('Failed to load conversations');
-      setProjectConversations([]);
-    } finally {
-      setIsLoadingConversations(false);
-    }
-  }, [supabase]);
+      return conversations;
+    });
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    // toast.error('Failed to load conversations');
+    setProjectConversations([]);
+  } finally {
+    setIsLoadingConversations(false);
+  }
+}, [supabase, isLoadingConversations]);
 
   const value = useMemo(() => ({
     project,

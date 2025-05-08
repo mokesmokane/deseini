@@ -99,6 +99,32 @@ export default {
                 }
             }
   		},
+		typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: 'none',
+            color: 'inherit',
+            p: {
+              marginTop: '0',
+              marginBottom: '0',
+            },
+            'h1, h2, h3, h4': {
+              marginTop: '0',
+              marginBottom: '0',
+            },
+            pre: {
+              marginTop: '0',
+              marginBottom: '0',
+            },
+            code: {
+              color: 'inherit',
+              padding: '0.2em 0.4em',
+              borderRadius: '0.25rem',
+              background: 'rgb(243 244 246)',
+            },
+          },
+        },
+      },
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
@@ -108,6 +134,7 @@ export default {
   },
   plugins: [
     require('@tailwindcss/forms'),
-      require("tailwindcss-animate")
+    require('@tailwindcss/typography'),
+    require("tailwindcss-animate")
 ],
 }

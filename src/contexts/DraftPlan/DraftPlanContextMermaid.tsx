@@ -37,7 +37,7 @@ interface DraftPlanMermaidContextType {
   sections: Section[];
   timeline: Timeline | undefined;
   x0Date: Date | null;
-  createPlanFromMarkdownStream: (markdownStream: ReadableStream<Uint8Array>) => Promise<void>;
+  createPlanFromMarkdownStream: (markdownStream: ReadableStream<Uint8Array>) => Promise<StreamState | undefined>;
   createPlanFromMarkdownString: (markdownString: string) => Promise<void>;
   createPlanFromPureMarkdownStream: (stream: ReadableStream<string>) => Promise<void>;
   isLoading: boolean;
@@ -58,6 +58,9 @@ interface DraftPlanMermaidContextType {
   newSummary: StreamSummary | undefined;
   sketchSummary: SketchSummary | undefined;
   getMermaidMarkdown: () => string;
+  settingsOpen: boolean;
+  setSettingsOpen: (open: boolean) => void;
+  toggleSettings: () => void;
 }
 
 interface DraftPlanMermaidProviderProps {
@@ -81,6 +84,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
   const [processingBufferProgress, setProcessingBufferProgress] = useState<number>(0);
   const [actionBufferLength, setActionBufferLength] = useState<number>(0);
   const [nextAction, setNextAction] = useState<BufferedAction | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
   const projectIdRef = useRef(project?.id);
 
   // Update refs when props change
@@ -538,7 +542,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
 
 
 
-  const createPlanFromStream = async (stream: ReadableStream<string>): Promise<void> => {
+  const createPlanFromStream = async (stream: ReadableStream<string>): Promise<StreamState | undefined> => {
     try {
       setIsLoading(true);
       setStreamProgress(0);
@@ -624,16 +628,18 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
         console.error('Error processing buffer:', error);
         setIsLoading(false);
       }
+      return streamStateRef.current;
     } catch (error) {
       console.error('Error creating plan from markdown:', error);
       setIsLoading(false);
+      return undefined;
     }
   };
 
   // Function to create plan from markdown stream
-  const createPlanFromMarkdownStream = async (stream: ReadableStream<Uint8Array>): Promise<void> => {
+  const createPlanFromMarkdownStream = async (stream: ReadableStream<Uint8Array>): Promise<StreamState | undefined> => {
       const textStream = sseStreamToText(stream, 'content');
-      createPlanFromStream(textStream);
+      return createPlanFromStream(textStream);
   };
 
   const createPlanFromMarkdownString = async (markdownString: string): Promise<void> => {
@@ -658,36 +664,43 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     return mermaidSyntax || '';
   }, [sections, timeline, mermaidSyntax]);
 
-  // Helper function to prepare context value
-  const contextValue: DraftPlanMermaidContextType = {
-    sections,
-    timeline,
-    x0Date,
-    createPlanFromMarkdownStream,
-    createPlanFromMarkdownString,
-    createPlanFromPureMarkdownStream,
-    isLoading,
-    streamProgress,
-    mermaidSyntax,
-    fullSyntax,
-    streamSummary,
-    processingBufferProgress,
-    startProcessingBuffer,
-    processAllBuffer,
-    TIMELINE_PIXELS_PER_DAY,
-    setTIMELINE_PIXELS_PER_DAY,
-    actionBufferLength,
-    nextAction,
-    actionBuffer: actionBufferRef.current,
-    updateTaskStartDate,
-    updateTaskDuration,
-    newSummary,
-    sketchSummary: sketchSummaryState,
-    getMermaidMarkdown,
-  };
+  // Helper function to toggle settings panel
+  const toggleSettings = useCallback(() => {
+    setSettingsOpen(prev => !prev);
+  }, []);
 
   return (
-    <DraftPlanMermaidContext.Provider value={contextValue}>
+    <DraftPlanMermaidContext.Provider
+      value={{
+        sections,
+        timeline,
+        x0Date,
+        createPlanFromMarkdownStream,
+        createPlanFromMarkdownString,
+        createPlanFromPureMarkdownStream,
+        isLoading,
+        streamProgress,
+        mermaidSyntax,
+        fullSyntax,
+        streamSummary,
+        processingBufferProgress,
+        startProcessingBuffer,
+        processAllBuffer,
+        TIMELINE_PIXELS_PER_DAY,
+        setTIMELINE_PIXELS_PER_DAY,
+        actionBufferLength,
+        nextAction,
+        actionBuffer: actionBufferRef.current,
+        updateTaskStartDate,
+        updateTaskDuration,
+        newSummary,
+        sketchSummary: sketchSummaryState,
+        getMermaidMarkdown,
+        settingsOpen,
+        setSettingsOpen,
+        toggleSettings,
+      }}
+    >
       {children}
     </DraftPlanMermaidContext.Provider>
   );

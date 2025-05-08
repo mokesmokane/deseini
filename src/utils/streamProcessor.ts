@@ -70,7 +70,9 @@ export const processMermaidStreamData = (
   // Merge new content
   const updatedStreamState: StreamState = {
     ...streamState,
-    mermaidData: streamState.mermaidData + content
+    mermaidData: streamState.mermaidData + content,
+    // Initialize or update the allMermaidSyntax property to store all mermaid syntax
+    allMermaidSyntax: (streamState.allMermaidSyntax || '') + content
   };
   // Ensure drawing summary exists
   if (!updatedStreamState.streamSummary.sketchSummary) {
@@ -100,6 +102,12 @@ export const processMermaidStreamData = (
   const lines = updatedStreamState.mermaidData.split('\n');
   const completeLines = lines.slice(0, -1);
   updatedStreamState.mermaidData = lines[lines.length - 1];
+  
+  // Add complete lines to our list of complete lines for reference
+  updatedStreamState.completeLines = [
+    ...(updatedStreamState.completeLines || []),
+    ...completeLines
+  ];
 
   // Process each complete line as mermaid syntax
   for (const rawLine of completeLines) {

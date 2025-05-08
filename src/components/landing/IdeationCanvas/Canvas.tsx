@@ -61,7 +61,7 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab, isC
             </div>
             
             <div className="flex items-center gap-2">
-              <ContentHeader />
+              <ContentHeader activeTab={activeTab} />
               <button className="p-2 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors">
                 <Share2 size={18} />
               </button>

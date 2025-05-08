@@ -1,4 +1,5 @@
 import { ganttString, ganttString3 } from './stream_data';
+import { Task } from '../../contexts/DraftPlan/types';
 import { sseStreamToText } from '../streamHandler';
 import { streamByLine } from '../streamLines';
 import { describe} from 'vitest';
@@ -111,6 +112,53 @@ describe('Mermaid Gantt Streaming', () => {
   it('should handle incomplete chunks gracefully', () => {
     console.log(chunks.join(''));
     console.log("mokes");
+  });
+
+  it('should correctly process milestones with explicit IDs', () => {
+    // Initialize state
+    const initialState = getInitialStreamState();
+    initialState.currentSection = 'Test Section';
+    
+    // Create test content with explicit milestone IDs
+    const content = [
+      'Test Milestone: milestone1, milestone, after t1',
+      'Test Milestone 2: milestone2, milestone, 2025-06-15'
+    ].join('\n');
+    
+    // Set up a task dictionary for dependency resolution
+    const taskDictionary: Record<string, Task> = {
+      't1': {
+        id: 't1',
+        type: 'task',
+        label: 'Test Task 1',
+        startDate: new Date('2025-06-01'),
+        duration: 5,
+        endDate: new Date('2025-06-06')
+      }
+    };
+    
+    // Process the mermaid content
+    const { updatedTaskDictionary } = processMermaidStreamData(
+      content,
+      initialState,
+      [],
+      undefined,
+      taskDictionary
+    );
+    
+    // Verify milestone with explicit ID and dependency was created correctly
+    expect(updatedTaskDictionary['milestone1']).toBeDefined();
+    expect(updatedTaskDictionary['milestone1'].id).toBe('milestone1');
+    expect(updatedTaskDictionary['milestone1'].type).toBe('milestone');
+    expect(updatedTaskDictionary['milestone1'].label).toBe('Test Milestone');
+    expect(updatedTaskDictionary['milestone1'].dependencies).toEqual(['t1']);
+    
+    // Verify milestone with explicit ID and specific date was created correctly
+    expect(updatedTaskDictionary['milestone2']).toBeDefined();
+    expect(updatedTaskDictionary['milestone2'].id).toBe('milestone2');
+    expect(updatedTaskDictionary['milestone2'].type).toBe('milestone');
+    expect(updatedTaskDictionary['milestone2'].label).toBe('Test Milestone 2');
+    expect(updatedTaskDictionary['milestone2'].startDate).toEqual(new Date('2025-06-15'));
   });
 
   const turnStreamIntoLines = async (stream: ReadableStream<string>) => {

@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { DraftPlan } from '../contexts/DraftPlan/types';
+import { DraftPlan, deserializeDraftPlan } from '../contexts/DraftPlan/types';
 import { Json } from '../types/supabase';
 
 export const projectDraftChartService = {
@@ -27,7 +27,7 @@ export const projectDraftChartService = {
         Array.isArray((jsonData as any).sections)
       ) {
         // Use type assertion after validation
-        return jsonData as unknown as DraftPlan;
+        return deserializeDraftPlan(jsonData);
       }
       
       console.warn('[projectDraftChartService] Data does not match DraftPlan structure', jsonData);

@@ -51,6 +51,8 @@ export interface StreamState {
   pendingLines?: Record<string, Array<{ line: string; section: string | null }>>;
   // track last milestone ID for handling "after milestone" references
   lastMilestoneId?: string;
+  // store all processed mermaid syntax
+  allMermaidSyntax?: string;
 }
 
 /**

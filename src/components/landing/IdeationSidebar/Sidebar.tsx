@@ -4,8 +4,8 @@ import {
   FolderIcon,
   DocumentIcon,
   PencilIcon,
-  ArrowsPointingOutIcon,
   ChatBubbleLeftRightIcon,
+  ChartBarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CogIcon
@@ -14,6 +14,8 @@ import { projectService, Conversation } from '@/services/projectService';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { Message, MessageStatus } from '../types';
 import { useProject } from '../../../contexts/ProjectContext';
+import { SidebarProjectsPanel } from '../../SidebarProjectsPanel';
+import { SidebarChartsPanel } from '../../SidebarChartsPanel';
 
 interface SidebarProps {
   isVisible: boolean;
@@ -24,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const {projectConversations, project} = useProject();
+  const { projectConversations, project, userCharts, projectsList } = useProject();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const INACTIVITY_TIMEOUT = 3000; // 3 seconds
@@ -32,8 +34,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
   const { 
     setMessages, 
     setCurrentProjectId, 
-    setCurrentConversationId
+    loadConversation
   } = useMessaging();
+
+  // Chart select navigation logic
+  const handleChartSelect = (chartId: string) => {
+    if (project?.id) {
+      // Use your navigation logic here, e.g. react-router-dom's useNavigate
+      window.location.href = `/projects/${project.id}/chart/${chartId}`;
+    }
+  };
   
   // Load conversations when the chats section is opened
   useEffect(() => {
@@ -94,29 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
     try {
       // Set the current project and conversation IDs
       setCurrentProjectId(conversation.projectId);
-      setCurrentConversationId(conversation.id);
-      
-      // Load the conversation messages
-      const messages = await projectService.getConversationMessages(conversation.id);
-      
-      // Convert the messages to the format expected by the messaging provider
-      const formattedMessages = messages.map((msg: any) => {
-        const messageStatus: MessageStatus = 'sent';
-        return {
-          id: `${new Date(msg.timestamp).getTime()}-${msg.role}`,
-          content: msg.content,
-          timestamp: new Date(msg.timestamp),
-          role: msg.role,
-          status: messageStatus,
-          isTyping: false,
-        } as Message;
-      });
-      
-      // Set the messages in the chat
-      setMessages(formattedMessages);
-      
-      // Close the sidebar section after selecting a conversation
-      setActiveSection(null);
+      loadConversation(conversation.id);
     } catch (error) {
       console.error('Error loading conversation messages:', error);
     }
@@ -172,26 +160,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
             disabled={collapsed || projectConversations.length === 0}
           />
           <SidebarIcon 
-            icon={<DocumentIcon className="h-6 w-6" />} 
-            onClick={() => !collapsed && toggleSection('templates')}
-            isActive={activeSection === 'templates'}
-          />
-          <SidebarIcon 
             icon={<PencilIcon className="h-6 w-6" />}   
-            onClick={handleSketchesClick}
+            onClick={() => {}}
             isActive={false}
           />
-          <SidebarIcon 
-            icon={<ArrowsPointingOutIcon className="h-6 w-6" />} 
-            onClick={() => !collapsed && toggleSection('export')}
-            isActive={activeSection === 'export'}
+          <SidebarIcon
+            icon={<ChartBarIcon className="h-6 w-6" />}
+            onClick={() => !collapsed && toggleSection('charts')}
+            isActive={activeSection === 'charts'}
           />
         </nav>
         <div className="flex justify-center pt-4">
           <button 
             className="flex items-center justify-center bg-white hover:bg-gray-100 text-gray-700 p-2 rounded-md transition-colors w-10 h-10"
             title="Settings"
-            onClick={toggleCollapse}
+            onClick={handleSketchesClick}
           >
             <CogIcon className="h-6 w-6" />
           </button>
@@ -201,19 +184,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
       {/* Section content - only shown when a section is active and not collapsed */}
       {activeSection && !collapsed && (
         <div className="relative h-full bg-transparent w-[260px] p-3">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-medium capitalize">{activeSection}</h3>
-            <button 
-              className="flex items-center justify-center bg-white hover:bg-gray-100 text-gray-700 p-2 rounded-md transition-colors w-8 h-8"
-              title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-              onClick={toggleCollapse}
-            >
-              {collapsed ? 
-                <ChevronRightIcon className="h-6 w-6" /> : 
-                <ChevronLeftIcon className="h-6 w-6" />
-              }
-            </button>
-          </div>
+          {activeSection === 'projects' && (
+            <SidebarProjectsPanel
+              projects={projectsList}
+              onClose={() => setActiveSection(null)}
+            />
+          )}
+
+          {activeSection === 'charts' && (
+            <SidebarChartsPanel
+              charts={userCharts}
+              onClose={() => setActiveSection(null)}
+              onChartSelect={handleChartSelect}
+            />
+          )}
+          {activeSection !== 'charts' && activeSection !== 'projects' && (
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-medium capitalize">{activeSection}</h3>
+              <button 
+                className="flex items-center justify-center bg-white hover:bg-gray-100 text-gray-700 p-2 rounded-md transition-colors w-8 h-8"
+                title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                onClick={toggleCollapse}
+              >
+                {collapsed ? 
+                  <ChevronRightIcon className="h-6 w-6" /> : 
+                  <ChevronLeftIcon className="h-6 w-6" />
+                }
+              </button>
+            </div>
+          )}
           
           
           {activeSection === 'chats' && (
@@ -276,7 +275,7 @@ interface SidebarIconProps {
   disabled?: boolean;
 }
 
-const SidebarIcon: React.FC<SidebarIconProps> = ({ 
+const SidebarIcon: React.FC<SidebarIconProps> = ({  
   icon, 
   onClick, 
   isActive = false,

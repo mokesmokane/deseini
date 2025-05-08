@@ -1,18 +1,33 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { MoreHorizontal, RefreshCw } from 'lucide-react';
+import { MoreHorizontal, RefreshCw, Settings, Upload } from 'lucide-react';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
+import { useFinalPlan } from '../../../hooks/useFinalPlan';
 
+interface ContentHeaderProps {
+  activeTab: 'notes' | 'plan';
+}
 
-const ContentHeader: React.FC = () => {
-  const { createPlanFromMarkdownString } = useDraftPlanMermaidContext();  
+const ContentHeader: React.FC<ContentHeaderProps> = ({ activeTab }) => {
+  const { createPlanFromMarkdownString, setSettingsOpen } = useDraftPlanMermaidContext();  
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const { sections } = useDraftMarkdown();
   const moreMenuRef = useRef<HTMLDivElement>(null);
-
-  const handleRefreshPlan = () => {
+  const { generateFinalPlan } = useFinalPlan();
+  
+  const handleRefreshPlan = () => { 
     createPlanFromMarkdownString(sections.map(section => section.content).join('\n\n'));
-      setIsMoreMenuOpen(false);
+    setIsMoreMenuOpen(false);
+  };
+  
+  const handleOpenSettings = () => {
+    setSettingsOpen(true);
+    setIsMoreMenuOpen(false);
+  };
+
+  const handlePublishPlan = () => {
+    generateFinalPlan();
+    setIsMoreMenuOpen(false);
   };
 
   useEffect(() => {
@@ -28,42 +43,47 @@ const ContentHeader: React.FC = () => {
     };
   }, []);
 
+  // Only render the menu button when on the plan tab
+  if (activeTab !== 'plan') {
+    return null;
+  }
+  
   return (
     <div className="relative" ref={moreMenuRef}>
-              <button 
-                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+      <button 
+        onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
         className="p-2 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-              >
-                <MoreHorizontal className="h-5 w-5" />
-              </button>
-              {isMoreMenuOpen && (
-                <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                  <ul className="py-1">
-                    {/* <li 
-                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
-                      onClick={handleRefreshPlan}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      <span>Show Canvas</span>
-                    </li> */}
-                    <li 
-                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
-                      onClick={handleRefreshPlan}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      <span>Refresh Plan</span>
-                    </li>
-                    {/* <li 
-                      className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
-                      onClick={() =>{}}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      <span>Export Plan</span>
-                    </li> */}
-                  </ul>
-                </div>
-              )}
-            </div>
+      >
+        <MoreHorizontal className="h-5 w-5" />
+      </button>
+      {isMoreMenuOpen && (
+        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+          <ul className="py-1">
+            <li 
+              className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
+              onClick={handlePublishPlan}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              <span>Publish Plan</span>
+            </li>
+            <li 
+              className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
+              onClick={handleOpenSettings}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              <span>Settings</span>
+            </li>
+            {/* <li 
+              className="px-4 py-2 hover:bg-gray-100 flex items-center cursor-pointer"
+              onClick={() =>{}}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              <span>Export Plan</span>
+            </li> */}
+          </ul>
+        </div>
+      )}
+    </div>
           );
         };
             {/* </div>

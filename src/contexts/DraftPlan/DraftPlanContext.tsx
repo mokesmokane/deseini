@@ -1,19 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { fetchApi } from '@/utils/api';
-
-export interface Task {
-  id: string;
-  type: 'task' | 'milestone';
-  label: string;
-  startDate: Date;
-  duration?: number;
-  date?: Date;
-}
-
-interface Timeline {
-  startDate: Date;
-  endDate: Date;
-}
+import { Task, Timeline } from './types';
 
 interface DraftPlanContextType {
   tasks: Task[];

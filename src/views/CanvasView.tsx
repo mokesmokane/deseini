@@ -6,7 +6,7 @@ import Canvas from '../components/Canvas.tsx';
 import { MessagesProvider } from '../contexts/MessagesContext';
 import { DraftPlanMermaidProvider } from '../contexts/DraftPlan/DraftPlanContextMermaid.tsx';
 import { DraftPlanFlowProvider } from '@/contexts/useDraftPlanFlow.tsx';
-import { DraftPlanProvider } from '@/contexts/DraftPlanContext.tsx';
+import { DraftPlanProvider } from '@/contexts/DraftPlan/DraftPlanContext.tsx';
 import { FinalPlanProvider } from '../hooks/useFinalPlan';
 
 const CanvasView = () => {

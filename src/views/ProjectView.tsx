@@ -6,7 +6,7 @@ import ProjectForm from '../components/ProjectForm';
 import { MessagesProvider } from '../contexts/MessagesContext';
 import { DraftPlanMermaidProvider } from '../contexts/DraftPlan/DraftPlanContextMermaid.tsx';
 // import ProjectPlanTrigger from '../components/ProjectPlanTrigger';
-import { DraftPlanProvider } from '../contexts/DraftPlanContext';
+import { DraftPlanProvider } from '../contexts/DraftPlan/DraftPlanContext.tsx';
 import { DraftPlanFlowProvider } from '@/contexts/useDraftPlanFlow.tsx';
 import { FinalPlanProvider } from '../hooks/useFinalPlan';
 

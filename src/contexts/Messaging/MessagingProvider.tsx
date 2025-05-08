@@ -29,8 +29,7 @@ interface MessagingContextProps {
   currentProjectId: string | null;
   currentConversationId: string | null;
   setCurrentProjectId: (id: string | null) => void;
-  setCurrentConversationId: (id: string | null) => void;
-  loadConversationMessages: (conversationId: string) => Promise<void>;
+  loadConversation: (conversationId: string) => Promise<void>;
   isLoadingMessages: boolean;
 }
 
@@ -51,15 +50,27 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
   const {project, projectConversations, setProject} = useProject();
   const { createProjectPlan, updateProjectPlan, sections } = useDraftMarkdown();
-  const { createPlanFromMarkdownStream: createMermaidPlan, getMermaidMarkdown, } = useDraftPlanMermaidContext();
+  const { createPlanFromMarkdownStream: createMermaidPlan, createPlanFromPureMarkdownStream, getMermaidMarkdown, } = useDraftPlanMermaidContext();
   const updateBlock = useUpdateBlock();
 
   // Load conversation messages when conversation ID changes
-  useEffect(() => {
-    if (currentConversationId) {
-      loadConversationMessages(currentConversationId);
+  // useEffect(() => {
+  //   if (currentConversationId) {
+  //     loadConversationMessages(currentConversationId);
+  //   }
+  // }, [currentConversationId]);
+
+  const loadConversation = async (conversationId: string) => {
+    setIsLoadingMessages(true);
+    try {
+      setCurrentConversationId(conversationId);
+      await loadConversationMessages(conversationId);
+    } catch (error) {
+      console.error('Error loading conversation messages:', error);
+    } finally {
+      setIsLoadingMessages(false);
     }
-  }, [currentConversationId]);
+  };
 
   useEffect(() => {
     if (project && currentProjectId !== project.id) {
@@ -151,11 +162,15 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
                 : msg
             )
           );
-          // the first time we see [[ProjectPlan]] we should create a new project plan
-          //make sure to only do this once
+          
           if (accumulatedMainContent.includes('[[CREATE_PROJECT_GANTT]]') && newSections) {
             const stream = await getPlanToGanttStream((await newSections).map(section => section.content).join('\n'));
-            await createMermaidPlan(stream);
+            const result = await createMermaidPlan(stream);
+            if(result){
+              //replace the [[CREATE_PROJECT_GANTT]] with the result
+              console.log("resultMOKES",result);
+              accumulatedMainContent = accumulatedMainContent.replace('[[CREATE_PROJECT_GANTT]]', `\n\`\`mermaid\n${result.allMermaidSyntax || ''}\n\`\`\``);
+            }
           }
         }
 
@@ -250,6 +265,11 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
           streams[lang] = stream1;
           updateBlock(lang, aiMessage.id, stream2);
         });
+
+        const mermaidMarkdownStream = streams["editedmermaidmarkdown"] || streams["EditedMermaidMarkdown"];
+        if (mermaidMarkdownStream) {
+          createPlanFromPureMarkdownStream(mermaidMarkdownStream);
+        }
 
         // Process the main content stream
         const mainReader = mainStream.getReader();
@@ -450,6 +470,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
           if (result) {
             setProject(result.project);
             setCurrentProjectId(result.project.id);
+            setCurrentConversationId(result.conversationId);
             
             // Generate project plan using the specific project ID directly
             // This avoids React state dependency issues
@@ -464,7 +485,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
           console.error('Error creating project and conversation:', error);
         }
       } else {
-        await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage);
+        await projectConsultantChat([...messages, userMessage], projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage);
       }
   };
 
@@ -566,8 +587,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
       currentProjectId,
       currentConversationId,
       setCurrentProjectId,
-      setCurrentConversationId,
-      loadConversationMessages,
+      loadConversation,
       isLoadingMessages
     }}>
       {children}

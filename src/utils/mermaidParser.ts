@@ -46,11 +46,12 @@ export const createMilestoneId = (name: string): string => {
  * Creates a milestone object from a name and date
  * @param name Milestone name
  * @param dateStr Date string in YYYY-MM-DD format
+ * @param explicitId Optional explicit ID for the milestone
  * @returns Milestone task object
  */
-export const createMilestone = (name: string, dateStr: string): Task => {
+export const createMilestone = (name: string, dateStr: string, explicitId?: string): Task => {
   const milestoneDate = new Date(dateStr);
-  const milestoneId = createMilestoneId(name);
+  const milestoneId = explicitId || createMilestoneId(name);
   
   return {
     id: milestoneId,
@@ -64,10 +65,12 @@ export const createMilestone = (name: string, dateStr: string): Task => {
  * Creates a milestone object with dependencies
  * @param name Milestone name
  * @param dependencyId The ID of the task this milestone depends on
+ * @param date The date for the milestone
+ * @param explicitId Optional explicit ID for the milestone
  * @returns Milestone task object with dependencies
  */
-export const createMilestoneWithDependency = (name: string, dependencyId: string, date: Date): Task => {
-  const milestoneId = createMilestoneId(name);
+export const createMilestoneWithDependency = (name: string, dependencyId: string, date: Date, explicitId?: string): Task => {
+  const milestoneId = explicitId || createMilestoneId(name);
   
   return {
     id: milestoneId,
@@ -121,7 +124,24 @@ export const parseMermaidLine = (
     return { type: 'skip', payload: null };
   }
   
-  // Parse milestones with specific dates
+  // Parse milestones with explicit IDs and specific dates
+  // e.g., "Milestone 1: milestone1, milestone, 2025-02-15"
+  const milestoneWithIdDateMatch = line.match(/^([^:]+):\s*([^,\s]+)\s*,\s*milestone\s*,\s*(\d{4}-\d{2}-\d{2})/);
+  if (milestoneWithIdDateMatch) {
+    const milestoneName = milestoneWithIdDateMatch[1].trim();
+    const milestoneId = milestoneWithIdDateMatch[2].trim();
+    const milestoneDate = milestoneWithIdDateMatch[3];
+    
+    return {
+      type: 'milestone',
+      payload: {
+        sectionName: currentSection,
+        milestone: createMilestone(milestoneName, milestoneDate, milestoneId)
+      }
+    };
+  }
+  
+  // Parse milestones with specific dates (without explicit ID)
   // e.g., "Milestone 1: milestone, 2025-02-15"
   const milestoneDateMatch = line.match(/^([^:]+):\s*milestone\s*,\s*(\d{4}-\d{2}-\d{2})/);
   if (milestoneDateMatch) {
@@ -137,12 +157,44 @@ export const parseMermaidLine = (
     };
   }
   
-  // Parse milestones with dependencies
+  // Parse milestones with explicit IDs and dependencies
+  // e.g., "Milestone: milestone1, milestone, after t1"
+  const milestoneWithIdDependencyMatch = line.match(/^([^:]+):\s*([^,\s]+)\s*,\s*milestone\s*,\s*after\s+([^,\s]+)/);
+  if (milestoneWithIdDependencyMatch) {
+    const milestoneName = milestoneWithIdDependencyMatch[1].trim();
+    const milestoneId = milestoneWithIdDependencyMatch[2].trim();
+    let dependencyId = milestoneWithIdDependencyMatch[3].trim();
+    
+    // Special case: handle "after milestone" by using lastMilestoneId
+    if (dependencyId === 'milestone' && lastMilestoneId) {
+      dependencyId = lastMilestoneId;
+    }
+    
+    const dependencyEndDate = findTaskEndDateById(dependencyId, tasks);
+    if (!dependencyEndDate) {
+      throw new Error(`Dependency task ${dependencyId} not found`);
+    }
+    return {
+      type: 'milestone',
+      payload: {
+        sectionName: currentSection,
+        milestone: createMilestoneWithDependency(milestoneName, dependencyId, dependencyEndDate, milestoneId)
+      }
+    };
+  }
+  
+  // Parse milestones with dependencies (without explicit ID)
   // e.g., "Milestone: milestone, after t1"
   const milestoneDependencyMatch = line.match(/^([^:]+):\s*milestone\s*,\s*after\s+([^,\s]+)/);
   if (milestoneDependencyMatch) {
     const milestoneName = milestoneDependencyMatch[1].trim();
-    const dependencyId = milestoneDependencyMatch[2].trim();
+    let dependencyId = milestoneDependencyMatch[2].trim();
+    
+    // Special case: handle "after milestone" by using lastMilestoneId
+    if (dependencyId === 'milestone' && lastMilestoneId) {
+      dependencyId = lastMilestoneId;
+    }
+    
     const dependencyEndDate = findTaskEndDateById(dependencyId, tasks);
     if (!dependencyEndDate) {
       throw new Error(`Dependency task ${dependencyId} not found`);
@@ -215,31 +267,7 @@ export const parseMermaidLine = (
     };
   }
   
-  // Parse milestones without explicit ID
-  // e.g., "Final deliverables submitted: milestone, after present"
-  const genericMilestoneMatch = line.match(/^([^:]+):\s*milestone\s*,\s*after\s+([^,\s]+)/);
-  if (genericMilestoneMatch) {
-    const milestoneName = genericMilestoneMatch[1].trim();
-    let dependencyId = genericMilestoneMatch[2].trim();
-    
-    // Special case: handle "after milestone" by using lastMilestoneId
-    if (dependencyId === 'milestone' && lastMilestoneId) {
-      dependencyId = lastMilestoneId;
-    }
-    
-    const dependencyEndDate = findTaskEndDateById(dependencyId, tasks);
-    if (!dependencyEndDate) {
-      throw new Error(`Dependency task ${dependencyId} not found`);
-    }
-    
-    return {
-      type: 'milestone',
-      payload: {
-        sectionName: currentSection,
-        milestone: createMilestoneWithDependency(milestoneName, dependencyId, dependencyEndDate)
-      }
-    };
-  }
+  // This code was duplicated and has been consolidated above in the milestoneDependencyMatch block
   
   // Parse tasks with custom dates and durations
   // For more complex syntax

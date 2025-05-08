@@ -10,19 +10,39 @@ export const useProjectPlanStream = (messageId: string) => {
   const [stateUpdates, updateSectionState] = useState<UpdateState|undefined>(undefined);
   const stream = useBlock('projectPlan', messageId);
   const sectionProcessor = useRef<SimpleSectionProcessor>(new SimpleSectionProcessor());
-  
-  const processProjectPlanStream = useCallback(async (projectPlanStream: ReadableStream<string>) => {
+
+  const processProjectPlanStreamLines = useCallback(async (lineStream: ReadableStreamDefaultReader<string>) => {
     try {
-      sectionProcessor.current.reset();
-      const lineReader = createLineReader(projectPlanStream.getReader());
-      
-      await sectionProcessor.current.processStream(lineReader, (update: ProcessUpdateEvent) => {
+      await sectionProcessor.current.processStream(lineStream, (update: ProcessUpdateEvent) => {
         updateSectionState(update.updateState);
       });
     } catch (error) {
       console.error('Error processing project plan stream:', error);
     }
   }, [updateSectionState]);
+  
+  const processProjectPlanStream = useCallback(async (projectPlanStream: ReadableStream<string>) => {
+    try {
+      sectionProcessor.current.reset();
+      const lineReader = createLineReader(projectPlanStream.getReader());
+      processProjectPlanStreamLines(lineReader);
+    } catch (error) {
+      console.error('Error processing project plan stream:', error);
+    }
+  }, [updateSectionState]);
+
+  const processProjectPlanString = useCallback(async (projectPlan:string) => {
+    const lines = projectPlan.split('\n').map(line => line + '\n');
+    const stream = new ReadableStream<string>({
+      start(controller) {
+        lines.forEach(line => controller.enqueue(line));
+        controller.close();
+      }
+    });
+    processProjectPlanStream(stream);
+  }, [processProjectPlanStream]);
+    
+    
   
   useEffect(() => {
     if (!stream) return;
@@ -37,23 +57,30 @@ export const useProjectPlanStream = (messageId: string) => {
       console.error('Failed to process project plan stream:', error);
     });
     
-  }, [stream, messageId, processProjectPlanStream]);
+  }, [stream, messageId, processProjectPlanStreamLines]);
 
-  return { stateUpdates, stream };
+  return { stateUpdates, stream, processProjectPlanString };
 };
 
 interface ProjectPlanBlockProps {
   messageId: string;
   setCurrentSectionId?: (id: string | null) => void;
+  content?: string;
 }
 
-const ProjectPlanBlock: FC<ProjectPlanBlockProps> = ({ messageId, setCurrentSectionId }) => {
-  const { stateUpdates, stream } = useProjectPlanStream(messageId);
+const ProjectPlanBlock: FC<ProjectPlanBlockProps> = ({ messageId, setCurrentSectionId, content }) => {
+  const { stateUpdates, stream, processProjectPlanString } = useProjectPlanStream(messageId);
   
-  if (!stream) return null;
+  if (!stream && !content) return null;
+  
+  useEffect(() => {
+    if (!stream && content) {
+      processProjectPlanString(content);
+    }
+  }, [content, processProjectPlanString]);
 
   return (
-    <pre className="bg-gray-800 text-white p-4 rounded font-mono whitespace-pre-wrap overflow-auto">
+    <pre className="bg-gray-800 text-white p-4 rounded-md font-mono whitespace-pre-wrap overflow-auto">
       {stateUpdates && stateUpdates.sectionUpdateStates.length > 0 ? (
         <ul className="list-none p-0 m-0">
           {stateUpdates.sectionUpdateStates.map((update, index) => {

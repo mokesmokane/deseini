@@ -29,7 +29,7 @@ export const StreamingPlan = ({ data, newSummary, sketchSummary }: StreamingPlan
   return (
     <>
       <div
-        className="relative bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-md"
+        className="relative bg-gray-800 rounded-md overflow-hidden border border-gray-700 shadow-md"
         style={{
           opacity: data.isVisible ? 1 : 0,
           transition: 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -55,9 +55,8 @@ export const StreamingPlan = ({ data, newSummary, sketchSummary }: StreamingPlan
           </div>
           
           <div className={`transition-all duration-500 ease-in-out ${!isLoading ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-4'}`}>
-            {newSummary?.sketchSummary && (
+            {sketchSummary && (
               <PlanSummary 
-                newSummary={newSummary}
                 sketchSummary={sketchSummary}
               />
             )}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import TextDisplayDialog from '../../common/TextDisplayDialog';
 import { Message } from '../types';
 import { MessageSection } from './MessageSection';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
@@ -10,6 +11,9 @@ import CodeBlock from './CodeBlock';
 import ProjectPlanBlock from './ProjectPlanBlock';
 import ProjectPlanUpdateBlock from './ProjectPlanUpdateBlock';
 import MermaidSyntaxUpdateBlock from './MermaidSyntaxUpdateBlock';
+import ExampleAnswersBlock from './ExampleAnswersBlock';
+import FormattedMarkdown from './FormattedMarkdown';
+import PlainBoldHr from './PlainBoldHr';
 
 interface ChatMessageProps {
   message: Message;
@@ -18,14 +22,15 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
   const { currentStreamingMessageId, currentStreamingContent } = useMessaging();
-  const { stateUpdates, setCurrentSectionId  } = useDraftMarkdown();
+  const { stateUpdates, setCurrentSectionId } = useDraftMarkdown();
   const { sections, newSummary, sketchSummary } = useDraftPlanMermaidContext();
   const isUser = message.role === 'user';
   const isStreaming = !isUser && currentStreamingMessageId === message.id;
-  
+
   // Use a local state for smoother animation while streaming
   const [displayContent, setDisplayContent] = useState(message.content);
-  
+  const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
+
   // Update the display content when streaming or message changes
   useEffect(() => {
     if (isStreaming) {
@@ -34,8 +39,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
       setDisplayContent(message.content);
     }
   }, [isStreaming, currentStreamingContent, message.content]);
-  
+
+  // Process markdown content to correctly render special blocks
   const renderContent = (content: string = '') => {
+    // For completed messages, we need to ensure special blocks are properly parsed
+    if (!isStreaming && message.content) {
+      content = message.content;
+    }
     const nodes: React.ReactNode[] = [];
     const hasPlan = Array.isArray(sections) && sections.length > 0;
     let idx = 0;
@@ -77,6 +87,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
               key={`code-${idx}`}
               messageId={message.id}
               setCurrentSectionId={setCurrentSectionId}
+              content={content.slice(newline + 1, close)}
             />
           );
           idx++;
@@ -89,11 +100,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
           }
           continue;
         } else if (lang.toLowerCase() === 'editedprojectplan') {
+          console.log('Edited project plan found: ', content);
           nodes.push(
             <ProjectPlanUpdateBlock
               key={`code-${idx}`}
               messageId={message.id}
               setCurrentSectionId={setCurrentSectionId}
+              content={content.slice(newline + 1, close)}
             />
           );
           idx++;
@@ -105,11 +118,28 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
             break;
           }
           continue;
-        } else if (lang.toLowerCase() === 'editedmermaidmarkdown') {
+        } else if (lang.toLowerCase() === 'editedmermaidmarkdown' || lang.toLowerCase() === 'mermaid') {
           nodes.push(
             <MermaidSyntaxUpdateBlock
               key={`code-${idx}`}
               messageId={message.id}
+              content={content.slice(newline + 1, close)}
+            />
+          );
+          idx++;
+          // If closing found, skip to after it, else to end
+          if (close !== -1) {
+            i = close + 3;
+          } else {
+            // No closing, treat rest as inside block (streaming case)
+            break;
+          }
+          continue;
+        } else if (lang.toLowerCase() === 'exampleanswers') {
+          nodes.push(
+            <ExampleAnswersBlock
+              key={`example-answers-${idx}`}
+              content={content.slice(newline + 1, close)}
             />
           );
           idx++;
@@ -152,7 +182,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
         return Math.min(nextBracket, nextFence);
       })();
       if (nextSpecial > i) {
-        nodes.push(<span key={`text-${idx}`}>{content.slice(i, nextSpecial)}</span>);
+        // Clean whitespace before line breaks in regular text content
+        const textContent = content.slice(i, nextSpecial);
+        const cleanedContent = textContent.replace(/[ \t]+\n/g, '\n');
+        
+        nodes.push(
+          <PlainBoldHr
+            text={cleanedContent}
+          />
+        );
         idx++;
         i = nextSpecial;
       } else {
@@ -160,31 +198,36 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
         i++;
       }
     }
-    return nodes;
+    return <div className="markdown">{nodes}</div>;
   };
 
+  // Custom components for markdown rendering with proper spacing
+  const markdownComponents = {
+    a: ({node, ...props}: any) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+    hr: () => <hr style={{ margin: '1.5em 0', border: 'none', height: '1px', backgroundColor: '#e5e5e5' }} />
+  };
 
   return (
-    <div 
+    <div
       className={`
         flex gap-3 p-4 rounded-lg my-2 max-w-3xl mx-auto w-full
         ${isLatest ? 'animate-fadeIn' : ''}
-        ${isUser 
-          ? 'bg-white border border-black' 
+        ${isUser
+          ? 'bg-white border border-black'
           : 'bg-black text-white'}
       `}
     >
       {!isUser && (
         <div className="flex-shrink-0 h-8 w-8 rounded-full">
-          <img 
-            src="/logos/D-48x48.png" 
-            alt="Deseini AI" 
+          <img
+            src="/logos/D-48x48.png"
+            alt="Deseini AI"
             className="h-8 w-8 rounded-full"
           />
         </div>
       )}
-      
-      <div className={`flex-1 min-w-0 ${isUser ? 'ml-0' : ''}`}>
+     
+      <div className={`flex-1 min-w-0 ${isUser ? 'ml-0' : ''} ${!isUser ? 'relative group' : ''}`}>
         {!isUser && (
           <div className="font-medium text-sm mb-1 text-white/70">
             Deseini AI
@@ -193,34 +236,56 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
         {message.isTyping && displayContent === '' && (
           <div className="text-white break-words">
             <div className="flex space-x-1">
-              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "0ms"}}></span>
-              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "300ms"}}></span>
-              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "600ms"}}></span>
+              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "0ms" }}></span>
+              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "300ms" }}></span>
+              <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: "600ms" }}></span>
             </div>
           </div>
         )}
         {(displayContent || (isStreaming && currentStreamingContent)) && (
           <div>
-            <div className={isUser 
-              ? 'text-black text-md font-mono break-words whitespace-pre-wrap' 
+            <div className={isUser
+              ? 'text-black text-md font-mono break-words whitespace-pre-wrap'
               : 'text-white break-words whitespace-pre-wrap'
             }>
-              {renderContent(isStreaming ? currentStreamingContent : displayContent)}
+              {/* For user messages, render plain text. For AI messages, render with markdown */}
+              {isUser 
+                ? <div>{displayContent}</div>
+                : renderContent(isStreaming ? currentStreamingContent : displayContent)
+              }
               {isStreaming && (
                 <span className="inline-block ml-1 h-4 w-1 bg-white animate-blink"></span>
               )}
             </div>
             {message.sections?.map((section, index) => (
               <div key={index} className="max-w-full overflow-hidden">
-                <MessageSection 
+                <MessageSection
                   section={section}
                   isMe={isUser}
                 />
               </div>
             ))}
+            {!isUser && (
+              <button
+                onClick={() => setIsTextDialogOpen(true)}
+                className="text-xs rounded-md px-2 py-1 inline-flex items-center transition-colors absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-800 text-white shadow-md hover:bg-gray-700"
+                style={{ 
+                  bottom: '-12px',
+                  transform: 'translateY(50%)'
+                }}
+              >
+                View Plain Text
+              </button>
+            )}
           </div>
         )}
       </div>
+      <TextDisplayDialog
+        isOpen={isTextDialogOpen}
+        title="Message Plain Text"
+        content={message.content || ''}
+        onClose={() => setIsTextDialogOpen(false)}
+      />
     </div>
   );
 };

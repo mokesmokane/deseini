@@ -86,8 +86,8 @@ export const FinalPlanProvider = ({ children }: FinalPlanProviderProps) => {
         toast.error('Failed to save chart');
       } else if (projectId) {
         setGenerationProgress('Linking chart to project...');
-        const linkError = await dbService.linkChartToProject(finalPlan.id, projectId);
-        if (linkError) {
+        const linkSuccess = await dbService.linkChartToProject(finalPlan.id, projectId);
+        if (!linkSuccess) {
           toast.error('Failed to link chart to project');
         } else {
           await fetchProjectCharts(projectId);

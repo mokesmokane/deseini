@@ -2,7 +2,7 @@ import { OpenAI } from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 import type { ChatCompletionMessageParam, ChatCompletionChunk } from 'openai/resources';
 export type { ChatCompletionChunk };
-import { createProjectPlanPrompt } from './codePrompts.ts';
+import { createProjectPlanPrompt, exampleMermaidOutput, exampleMermaidOutputNoCodeBlock } from './codePrompts.ts';
 
 // Interface segregation - defining clear interfaces
 export interface RoleInfo {
@@ -1264,36 +1264,17 @@ your resaoning process should be thought through in markdown using headers for t
 ##Considering dependencies between tasks
 ##Identifying milestones
 ##Reorganizing tasks with estimates and dependencies
+##Calculating total duration of the project based on the estimates
+##Checking if this all matches user expectations
+##Deciding if this is a valid plan
 
-Example mermaid output:
-\`\`\`mermaid
-gantt
-    title Project Timeline
-    dateFormat YYYY-MM-DD
-    section Phase 1
-    Task 1: t1, 2025-01-01, 10d
-    Task 2: t2, after t1, 5d
-    Milestone 1: milestone, after t1
-    section Phase 2
-    Task 3: t3, after milestone, 7d
-\`\`\`
+(if its not a valid plan, go through the reasoning process again - but only redo it once!)
 
-Important:
-- CUSTOM RULE: Tasks are always defined as <taskname>: <id>, <startdate|"after <taskid>">, <duration|enddate>
-- CUSTOM RULE: Start dates are ALWAYS defined as <date> or "after <taskid>" or "after milestone" - there are no other options. ie "Task 1: t1, 2025-01-01, 10d" or "Task 2: t2, after t1, 5d"
-- CUSTOM RULE: "after milestone" will refer to the last milestone before the task 
-- Sections are always defined as "section <sectionname>"
-- DO NOT write it in any other way
-    - e.g. "Developed Design Theme: edt, 2024-06-30, milestone" is not a valid milestone, use "Developed Design Theme: milestone, after t1" instead
-    - e.g. "Developed Design Theme: edt, 2024-06-30, task" is not a valid task, use "Developed Design Theme: t1, 2024-06-30, 10d" instead
+${exampleMermaidOutput}
 
-- Use indentation for readability
-- Group related tasks in sections
-- Include dependencies with "after" syntax where appropriate
-- If exact dates aren't specified, make reasonable estimates based on context
-- Ensure the syntax is valid Mermaid gantt chart code
 
 AFTER thinking through your reasoning and immediately BEFORE outputting the Mermaid syntax, state all the CUSTOM RULES you need to follow in the output
+
 `
 ;
 
@@ -1754,7 +1735,27 @@ Please ONLY return the edited version of this specific section, not the entire d
     projectReadyRecommendations: string
   ): Promise<ConversationResponse> {
       // Construct prompt for OpenAI with clear instructions
-      const readyPrompt = projectReady ? createProjectPlanPrompt : '';
+      const readyPrompt = projectReady ? createProjectPlanPrompt : 
+      `You should also provide the use with options on how to reply that woiuld fulfill the project draft readiness check. By answering the questions you posed
+
+      The example answers should be bracketed between three backticks at the start and end. (\`\`\`)
+      You must follow the first three backticks with "ExampleAnswers" on the same line. (\`\`\`ExampleAnswers)
+
+      Each answer should be on a new line with a blank line between each answer. Be as succint as possible for each answer.
+
+      For instance if you need more information about the timescales and cost bracket you could reply with:
+      \`\`\`ExampleAnswers
+      6 months, $100k
+
+      3 months, $50k
+
+      1 month, no budget
+      
+      \`\`\`
+
+      But you should base these answers on the context. Suggesting a month timeline and a budget of $100k is not appropriate if the user is asking about building a rocket company to rival SpaceX.
+      Be explicit about the options you are providing. USe absolute amounts for amounts and times. Use th ebest of your knowledge to give the most realistic options.
+      `;
       let systemContent = `You are an AI assistant specializing in creating a project plan from a conversation with a user.
       You need to ask the right questions to the user to create a project plan.
       
@@ -1817,8 +1818,8 @@ Please ONLY return the edited version of this specific section, not the entire d
       1. ProjectMarkdown
       2. MermaidMarkdown
 
-      The edited project plan should be bracketed between three backticks at the start and end. (\`\`\`)
-      You must follow the first three backticks with "EditedProjectPlan".
+      The edited sections of the project plan should be bracketed between three backticks at the start and end. (\`\`\`)
+      You must follow the first three backticks with "EditedProjectPlan" on the same line. (\`\`\`EditedProjectPlan)
 
       You should only change the parts of the project plan that are relevant to the change the user has asked you to make.
 
@@ -1828,11 +1829,15 @@ Please ONLY return the edited version of this specific section, not the entire d
 
       So the sections you provide will replace the sections of the same name in the original project plan.
 
+      You do not need to privde the sections that have not changed. Just provide the sections that need edits
+
       You can add new sections to the project plan, but only do so if the user has asked you to, or you cannot make sense of the project plan without it.
 
 
       The edited mermaid markdown should be bracketed between three backticks at the start and end. (\`\`\`)
-      You must follow the first three backticks with "EditedMermaidMarkdown".
+      You must follow the first three backticks with "EditedMermaidMarkdown" on the same line. (\`\`\`EditedMermaidMarkdown)
+
+      ${exampleMermaidOutputNoCodeBlock}
 
       The edited mermaid markdown should be based on the original mermaid markdown and the edited project plan.
 
@@ -1844,6 +1849,8 @@ Please ONLY return the edited version of this specific section, not the entire d
 
 
       You should explain what you are changing and WHY you are changing it before each of the markdown blocks.
+
+      ONLY PROVIDE THE MERMAID MARKDOWN IF YOU NEED TO CHANGE IT - You do not need to provide the original mermaid markdown.
       `
 
       const messages: ChatCompletionMessageParam[] = [

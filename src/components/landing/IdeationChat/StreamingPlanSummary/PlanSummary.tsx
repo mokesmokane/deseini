@@ -1,5 +1,4 @@
-import { memo, useState } from 'react';
-import { EditDialog } from './EditDialog';
+import { memo } from 'react';
 import { StreamSummary, SketchSummary } from '@/utils/types';
 import { Calendar, CheckSquare, Flag } from 'lucide-react';
 import { formatDate, formatDuration } from './utils';
@@ -9,47 +8,23 @@ interface PlanSummaryProps {
   sketchSummary?: SketchSummary;
 }
 
-export const PlanSummary = memo(({ newSummary, sketchSummary }: PlanSummaryProps) => {
+export const PlanSummary = memo(({ sketchSummary }: PlanSummaryProps) => {
   // Split the formatted duration into number and unit for better styling
   const duration = sketchSummary?.duration ? formatDuration(sketchSummary!.duration) : '';
   const durationParts = duration.split(' ');
   const durationNumber = durationParts[0];
   const durationUnit = durationParts[1] || 'days';
 
-  // State for dialog
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogText, setDialogText] = useState('');
-  const [dialogTitle, setDialogTitle] = useState('');
-
-  // Handle showing the Mermaid chart syntax
-  const handleShowChartSyntax = () => {
-    if (newSummary?.mermaidMarkdown) {
-      setDialogText(newSummary.mermaidMarkdown);
-      setDialogTitle('Mermaid Syntax');
-      setIsDialogOpen(true);
-    }
-  };
-
-  // Handle showing the full text
-  const handleShowFullText = () => {
-    if (newSummary?.allText) {
-      setDialogText(newSummary.allText);
-      setDialogTitle('Full Streamed Text');
-      setIsDialogOpen(true);
-    }
-  };
-
   return (
-    <div className="bg-gray-800 rounded-xl relative overflow-hidden p-1">
+    <div className="bg-gray-800 rounded-md relative overflow-hidden p-1">
       {/* Black & white theme: removed gradients */}
       <div className="relative z-10 p-2">
         {/* Timeline card with duration */}
         <div className="mb-4">
-          <div className="relative bg-gray-900 rounded-lg p-4 shadow-md">
+          <div className="relative bg-gray-900 rounded-md p-4 shadow-md">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-3">
-                <button 
-                  onClick={handleShowChartSyntax}
+                <button
                   className="bg-transparent border-none p-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded-full"
                   aria-label="View Mermaid Chart Syntax"
                 >
@@ -103,19 +78,7 @@ export const PlanSummary = memo(({ newSummary, sketchSummary }: PlanSummaryProps
         )}
       </div>
 
-      {/* Edit Dialog */}
-      <EditDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        text={dialogText}
-        onTextChange={setDialogText}
-        title={dialogTitle}
-        contextActions={{
-          newSummary,
-          handleShowFullText,
-          handleShowChartSyntax
-        }}
-      />
+      
     </div>
   );
 });

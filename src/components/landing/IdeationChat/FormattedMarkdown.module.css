@@ -1,0 +1,75 @@
+.formatted-markdown {
+  width: 100%;
+}
+
+.formatted-markdown h1,
+.formatted-markdown h2,
+.formatted-markdown h3,
+.formatted-markdown h4,
+.formatted-markdown p,
+.formatted-markdown ul,
+.formatted-markdown ol,
+.formatted-markdown li {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+}
+.formatted-markdown ul {
+  list-style: disc outside;
+  margin: 0.5em 0 0.5em 1.5rem;
+}
+.formatted-markdown ol {
+  list-style: decimal outside;
+  margin: 0.5em 0 0.5em 1.5rem;
+}
+.formatted-markdown li {
+  margin: 0.25em 0;
+}
+.formatted-markdown li p {
+  display: contents;
+}
+.formatted-markdown li + li {
+  margin-top: 0 !important;
+}
+.formatted-markdown ul,
+.formatted-markdown ol {
+  margin-left: 1.25em;
+}
+.formatted-markdown > * + * {
+  margin-top: 0 !important; /* Add a small gap between blocks */
+}
+.formatted-markdown > * {
+  margin: 0;
+}
+
+.formatted-markdown .whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
+
+.formatted-markdown .break-words {
+  word-break: break-word;
+}
+
+.formatted-markdown .pl-5 {
+  padding-left: 1.25rem;
+}
+
+.formatted-markdown strong {
+  font-weight: 700;
+}
+
+.formatted-markdown em {
+  font-style: italic;
+}
+
+.formatted-markdown hr {
+  height: 1px;
+  background-color: rgb(209 213 219);
+  border: none;
+}
+
+.formatted-markdown code {
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  background: rgb(243 244 246);
+}

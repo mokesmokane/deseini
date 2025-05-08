@@ -7,7 +7,7 @@ import { DraftMarkdownProvider } from './contexts/DraftMarkdownProvider';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { ChartsListProvider } from './contexts/ChartsListContext';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import { DraftPlanProvider } from './contexts/DraftPlanContext';
+import { DraftPlanProvider } from './contexts/DraftPlan/DraftPlanContext';
 import { DraftPlanMermaidProvider } from './contexts/DraftPlan/DraftPlanContextMermaid';
 import { DraftPlanFlowProvider } from './contexts/useDraftPlanFlow';
 import { FinalPlanProvider } from './hooks/useFinalPlan';

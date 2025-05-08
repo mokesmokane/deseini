@@ -41,21 +41,39 @@ export const useProjectPlanStream = (messageId: string) => {
     
   }, [stream, messageId, processProjectPlanStream, project]);
 
-  return { stateUpdates, stream };
+  const setContent = (content: string) => {
+    const lines = content.split('\n').map(line => line + '\n');
+    const stream = new ReadableStream<string>({
+      start(controller) {
+        lines.forEach(line => controller.enqueue(line));
+        controller.close();
+      }
+    });
+    processProjectPlanStream(stream);
+  };
+
+  return { stateUpdates, stream, setContent };
 };
 
 interface ProjectPlanUpdateBlockProps {
   messageId: string;
   setCurrentSectionId?: (id: string | null) => void;
+  content?: string;
 }
 
-const ProjectPlanUpdateBlock: FC<ProjectPlanUpdateBlockProps> = ({ messageId, setCurrentSectionId }) => {
-  const { stateUpdates, stream } = useProjectPlanStream(messageId);
+const ProjectPlanUpdateBlock: FC<ProjectPlanUpdateBlockProps> = ({ messageId, setCurrentSectionId, content }) => {
+  const { stateUpdates, stream, setContent } = useProjectPlanStream(messageId);
+
+  useEffect(() => {
+    if (content) {
+      setContent(content);
+    }
+  }, [content, stream]);
   
-  if (!stream) return null;
+  if (!stream && !content) return null;
 
   return (
-    <pre className="bg-gray-800 text-white p-4 rounded font-mono whitespace-pre-wrap overflow-auto">
+    <pre className="bg-gray-800 text-white p-4 rounded-md font-mono whitespace-pre-wrap overflow-auto">
       {stateUpdates && stateUpdates.sectionUpdateStates.length > 0 ? (
         <ul className="list-none p-0 m-0">
           {stateUpdates.sectionUpdateStates.map((update, index) => {

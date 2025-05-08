@@ -40,7 +40,6 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentIdeaIndex, setCurrentIdeaIndex] = useState(0);
   const [isEnhancing, setIsEnhancing] = useState(false);
-  const [showDebugMenu, setShowDebugMenu] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cancelledRef = useRef(false);
@@ -49,30 +48,6 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
   const [sampleIdeas] = useState(["What would you build if you had the world's best Designers at your fingertips???",
     ...randomisedorder]);
     
-  // Predefined debug messages
-  const debugMessages = [
-    { label: "project", message: `Project Overview  
-Develop a line of modular DIY furniture kits that promote user creativity and customization. Kits should feature interchangeable components, clear assembly instructions, and a variety of finishes and accessory options. Target a broad user base, from first-time DIYers to experienced makers, with an emphasis on eco-friendly materials and scalable designs for different room types (living room, bedroom, office).
-
-Roles  
-- Product Designer  
-- Mechanical Engineer  
-- Materials Specialist  
-- Instructional Designer  
-- Marketing Manager  
-
-Deliverables  
-- Initial concept sketches and modular configuration diagrams  
-- Material and component specification sheet (including sustainable options)  
-- Prototyping plan for at least two core furniture pieces (e.g., shelving unit, table system)  
-- User assembly guide (illustrated step-by-step instructions)  
-- Customization options catalog (finishes, colors, add-ons)  
-- Product photography and lifestyle renders (showing different configurations)  
-- Launch plan and marketing collateral targeting DIY communities` },
-    { label: "6 months", message: "6 months 100k" },
-    { label: "Test error handling", message: "DEBUG: Trigger error handling flow" },
-    
-  ];
 
   // Typing and deleting animation
   useEffect(() => {
@@ -136,6 +111,10 @@ Deliverables
     return () => { timeoutsRef.current.forEach(clearTimeout); timeoutsRef.current = []; };
   }, [currentText, isTyping, isDeleting, currentIdeaIndex, hasStarted]);
 
+  // Track click count and time for triple-click detection
+  const clickCountRef = useRef(0);
+  const lastClickTimeRef = useRef(0);
+  
   const handleTextAreaClick = () => {
     // Don't handle animation if chat has started
     if (hasStarted) {
@@ -145,7 +124,45 @@ Deliverables
       return;
     }
     
-    // Interrupt typing/deleting and clear any pending timeouts
+    // Track clicks for triple-click detection
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 500) { // 500ms threshold for multi-clicks
+      clickCountRef.current += 1;
+    } else {
+      clickCountRef.current = 1;
+    }
+    lastClickTimeRef.current = now;
+    
+    // Handle triple-click to cycle through sample ideas
+    if (clickCountRef.current === 3) {
+      clickCountRef.current = 0; // Reset click count
+      
+      // Cycle to the next sample idea
+      const nextIdeaIndex = (currentIdeaIndex + 1) % sampleIdeas.length;
+      setCurrentIdeaIndex(nextIdeaIndex);
+      
+      // Cancel any ongoing animations
+      cancelledRef.current = true;
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+      
+      // Set the text to the next idea
+      const nextIdea = sampleIdeas[nextIdeaIndex];
+      setIsTyping(false);
+      setIsDeleting(false);
+      setCurrentText(nextIdea);
+      
+      // Select the text
+      setTimeout(() => {
+        if (textAreaRef.current) {
+          textAreaRef.current.select();
+        }
+      }, 0);
+      
+      return;
+    }
+    
+    // Regular click behavior (interrupt typing/deleting)
     if (isTyping || isDeleting) {
       cancelledRef.current = true;
       timeoutsRef.current.forEach(clearTimeout);
@@ -340,39 +357,6 @@ Deliverables
     textArea.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
   };
 
-  // Function to handle sending a debug message
-  const handleDebugMessage = (message: string) => {
-    setCurrentText(message);
-    setShowDebugMenu(false);
-    // Automatically send the message
-    setTimeout(() => {
-      addMessage(message);
-      if (onSendMessage) onSendMessage(message);
-      setCurrentText('');
-    }, 10); // Small timeout to ensure the text is set first
-  };
-
-  // Toggle debug menu visibility
-  const toggleDebugMenu = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent the click from immediately closing the menu
-    setShowDebugMenu(prev => !prev);
-  };
-
-  // Handle click outside to close debug menu
-  useEffect(() => {
-    const handleClickOutside = () => {
-      // Close debug menu when clicking outside of it
-      if (showDebugMenu) {
-        setShowDebugMenu(false);
-      }
-    };
-    
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [showDebugMenu]);
-
   // Handle text change and resize textarea
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setCurrentText(e.target.value);
@@ -427,26 +411,7 @@ Deliverables
                 <Sparkles className="h-5 w-5" />
               )}
             </button>
-            <button 
-              className="text-gray-500 hover:text-black transition-colors"
-              onClick={toggleDebugMenu}
-              title="Toggle debug menu"
-            >
-              <Bug className="h-5 w-5" />
-            </button>
-            {showDebugMenu && (
-              <div className="absolute top-0 left-0 right-0 pt-1 px-6 bg-white/80 backdrop-blur-md border-b border-black">
-                {debugMessages.map((message, index) => (
-                  <button 
-                    key={index} 
-                    className="text-black hover:text-gray-700 transition-colors py-2 px-4 block w-full"
-                    onClick={() => handleDebugMessage(message.message)}
-                  >
-                    {message.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            
           </div>
           {showProgressBar && (
             <div className="absolute top-0 left-0 right-0 pt-1 px-6">

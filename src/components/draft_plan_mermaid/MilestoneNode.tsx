@@ -53,7 +53,7 @@ const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
       )}
       
       {/* Diamond shape */}
-      <div 
+      <div
         style={{
           position: 'absolute',
           top: '-35px',
@@ -64,11 +64,28 @@ const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
           border: '2px solid #000000',
           transform: 'rotate(45deg)',
           borderRadius: '8px',
-          zIndex: 10
+          zIndex: 10,
         }}
         title={!dragging ? `${data.label}\nDate: ${dateStr}` : undefined}
       />
-      
+      {/* Label centered with diamond */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '-13px', // vertical center of diamond/handle
+          left: '40px', // moved further right for better spacing
+          transform: 'translateY(-50%)',
+          fontSize: '18px',
+          color: '#000',
+          fontWeight: 500,
+          whiteSpace: 'nowrap',
+          zIndex: 15,
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}
+      >
+        {data.label}
+      </div>
       {/* Date display */}
       {data.hasDate && (
         <div 

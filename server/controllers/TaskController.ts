@@ -368,18 +368,26 @@ export class TaskController {
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
+      // Collect the entire message
+      let completeMessage = '';
+      
       // Stream each chunk from OpenAI to the client
       try {
         for await (const chunk of ganttResponse.stream) {
           const content = chunk.choices[0]?.delta?.content || '';
-          console.log('Gantt chunk:', content);
           if (content) {
+            // Accumulate the content
+            completeMessage += content;
+            
             // Send the content as SSE (Server-Sent Events)
             res.write(`data: ${JSON.stringify({ content })}\n\n`);
             // Flush to ensure data is sent immediately
             (res as any).flushHeaders?.();
           }
         }
+        
+        // Log the complete message at the end
+        console.log('Complete Gantt response:', completeMessage);
         
         // End the stream with a completion event
         res.write(`data: ${JSON.stringify({ done: true })}\n\n`);

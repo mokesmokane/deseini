@@ -17,7 +17,12 @@ import { MermaidTaskData } from '@/types';
 import SectionNode , { SectionNodeData } from './SectionNode';
 
 function DraftPlanMermaid() {
-  const { TIMELINE_PIXELS_PER_DAY, setTIMELINE_PIXELS_PER_DAY} = useDraftPlanMermaidContext();
+  const { 
+    TIMELINE_PIXELS_PER_DAY, 
+    setTIMELINE_PIXELS_PER_DAY,
+    settingsOpen,
+    setSettingsOpen
+  } = useDraftPlanMermaidContext();
   const [ reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const { nodes, edges, onNodesChange, timelineVisible, onResizeEnd, onNodeDrag, onNodeDragStop } = useDraftPlanFlow();
 
@@ -25,7 +30,6 @@ function DraftPlanMermaid() {
   // Track selected node and panel animation state
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isPanelVisible, setIsPanelVisible] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const animationTimeout = useRef<NodeJS.Timeout | null>(null);
   const ANIMATION_DURATION = 300; // ms, match CSS duration
 
@@ -35,18 +39,18 @@ function DraftPlanMermaid() {
   const hasCentered = useRef(false);
 
   // Helper: Open settings panel and close node panel if open
-  const handleOpenSettings = () => {
-    if (isPanelVisible) {
-      setIsPanelVisible(false);
-      if (animationTimeout.current) clearTimeout(animationTimeout.current);
-      animationTimeout.current = setTimeout(() => {
-        setSelectedNode(null);
-        setSettingsOpen(true);
-      }, ANIMATION_DURATION);
-    } else {
-      setSettingsOpen(true);
-    }
-  };
+  // const handleOpenSettings = () => {
+  //   if (isPanelVisible) {
+  //     setIsPanelVisible(false);
+  //     if (animationTimeout.current) clearTimeout(animationTimeout.current);
+  //     animationTimeout.current = setTimeout(() => {
+  //       setSelectedNode(null);
+  //       setSettingsOpen(true);
+  //     }, ANIMATION_DURATION);
+  //   } else {
+  //     setSettingsOpen(true);
+  //   }
+  // };
 
   // Helper: Open node panel and close settings if open
   const handleNodeClick: NodeMouseHandler = (_event, node) => {
@@ -165,38 +169,6 @@ function DraftPlanMermaid() {
         onNodeClick={handleNodeClick}
       >
         <Background />
-        {/* Settings FAB absolutely positioned in canvas */}
-        <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20 }}>
-          <button
-            aria-label="Open settings"
-            onClick={handleOpenSettings}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              background: '#fff',
-              color: '#111',
-              border: '1px solid #e0e3e7',
-              boxShadow: '0 2px 8px 0 rgba(60,72,88,0.10)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxSizing: 'border-box',
-              cursor: 'pointer',
-              transition: 'box-shadow 0.2s, background 0.2s',
-              outline: 'none',
-              padding: 0
-            }}
-            onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 16px 0 rgba(60,72,88,0.13)'}
-            onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 8px 0 rgba(60,72,88,0.10)'}
-          >
-            {/* Inline SVG Material Design settings gear icon */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'block'}}>
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 11 3.09V3a2 2 0 0 1 4 0v.09c.38.16.73.38 1 .66.27.28.5.62.66 1v.09a1.65 1.65 0 0 0 1.51 1h.09a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
-        </div>
         {/* Settings Panel - right-side sliding panel, matches node panel */}
         <div
           className={`fixed top-0 right-0 h-screen z-50 transition-transform duration-300 ease-in-out transform ${settingsOpen ? 'translate-x-0' : 'translate-x-full'}`}

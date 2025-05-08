@@ -94,3 +94,44 @@ gantt
         Final deliverables submitted: milestone, after present
 \`\`\`
 `
+
+export const ganttString2 = `
+\`\`\`mermaid
+gantt
+    title Modular DIY Furniture Kits – Project Timeline
+    dateFormat YYYY-MM-DD
+    section Concept Development
+        Initial Sketches & Modular Diagrams: t1, 2025-06-02, 10d
+        Feasibility Review of Modularity: t2, after t1, 5d
+        Internal Feedback & Concept Selection: t3, after t2, 5d
+        Initial Design Concepts Complete: milestone1, milestone, after t3
+    section Materials & Component Specification
+        Research Sustainable Options: t4, after milestone1, 7d
+        Finalize Component Specs: t5, after t4, 7d
+        Validate Structural Integrity: t6, after t5, 6d
+        Materials/Components Spec Sheet Complete: milestone2, milestone, after t6
+    section Prototyping
+        Source Eco-friendly Materials: t7, after milestone2, 6d
+        Prototype Shelving Unit: t8, after t7, 12d
+        Prototype Table System: t9, after t8, 12d
+        Internal Prototype Testing & Iteration: t10, after t9, 10d
+        Working Prototypes Complete: milestone3, milestone, after t10
+    section Instructional Design
+        Draft Assembly Guides: t11, after milestone3, 6d
+        Illustrate Assembly Steps: t12, after t11, 6d
+        Review for Clarity & User-Friendliness: t13, after t12, 4d
+    section Customization Catalog
+        Catalog Finishes, Colors, Accessories: t14, after milestone3, 6d
+        Validate Appeal (Marketing): t15, after t14, 2d
+        Assembly Guide & Catalog Complete: milestone4, milestone, after t13
+    section Marketing & Launch
+        Plan Launch: t16, after milestone4, 4d
+        Develop Marketing Collateral: t17, after t16, 4d
+        Lifestyle Product Renders: t18, after t16, 6d
+        Product Photography: t19, after t18, 4d
+        Finalize and Prepare Launch Package: t20, after t19, 2d
+        Photography/Assets & Launch Plan Ready: milestone5, milestone, after t20
+        Official Project Completion & Handoff: milestone6, milestone, after milestone5
+
+\`\`\`
+`;

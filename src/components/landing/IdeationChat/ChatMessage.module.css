@@ -13,3 +13,114 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+.markdown {
+  color: #111;
+  background: #fff;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.7;
+  font-size: 1rem;
+  padding: 0.5em 0;
+  word-break: break-word;
+}
+
+.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
+  color: #111;
+  font-weight: 700;
+  margin: 1.2em 0 0.5em 0;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid #e5e5e5;
+  padding-bottom: 0.15em;
+}
+
+.markdown h1 { font-size: 2em; }
+.markdown h2 { font-size: 1.5em; }
+.markdown h3 { font-size: 1.2em; }
+
+.markdown p {
+  margin: 0.5em 0 1em 0;
+}
+
+.markdown ul, .markdown ol {
+  margin: 0.5em 0 1em 1.5em;
+  padding-left: 1.2em;
+}
+
+.markdown li {
+  margin-bottom: 0.35em;
+}
+
+.markdown a {
+  color: #111;
+  border-bottom: 1px solid #111;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+  padding: 0.1em 0.2em;
+  border-radius: 0.2em;
+}
+.markdown a:hover, .markdown a:focus {
+  background: #111;
+  color: #fff;
+}
+
+.markdown code {
+  background: #f5f5f5;
+  color: #111;
+  padding: 0.1em 0.4em;
+  border-radius: 0.2em;
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Menlo', 'monospace';
+  font-size: 0.95em;
+}
+
+.markdown pre {
+  background: #111;
+  color: #fff;
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Menlo', 'monospace';
+  margin: 1em 0;
+  font-size: 0.95em;
+}
+
+.markdown blockquote {
+  border-left: 3px solid #111;
+  background: #fafafa;
+  color: #222;
+  margin: 1em 0;
+  padding: 0.6em 1em;
+  border-radius: 0.3em;
+  font-style: italic;
+}
+
+/* remove the p-tag’s default spacing inside list items */
+.markdown li > p {
+  margin: 0;
+  padding: 0;
+}
+
+/* optionally un-nest your lists a bit */
+.markdown li > ul,
+.markdown li > ol {
+  margin-top: 0.25em;    /* instead of 0.5em */
+  margin-bottom: 0.5em;  /* instead of 1em */
+}
+
+.markdown p {
+  margin: 0.4em 0;  /* or whatever suits your taste */
+}
+
+@media (max-width: 600px) {
+  .markdown {
+    font-size: 0.98rem;
+    padding: 0.2em 0;
+  }
+  .markdown pre {
+    font-size: 0.9em;
+    padding: 0.7em;
+  }
+  .markdown h1, .markdown h2, .markdown h3 {
+    font-size: 1.1em;
+  }
+}
+
