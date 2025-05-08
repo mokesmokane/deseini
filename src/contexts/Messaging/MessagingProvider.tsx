@@ -49,7 +49,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
   const {project, projectConversations, setProject} = useProject();
-  const { createProjectPlan, updateProjectPlan, sections } = useDraftMarkdown();
+  const { createProjectPlan, sections } = useDraftMarkdown();
   const { createPlanFromMarkdownStream: createMermaidPlan, createPlanFromPureMarkdownStream, getMermaidMarkdown, } = useDraftPlanMermaidContext();
   const updateBlock = useUpdateBlock();
 
@@ -230,7 +230,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const editProjectChat = async (messageHistory: Message[], aiMessage: Message, projectId: string, conversationId: string, projectMarkdown: string, mermaidMarkdown: string) => {
+  const editProjectChat = async (messageHistory: Message[], aiMessage: Message, conversationId: string, projectMarkdown: string, mermaidMarkdown: string) => {
     try {
       const msg = JSON.stringify({
         messageHistory, 
@@ -493,7 +493,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
     
     try {
         console.log('Creating new project and conversation for first message');
-        editProjectChat([...messages, userMessage], aiMessage, project?.id || '', conversationId, projectMarkdown, mermaidMarkdown);
+        editProjectChat([...messages, userMessage], aiMessage, conversationId, projectMarkdown, mermaidMarkdown);
       } catch (error) {
         console.error('Error creating project and conversation:', error);
       }

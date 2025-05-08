@@ -184,7 +184,7 @@ function DraftPlan() {
       const hasDuration = tasksWithDurations.includes(task.id);
 
       // Use the appropriate date property based on node type
-      const positionDate = task.type === 'milestone' && task.date ? task.date : task.startDate;
+      const positionDate = task.type === 'milestone' && task.startDate ? task.startDate : task.startDate;
 
       return {
         id: task.id,

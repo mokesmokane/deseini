@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { MoreHorizontal, RefreshCw, Settings, Upload } from 'lucide-react';
+import { MoreHorizontal, Settings, Upload } from 'lucide-react';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
-import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
 import { useFinalPlan } from '../../../hooks/useFinalPlan';
 
 interface ContentHeaderProps {
@@ -9,16 +8,11 @@ interface ContentHeaderProps {
 }
 
 const ContentHeader: React.FC<ContentHeaderProps> = ({ activeTab }) => {
-  const { createPlanFromMarkdownString, setSettingsOpen } = useDraftPlanMermaidContext();  
+  const { setSettingsOpen } = useDraftPlanMermaidContext();  
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
-  const { sections } = useDraftMarkdown();
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const { generateFinalPlan } = useFinalPlan();
   
-  const handleRefreshPlan = () => { 
-    createPlanFromMarkdownString(sections.map(section => section.content).join('\n\n'));
-    setIsMoreMenuOpen(false);
-  };
   
   const handleOpenSettings = () => {
     setSettingsOpen(true);

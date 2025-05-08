@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Paperclip, Sparkles, ArrowRight, Loader2, Bug } from 'lucide-react';
+import { Paperclip, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import { sampleIdeas as sampleIdeasx } from '../sample';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { fetchApi } from '../../../utils/api';

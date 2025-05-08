@@ -1,8 +1,5 @@
 import { FC, useEffect, useState } from 'react';
 import { useBlock } from '../../../contexts/MessageBlocksContext';
-import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
-import { formatDate, formatDuration } from './StreamingPlanSummary/utils';
-import { Calendar, CheckSquare, Flag } from 'lucide-react';
 import { useRef } from 'react';
 import { useCallback } from 'react';
 import { SketchSummary, StreamState } from '../../../utils/types';

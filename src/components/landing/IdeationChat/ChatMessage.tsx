@@ -12,7 +12,6 @@ import ProjectPlanBlock from './ProjectPlanBlock';
 import ProjectPlanUpdateBlock from './ProjectPlanUpdateBlock';
 import MermaidSyntaxUpdateBlock from './MermaidSyntaxUpdateBlock';
 import ExampleAnswersBlock from './ExampleAnswersBlock';
-import FormattedMarkdown from './FormattedMarkdown';
 import PlainBoldHr from './PlainBoldHr';
 
 interface ChatMessageProps {
@@ -22,7 +21,7 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
   const { currentStreamingMessageId, currentStreamingContent } = useMessaging();
-  const { stateUpdates, setCurrentSectionId } = useDraftMarkdown();
+  const { setCurrentSectionId } = useDraftMarkdown();
   const { sections, newSummary, sketchSummary } = useDraftPlanMermaidContext();
   const isUser = message.role === 'user';
   const isStreaming = !isUser && currentStreamingMessageId === message.id;
@@ -201,11 +200,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
     return <div className="markdown">{nodes}</div>;
   };
 
-  // Custom components for markdown rendering with proper spacing
-  const markdownComponents = {
-    a: ({node, ...props}: any) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-    hr: () => <hr style={{ margin: '1.5em 0', border: 'none', height: '1px', backgroundColor: '#e5e5e5' }} />
-  };
 
   return (
     <div

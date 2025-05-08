@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   FolderIcon,
-  DocumentIcon,
   PencilIcon,
   ChatBubbleLeftRightIcon,
   ChartBarIcon,
@@ -12,7 +11,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { projectService, Conversation } from '@/services/projectService';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
-import { Message, MessageStatus } from '../types';
 import { useProject } from '../../../contexts/ProjectContext';
 import { SidebarProjectsPanel } from '../../SidebarProjectsPanel';
 import { SidebarChartsPanel } from '../../SidebarChartsPanel';
@@ -32,7 +30,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
   const INACTIVITY_TIMEOUT = 3000; // 3 seconds
 
   const { 
-    setMessages, 
     setCurrentProjectId, 
     loadConversation
   } = useMessaging();

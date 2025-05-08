@@ -1,6 +1,5 @@
-import { SearchIcon, PlusIcon, ClockIcon, BarChart2 } from 'lucide-react';
+import { SearchIcon, ClockIcon, BarChart2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { useProject } from '../contexts/ProjectContext';
 
 interface Chart {
   id: string;
