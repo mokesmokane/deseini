@@ -21,12 +21,10 @@ export const WeekNode: React.FC<WeekNodeProps> = ({ data }) => {
     if (!currentChart) return;
     const chartStart = parseISO(currentChart.start);
     const dayIndex = differenceInDays(day, chartStart);
-    console.log(`Day hover: Entered day ${dayIndex} (${format(day, 'yyyy-MM-dd')})`);
     setHoveredDayIndex(dayIndex);
   };
 
   const handleDayLeave = () => {
-    console.log(`Day hover: Left day`);
     setHoveredDayIndex(null);
   };
 

@@ -99,7 +99,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
           }
           continue;
         } else if (lang.toLowerCase() === 'editedprojectplan') {
-          console.log('Edited project plan found: ', content);
           nodes.push(
             <ProjectPlanUpdateBlock
               key={`code-${idx}`}

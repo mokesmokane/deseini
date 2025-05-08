@@ -29,7 +29,6 @@ const ChartView = () => {
     const loadChart = async () => {
       try {
         setIsLoading(true);
-        console.log('ChartView: Loading chart with ID:', chartId);
         await loadChartById(chartId);
         
         // Mark this chart as loaded

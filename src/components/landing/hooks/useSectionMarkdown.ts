@@ -200,9 +200,6 @@ export const useSectionMarkdown = (sectionId: string | null) => {
       const lines = getAllLines();
       const sectionContent = lines.slice(sectionRange.start, sectionRange.end + 1).join('\n');
       
-      console.log('[useSectionMarkdown] Editing section:', sectionRange);
-      console.log('[useSectionMarkdown] Section content:', sectionContent);
-      console.log('[useSectionMarkdown] Instruction:', instruction);
       
       // Simulate an edit for now - replace with actual API call in the real implementation
       // In a real implementation, call your API to edit the section

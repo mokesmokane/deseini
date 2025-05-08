@@ -38,7 +38,6 @@ export const useMermaidSyntaxSummary = () => {
     });
 
      const handleMermaidStreamData = useCallback((content: string) => {
-        console.log('[Handle mermaid stream] content:', content);
     
         const {
           updatedStreamState,
@@ -57,7 +56,6 @@ export const useMermaidSyntaxSummary = () => {
         timelineRef.current = updatedTimeline;
         taskDictionaryRef.current = updatedTaskDictionary;
         if (updatedStreamState.streamSummary) {
-          console.log('[Handle mermaid stream] sketchSummary', updatedStreamState.streamSummary.sketchSummary);
           setSketchSummaryState(
             updatedStreamState.streamSummary.sketchSummary
               ? { ...updatedStreamState.streamSummary.sketchSummary }

@@ -14,10 +14,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // Get session from outlet context (passed down from App.tsx)
   const { session } = useAuth();
   
-  console.log('ProtectedRoute: Session check', session ? 'authenticated' : 'not authenticated');
-  
   if (!session) {
-    console.log('ProtectedRoute: Redirecting to landing page');
     // Redirect to landing page if not authenticated
     return <Navigate to="/" replace />;
   }

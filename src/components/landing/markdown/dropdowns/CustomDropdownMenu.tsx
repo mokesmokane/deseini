@@ -32,7 +32,6 @@ export const CustomDropdownMenu: React.FC<CustomDropdownMenuProps> = ({
       label: 'Break Down', 
       action: () => {
         if (!isLoading) {
-          console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'break-down'`);
           onOptionSelect('break-down', lineNumber);
           onClose();
         }
@@ -42,7 +41,6 @@ export const CustomDropdownMenu: React.FC<CustomDropdownMenuProps> = ({
       label: 'More Detail', 
       action: () => {
         if (!isLoading) {
-          console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'more-detail'`);
           onOptionSelect('more-detail', lineNumber);
           onClose();
         }
@@ -52,7 +50,6 @@ export const CustomDropdownMenu: React.FC<CustomDropdownMenuProps> = ({
       label: 'Consolidate', 
       action: () => {
         if (!isLoading) {
-          console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'consolidate'`);
           onOptionSelect('consolidate', lineNumber);
           onClose();
         }
@@ -62,7 +59,6 @@ export const CustomDropdownMenu: React.FC<CustomDropdownMenuProps> = ({
       label: 'Test (5s Delay)', 
       action: () => {
         if (!isLoading) {
-          console.log(`Directly calling onOptionSelect for line ${lineNumber} with option 'test-delay'`);
           onOptionSelect('test-delay', lineNumber);
           onClose();
         }

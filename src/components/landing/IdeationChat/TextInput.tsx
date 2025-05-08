@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Paperclip, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { Paperclip, Sparkles, ArrowRight, Loader2, X } from 'lucide-react';
 import { sampleIdeas as sampleIdeasx } from '../sample';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
+import { useQuotes } from '../../../contexts/QuoteProvider';
 import { fetchApi } from '../../../utils/api';
 
 // Get API base URL from environment or use relative path for proxy in development
@@ -43,10 +44,18 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cancelledRef = useRef(false);
-  const { addMessage,   percentageComplete } = useMessaging();
+  const { addMessage, percentageComplete, currentConversationId } = useMessaging();
+  const { quotes, getQuotesByConversationId, removeQuote } = useQuotes();
   const randomisedorder = sampleIdeasx.sort(() => Math.random() - 0.5);
   const [sampleIdeas] = useState(["What would you build if you had the world's best Designers at your fingertips???",
     ...randomisedorder]);
+  
+  // Get quotes for the current conversation
+  const activeQuotes = getQuotesByConversationId(currentConversationId);
+  
+  // Debug quotes and conversation ID
+  useEffect(() => {
+  }, [currentConversationId, activeQuotes, quotes]);
     
 
   // Typing and deleting animation
@@ -202,7 +211,6 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
       let enhancedPrompt = '';
       
       // Set up the response with proper headers for SSE
-      console.log('Enhancing prompt...');
       const response = await fetchApi('/api/enhance-project-prompt', {
         method: 'POST',
         headers: {
@@ -212,14 +220,13 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
           initialPrompt: currentText
         }),
       });
-      console.log('Response received');
 
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Error enhancing prompt:', errorData);
         throw new Error(errorData.error || 'Failed to enhance prompt');
       }
-      console.log(response );
+      
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error('Failed to get response reader');
@@ -231,14 +238,12 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          console.log('Stream complete');
           break;
         }
         
         try {
           // Convert the Uint8Array to a string
           const chunk = decoder.decode(value, { stream: true });
-          console.log('Received raw chunk:', chunk);
           
           // Process the chunk line by line (SSE format)
           const lines = chunk.split('\n');
@@ -253,7 +258,6 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
                 const data = JSON.parse(jsonStr);
                 
                 if (data.chunk) {
-                  console.log('Processing chunk content:', data.chunk);
                   enhancedPrompt += data.chunk;
                   // Update the text area with the enhanced prompt
                   setCurrentText(enhancedPrompt);
@@ -283,10 +287,8 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
             } 
             else if (line.startsWith('event: stream_end')) {
               // The next line should contain the data
-              console.log('Stream end event detected');
             }
             else if (line.startsWith('event: stream_error')) {
-              console.error('Stream error event detected');
               // Restore original text on error
               setCurrentText(originalText);
             }
@@ -364,6 +366,34 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
     setTimeout(resizeTextArea, 0);
   };
 
+  // Insert quote at cursor position
+  const insertQuote = (quoteContent: string) => {
+    const textarea = textAreaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    
+    // Format the quote with > markdown syntax
+    const formattedQuote = quoteContent
+      .split('\n')
+      .map(line => `> ${line}`)
+      .join('\n');
+    
+    // Insert the quote at cursor position or at the end
+    const newText = text.substring(0, start) + formattedQuote + text.substring(end);
+    setCurrentText(newText);
+    
+    // Focus the textarea and set cursor after the inserted text
+    setTimeout(() => {
+      textarea.focus();
+      const newPosition = start + formattedQuote.length;
+      textarea.selectionStart = newPosition;
+      textarea.selectionEnd = newPosition;
+    }, 0);
+  };
+
   // Resize textarea when content changes programmatically
   useEffect(() => {
     resizeTextArea();
@@ -379,6 +409,37 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
+      {/* Quote chips */}
+      {activeQuotes.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {activeQuotes.map((quote) => (
+            <div 
+              key={quote.id}
+              className="flex items-center bg-black text-white border border-black rounded-full px-3 py-1 text-sm cursor-pointer transition-colors hover:bg-neutral-900 shadow-sm"
+              style={{ fontFamily: 'monospace', letterSpacing: '0.02em', fontWeight: 500 }}
+              title={quote.content.length > 50 ? quote.content.substring(0, 50) + '...' : quote.content}
+              onClick={() => insertQuote(quote.content)}
+            >
+              <span className="mr-2 flex items-center gap-1">
+                <span className="text-white/70">@</span>
+                <span className="font-semibold text-white/90 truncate max-w-[120px]">{quote.sectionTitle.length > 24 ? `${quote.sectionTitle.substring(0, 24)}...` : quote.sectionTitle}</span>
+                <span className="text-xs text-white/60 pl-1">{quote.lineNumbers.start}-{quote.lineNumbers.end}</span>
+              </span>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeQuote(quote.id);
+                }}
+                className="ml-1 text-white/60 hover:text-red-400 transition-colors rounded-full p-0.5"
+                aria-label="Remove quote"
+                tabIndex={-1}
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="relative bg-white/80 backdrop-blur-md rounded-lg overflow-hidden shadow-xl border border-black transition-all duration-300">
         <textarea
           ref={textAreaRef}

@@ -163,8 +163,6 @@ const CustomHunk: React.FC<{
   const handleAcceptLines = useCallback((startIndex: number, endIndex: number, type: 'insert' | 'delete') => {
     const groupKey = `hunk-${hunkIndex}-${startIndex}-${endIndex}`;
     
-    console.log(`Accepting ${type} group: ${groupKey}`);
-    
     // Update local UI state
     setAcceptedGroups(prev => ({
       ...prev,
@@ -178,8 +176,6 @@ const CustomHunk: React.FC<{
   // Handler for rejecting specific lines
   const handleRejectLines = useCallback((startIndex: number, endIndex: number, type: 'insert' | 'delete') => {
     const groupKey = `hunk-${hunkIndex}-${startIndex}-${endIndex}`;
-    
-    console.log(`Rejecting ${type} group: ${groupKey}`);
     
     // Update local UI state
     setRejectedGroups(prev => ({

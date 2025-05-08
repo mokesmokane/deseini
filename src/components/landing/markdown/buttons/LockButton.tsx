@@ -18,7 +18,6 @@ export const LockButton: React.FC<LockButtonProps> = ({
       title={isLocked ? "Unlock" : "Lock"} 
       onClick={(e) => {
         e.stopPropagation();
-        console.log(`${isLocked ? 'Unlock' : 'Lock'}:`, lineNumber);
         toggleLock(lineNumber);
       }}
     >

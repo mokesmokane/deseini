@@ -2,20 +2,17 @@ import React from 'react';
 import { TrashIcon, ChatBubbleLeftIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { LockButton } from './LockButton';
 import { CustomDropdownMenu } from '../dropdowns/CustomDropdownMenu';
-import { ChatDropdownMenu } from '../dropdowns/ChatDropdownMenu';
 
 interface SectionButtonsProps {
   lineNumber: number;
   isLocked: boolean;
   isLineEditing: boolean;
   isDropdownOpen: boolean;
-  isChatDropdownOpen: boolean;
   buttonRef: React.RefObject<HTMLButtonElement>;
   chatButtonRef: React.RefObject<HTMLButtonElement>;
   toggleLock: (lineNumber: number) => void;
   deleteSection: (lineNumber: number) => void;
   setOpenDropdownLine: (callback: ((prevLine: number | null) => number | null) | number | null) => void;
-  setOpenChatDropdownLine: (callback: ((prevLine: number | null) => number | null) | number | null) => void;
   handleLineHover: (lineNumber: number) => void;
   handleOptionSelect: (option: string, lineNumber: number, customInstruction?: string) => void;
   handleChatOptionSelect: (option: string, lineNumber: number, customMessage?: string) => void;
@@ -26,13 +23,11 @@ export const SectionButtons: React.FC<SectionButtonsProps> = ({
   isLocked,
   isLineEditing,
   isDropdownOpen,
-  isChatDropdownOpen,
   buttonRef,
   chatButtonRef,
   toggleLock,
   deleteSection,
   setOpenDropdownLine,
-  setOpenChatDropdownLine,
   handleLineHover,
   handleOptionSelect,
   handleChatOptionSelect
@@ -67,30 +62,27 @@ export const SectionButtons: React.FC<SectionButtonsProps> = ({
         <TrashIcon className="icon" />
       </button>
       <button 
-        className={`icon-button ${isLocked ? 'disabled' : ''} ${isChatDropdownOpen ? 'active' : ''}`}
-        title="Chat" 
+        className={`icon-button ${isLocked ? 'disabled' : ''}`}
+        title="Quote this section" 
         ref={chatButtonRef}
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
           
           if (!isLocked) {
-            setOpenChatDropdownLine(prevLine => prevLine === lineNumber ? null : lineNumber);
-            handleLineHover(lineNumber);
+            // Instead of showing a dropdown, directly create a quote
+            handleChatOptionSelect('quote', lineNumber);
+            // Visual feedback that the quote was created
+            const button = chatButtonRef.current;
+            if (button) {
+              button.classList.add('flash');
+              setTimeout(() => button.classList.remove('flash'), 500);
+            }
           }
         }}
         disabled={isLocked}
       >
         <ChatBubbleLeftIcon className="icon" />
-        {isChatDropdownOpen && (
-          <ChatDropdownMenu 
-            isOpen={true} 
-            onClose={() => setOpenChatDropdownLine(null)}
-            lineNumber={lineNumber}
-            buttonRef={chatButtonRef}
-            onChatOptionSelect={handleChatOptionSelect}
-          />
-        )}
       </button>
       <button 
         className={`icon-button sparkles-button ${isLocked ? 'disabled' : ''} ${isDropdownOpen ? 'active' : ''}`}

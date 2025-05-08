@@ -65,10 +65,6 @@ export const ActionPreview: React.FC<ActionPreviewProps> = ({
     const actionsText = JSON.stringify(allActions, null, 2);
     
     navigator.clipboard.writeText(actionsText)
-      .then(() => {
-        // Could add toast notification here in the future
-        console.log('Actions copied to clipboard');
-      })
       .catch(err => {
         console.error('Failed to copy actions: ', err);
       });

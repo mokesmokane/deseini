@@ -10,7 +10,6 @@ export interface ProcessStreamResult {
  */
 export function parseRawSSE(value: string, jsonParam: string = 'chunk'): string {
   const prefix = 'data: ';
-  console.log('[Parse raw SSE] value:', value);
   const occurrences = (value.match(/data: /g) || []).length;
   if (occurrences === 0) return value;
   // Single-event: use full JSON (may include embedded newlines)
@@ -20,7 +19,6 @@ export function parseRawSSE(value: string, jsonParam: string = 'chunk'): string 
     try {
       const obj = JSON.parse(dataContent);
       if (typeof obj[jsonParam] === 'string'){
-        console.log('[Parse raw SSE] obj.' + jsonParam + ':', obj[jsonParam]);
         return obj[jsonParam];
       }
     } catch {
@@ -31,7 +29,6 @@ export function parseRawSSE(value: string, jsonParam: string = 'chunk'): string 
       // strip trailing quotes/braces
       if (rest.endsWith('"}')) rest = rest.slice(0, -2);
       else if (rest.endsWith('"')) rest = rest.slice(0, -1);
-      console.log('[Parse raw SSE] rest:', rest);
       return rest;
     }
     return '';

@@ -152,10 +152,6 @@ const SectionNode: React.FC<SectionNodeProps> = ({ id, data }) => {
           const width = params.width;
           //figure out % change in width
           const widthChange = width / originalWidth;
-          console.log(`Original width: ${originalWidth}`);
-          console.log(`New width: ${width}`);
-          console.log(`Width change: ${widthChange}`);
-          console.log(`Resizing section ${data.label} by ${widthChange}`);
           setLocalWidth(width);
           setIsResizing(false);
           onResizeEnd(evnt,params,widthChange,data);

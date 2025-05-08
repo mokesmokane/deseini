@@ -85,7 +85,6 @@ export const CustomEdge = ({
     let edgeStyle = { ...style };
 
     if (visible) {
-      console.log('isViolation', isViolation, 'isVisibleFromNodeHover', isVisibleFromNodeHover, 'isVisibleFromDayHover', isVisibleFromDayHover);
       if (isViolation) {
         edgeStyle = {
           ...style,

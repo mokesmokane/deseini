@@ -13,7 +13,6 @@ const CanvasView = () => {
   const { projectId } = useParams<{ projectId: string; chartId?: string }>();
   const { 
     project, 
-    isLoading: isLoadingProject,
     fetchProject, 
     handleInitiateTaskGeneration,
     userCharts,
@@ -24,7 +23,6 @@ const CanvasView = () => {
   useEffect(() => {
     if (projectId && projectId !== 'new') {
       if (project?.id !== projectId) {
-        console.log(`ProjectView: Fetching project ${projectId}. Current project ID: ${project?.id}`);
         fetchProject(projectId!);
       }
     }
@@ -36,8 +34,6 @@ const CanvasView = () => {
       fetchProjectCharts(projectId);
     }
   }, [projectId, fetchProjectCharts]); // Added fetchProjectCharts dependency
-
-  console.log(`[ProjectView] Rendering: isLoadingProject=${isLoadingProject}, projectExists=${!!project}`);
 
   // Always render the main layout structure
   // Wrap the entire view content with MessagesProvider

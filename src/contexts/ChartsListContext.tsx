@@ -57,13 +57,11 @@ export const ChartsListProvider: React.FC<ChartsListProviderProps> = ({ children
 
   // Load all charts
   const loadAllCharts = async () => {
-    console.log('Loading all charts...');
     try {
       setIsLoading(true);
       setError(null);
       
       const charts = await dbService.getAllCharts();
-      console.log('Charts loaded:', charts);
       setAllCharts(charts);
     } catch (error) {
       setError('Failed to load charts');
@@ -208,7 +206,6 @@ export const ChartsListProvider: React.FC<ChartsListProviderProps> = ({ children
         // created_at and updated_at are handled by the database defaults
       };
       
-      console.log('Importing chart with UUID:', chart.id);
       
       // Save the chart to database
       const success = await dbService.saveChart(chart);

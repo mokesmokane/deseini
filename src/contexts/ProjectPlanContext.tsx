@@ -118,7 +118,6 @@ export function ProjectPlanProvider({
 
   const createPlanIfMissing = async (project: Project) => {
     if (hasInitialized.current) {
-      console.log('[ProjectPlanContext] createPlanIfMissing: Already initialized globally');
       return;
     }
     hasInitialized.current = true;
@@ -126,7 +125,6 @@ export function ProjectPlanProvider({
     if (projectIdRef.current) {
       const dbMarkdown = await projectMarkdownService.getMarkdown(projectIdRef.current);
       if (dbMarkdown) {
-        console.log('[ProjectPlanContext] createPlanIfMissing: Loaded markdown from DB');
         setCurrentText(dbMarkdown);
         setPreviousText(dbMarkdown);
         return;
@@ -134,35 +132,28 @@ export function ProjectPlanProvider({
     }
     // Check if creation is already in progress or if text already exists
     if (currentText || isStreaming) {
-      console.log('[ProjectPlanContext] createPlanIfMissing: Already in progress or plan exists');
       return;
     }
     try {
-      console.log('[ProjectPlanContext] createPlanIfMissing: Starting creation');
       await generateProjectPlan([], project);
     } catch (error) {
       console.error('[ProjectPlanContext] createPlanIfMissing: Error', error);
       hasInitialized.current = false;
     } finally {
-      console.log('[ProjectPlanContext] createPlanIfMissing: Creation completed');
     }
   };
 
   const generateProjectPlan = async (currentMessages: ChatMessage[], projectData: Project) => {
-    console.log('[ProjectPlanContext] generateProjectPlan: START');
     if (isStreaming) {
-      console.log('[ProjectPlanContext] generateProjectPlan: Skipping (already streaming)');
       return;
     }
     if(currentMessages.length >0 ){
       const lastMessage = currentMessages[currentMessages.length - 1];
       if (!lastMessage || lastMessage.role !== 'user') {
-        console.log('[ProjectPlanContext] generateProjectPlan: Skipping (last message not from user)');
         return;
       }
     }
     
-    console.log("[ProjectPlanContext] generateProjectPlan: Initiating plan stream...");
     setIsStreaming(true);
     
     // Store previous plan for diffing if it exists
@@ -177,14 +168,12 @@ export function ProjectPlanProvider({
     setCurrentLineNumber(0);
 
     try {
-      console.log('[ProjectPlanContext] generateProjectPlan: Project context:', JSON.stringify(projectData, null, 2));
       const requestBody = JSON.stringify({
         messages: currentMessages,
         projectContext: projectData,
         currentPlan: currentText || null 
       });
 
-      console.log('[ProjectPlanContext] generateProjectPlan: Fetching /api/generate-project-plan (for stream)...');
       const response = await fetchApi('/api/generate-project-plan', {
         method: 'POST',
         headers: { 
@@ -193,8 +182,6 @@ export function ProjectPlanProvider({
         },
         body: requestBody,
       });
-
-      console.log(`[ProjectPlanContext] generateProjectPlan: Stream fetch response status: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -219,10 +206,8 @@ export function ProjectPlanProvider({
       const message = err instanceof Error ? err.message : 'Failed to generate project plan.';
       toast.error(message);
     } finally {
-      console.log('[ProjectPlanContext] generateProjectPlan: FINALLY - setting isGeneratingProjectPlan to false');
       setIsStreaming(false);
-      if (projectIdRef.current && currentText) {
-        console.log('[ProjectPlanContext] generateProjectPlan: Saving markdown to DB');
+      if (projectIdRef.current && currentText) {    
         const saved = await projectMarkdownService.saveMarkdown(projectIdRef.current, currentText);
         if (!saved) {
           console.error('[ProjectPlanContext] generateProjectPlan: Failed to save markdown to DB');
@@ -246,13 +231,11 @@ export function ProjectPlanProvider({
     instruction: string
   ): Promise<boolean> => {
     if (!currentText) {
-      console.error('[ProjectPlanContext] editMarkdownSection: No current text to edit');
       toast.error('No content to edit');
       return false;
     }
 
     if (isStreaming || isEditing) {
-      console.log('[ProjectPlanContext] editMarkdownSection: Operation in progress, skipping');
       toast.error('Another operation is in progress');
       return false;
     }
@@ -261,7 +244,6 @@ export function ProjectPlanProvider({
     setPreviousText(currentText);
 
     try {
-      console.log('[ProjectPlanContext] editMarkdownSection: Editing section', sectionRange);
       
       // Get current project context for better AI response
       const projectContextData = {
@@ -299,7 +281,6 @@ export function ProjectPlanProvider({
         setCurrentText(data.editedMarkdown);
         toast.success('Section updated successfully');
         if (projectIdRef.current) {
-          console.log('[ProjectPlanContext] editMarkdownSection: Saving markdown to DB');
           await projectMarkdownService.saveMarkdown(projectIdRef.current, data.editedMarkdown);
         }
         return true;

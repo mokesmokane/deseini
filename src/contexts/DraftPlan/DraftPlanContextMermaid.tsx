@@ -182,8 +182,6 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
   }, []);
 
   const handleMermaidStreamData = useCallback((content: string) => {
-    console.log('[Handle mermaid stream] content:', content);
-
     const {
       updatedStreamState,
       updatedActionBuffer,
@@ -208,7 +206,6 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     }
     if (updatedStreamState.streamSummary) {
       setNewSummary(updatedStreamState.streamSummary);
-      console.log('[Handle mermaid stream] sketchSummary', updatedStreamState.streamSummary.sketchSummary);
       setSketchSummaryState(
         updatedStreamState.streamSummary.sketchSummary
           ? { ...updatedStreamState.streamSummary.sketchSummary }
@@ -321,22 +318,13 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     for (const sec of sectionsRef.current) {
       const t = sec.tasks.find(task => task.id === taskId);
       if (t) {
-        console.log(`Found task ${taskId} in section ${sec.name}`);
         sectionName = sec.name;
         originalTask = t;
         break;
       }
     }
     if (!sectionName || !originalTask) return;
-    // Build full updated task object
-    const updatedTask: Task = {
-      ...originalTask,
-      startDate: newStartDate, 
-      endDate: taskEndDate
-    };
-
-    // Dispatch update with sectionName and full task
-    console.log('updateTaskStartDate', updatedTask);
+    // Build full updated task objectith sectionName and full task
     addActionToBuffer('UPDATE_TASK_STARTDATE', { sectionName, taskId, startDate: newStartDate });
     // Process immediately
     await processAllBuffer();
@@ -360,13 +348,6 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     const startDate = ensureDate(originalTask.startDate);
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + newDuration);
-    const updatedTask: Task = {
-      ...originalTask,
-      startDate,
-      duration: newDuration,
-      endDate
-    };
-    console.log('updateTaskDuration', updatedTask);
     addActionToBuffer('UPDATE_TASK_DURATION', { sectionName, taskId, newDuration, endDate });
     await processAllBuffer();
     debouncedSave();
@@ -428,7 +409,6 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
   // Debounced save function (1.5s after last change)
   const debouncedSave = useRef(
     debounce(async () => {
-      console.log('Saving draft chart...');
       if (!projectIdRef.current) return;
       
       // Filter out any empty sections before saving
@@ -437,7 +417,6 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
       );
       
       if (currentSections.length === 0) {
-        console.log('No sections with tasks to save, skipping save');
         return;
       }
       

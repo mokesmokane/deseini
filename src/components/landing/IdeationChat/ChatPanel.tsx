@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatMessage from "./ChatMessage";
 import { useMessaging } from "../../../contexts/Messaging/MessagingProvider";
+import QuoteSyncComponent from "./QuoteSyncComponent";
 
 interface ChatPanelProps {
   isTyping?: boolean; 
@@ -22,6 +23,9 @@ export function ChatPanel({ isTyping = false }: ChatPanelProps) {
   
   return (
     <div className="flex flex-col flex-grow overflow-hidden bg-white">
+      {/* Add QuoteSyncComponent to sync conversation ID between providers */}
+      <QuoteSyncComponent />
+      
       <div className="flex-1 overflow-y-auto hide-scrollbar p-4 max-h-[calc(100vh-60px)]">
         <div className="max-w-2xl mx-auto space-y-4">
           <AnimatePresence initial={false}>

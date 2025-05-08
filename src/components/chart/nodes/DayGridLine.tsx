@@ -15,12 +15,10 @@ export const DayGridLine: React.FC<DayGridLineProps> = ({ data }) => {
   const { setHoveredDayIndex, hoveredDayIndex } = useGantt();
   
   const handleMouseEnter = () => {
-    console.log(`Day hover: Entered day ${data.dayIndex} (${data.date})`);
     setHoveredDayIndex(data.dayIndex);
   };
   
   const handleMouseLeave = () => {
-    console.log(`Day hover: Left day ${data.dayIndex} (${data.date})`);
     setHoveredDayIndex(null);
   };
   

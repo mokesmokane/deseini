@@ -105,9 +105,7 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Start editing a section by sending a request to the API
   const startEditing = async (range: { start: number; end: number }, instruction: string) => {
-    console.log('startEditing - range:', range, 'instruction:', instruction);
     if (!currentText) return;
-    console.log('startEditing - currentText:', currentText);
     setIsEditing(true);
     setSectionRange(range);
     setInstruction(instruction);
@@ -127,7 +125,6 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
     
     try {
       // Make API request to edit the section
-      console.log('startEditing - Making API request to edit section...');
       const response = await fetchApi('/api/edit-markdown-section', {
         method: 'POST',
         headers: { 
@@ -143,9 +140,7 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
       });
       
       // Handle streaming response (if the endpoint supports streaming)
-      console.log('startEditing - Handling streaming response...');
       if (response.ok && response.body) {
-        console.log('startEditing - Streaming response received');
         const reader = response.body.getReader();
         let receivedText = '';
         let accumulatedContent = '';
@@ -191,7 +186,6 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
         setDiffText(createUnifiedDiff(sectionContent, accumulatedContent.trim()));
       } else {
         console.error('startEditing - Failed to receive streaming response');
-        console.log('startEditing - Response:', response);
       }
 
       
@@ -210,8 +204,6 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
     const rangeIndices = diffLines
       .filter((line, idx) => idx >= startIndex && idx <= endIndex && line.type === type)
       .map(line => line.diffIndex);
-    
-    console.log(`Accepting ${type} changes for indices:`, rangeIndices);
     
     if (type === 'insert') {
       setAcceptedInserts(prev => {
@@ -236,8 +228,6 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
     const rangeIndices = diffLines
       .filter((line, idx) => idx >= startIndex && idx <= endIndex && line.type === type)
       .map(line => line.diffIndex);
-    
-    console.log(`Rejecting ${type} changes for indices:`, rangeIndices);
     
     if (type === 'insert') {
       setRejectedInserts(prev => {
@@ -298,9 +288,6 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
       // Update the project plan with the revised content
       setCurrentText(updatedContent);
       
-      // Log the updated content
-      console.log("Updated content with finalized changes");
-      
       resetState();
       
       // Call the finalize callback if provided
@@ -337,9 +324,6 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       // Update the project plan with the revised content
       setCurrentText(updatedContent);
-      
-      // Log the updated content
-      console.log("Accepting all changes:", updatedContent);
       
       resetState();
       

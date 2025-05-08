@@ -157,7 +157,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
     // Update the chart's dependencies array
     if (onUpdateChart) {
-      console.log('Removing dependency', dependencyToRemove, 'Updated dependencies:', updatedDependencies);
       onUpdateChart({ dependencies: updatedDependencies });
     } else {
     }

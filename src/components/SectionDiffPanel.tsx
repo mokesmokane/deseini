@@ -26,7 +26,6 @@ export const SectionDiffPanel: React.FC<SectionDiffPanelProps> = ({
   // Start the editing process when the component mounts
   useEffect(() => {
     if (!hasStartedEditingRef.current) {
-      console.log('SectionDiffPanel: startEditing - range:', range, 'instruction:', instruction);
       startEditing(range, instruction);
       hasStartedEditingRef.current = true;
     }

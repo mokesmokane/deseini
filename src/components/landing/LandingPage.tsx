@@ -22,7 +22,6 @@ const AnimatedContent = () => {
   useEffect(() => {
     if (projectId && projectId !== 'new') {
       if (project?.id !== projectId) {
-        console.log(`ProjectView: Fetching project ${projectId}. Current project ID: ${project?.id}`);
         fetchProject(projectId!);
       }
     }

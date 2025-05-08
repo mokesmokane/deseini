@@ -52,7 +52,6 @@ export const DependencyViolationsProvider: React.FC<DependencyViolationsProvider
    * @returns boolean - True if there are no violations, false if violations were found
    */
   const checkForViolations = useCallback((tasks: Task[], dependencies: Dependency[]): boolean => {
-    console.log('Checking for violations...');
     if (!dependencies || dependencies.length === 0) {
       clearViolations();
       return true;
@@ -64,7 +63,6 @@ export const DependencyViolationsProvider: React.FC<DependencyViolationsProvider
 
     // Loop through each dependency and validate it
     for (const dependency of dependencies) {
-      console.log('Checking dependency:', dependency);
       const sourceTask = findTaskById(tasks, dependency.sourceId);
       const targetTask = findTaskById(tasks, dependency.targetId);
 
@@ -79,7 +77,6 @@ export const DependencyViolationsProvider: React.FC<DependencyViolationsProvider
       // Check if target task starts before source task ends
       // The rule is: target.start >= source.end
       if (isBefore(targetStartDate, sourceEndDate) && !isEqual(targetStartDate, sourceEndDate)) {
-        console.log('Violation found:', dependency);
         // Violation found - target starts before source ends
         isValid = false;
         
@@ -93,7 +90,6 @@ export const DependencyViolationsProvider: React.FC<DependencyViolationsProvider
     }
 
     // Update violations state in a single operation
-    console.log('Violations:', violations);
     setDependencyViolations(violations);
     return isValid;
   }, [findTaskById, clearViolations]);

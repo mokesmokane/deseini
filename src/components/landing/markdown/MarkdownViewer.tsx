@@ -3,6 +3,8 @@ import './MarkdownViewer.css';
 import { useSectionMarkdown } from '../hooks/useSectionMarkdown';
 import { MarkdownLineRenderer } from './renderer/MarkdownLineRenderer';
 import { MarkdownSectionEditor } from './MarkdownSectionEditor';
+import { useQuotes } from '../../../contexts/QuoteProvider';
+import { toast } from 'react-hot-toast';
 
 interface Props {
   section: string | null;
@@ -57,7 +59,6 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
         
         // Only close if click is outside dropdown, its button, and any dropdown menu
         if (!isOnDropdown && !isOnDropdownButton && !isOnChatButton && !isOnDropdownMenu) {
-          console.log('Clicked outside dropdown, closing it');
           setOpenDropdownLine(null);
           setOpenChatDropdownLine(null);
         }
@@ -78,9 +79,7 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
   // Log dropdown state changes
   useEffect(() => {
     if (openDropdownLine !== null) {
-      console.log('Dropdown opened for line:', openDropdownLine);
     } else {
-      console.log('Dropdown closed');
     }
   }, [openDropdownLine]);
 
@@ -92,7 +91,6 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     }
     
     const info = getLineInfo(lineNumber);
-    console.log('Line info:', info);
     if (info.isList) {
       const range = findListItemRange(lineNumber);
       if (range) {
@@ -203,7 +201,6 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     const lineInfo = getLineInfo(lineNumber);
     const sectionRange = getSectionRange(lineNumber, lineInfo);
     
-    console.log('Editing section:', sectionRange, 'with instruction:', instruction);
     setEditingSection(sectionRange);
     
     if (option === 'test-delay') {
@@ -235,69 +232,65 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     }
   }, [editMarkdownSection, getLineInfo, onShowSectionDiff]);
 
-  // Handle chat dropdown options
+  // Use the quote provider
+  const { addQuote } = useQuotes();
+
+  // Handle chat button click to create quotes
   const handleChatOptionSelect = useCallback((
     option: string,
-    lineNumber: number,
-    customMessage?: string
+    lineNumber: number
   ) => {
     // Get section information
     const info = getLineInfo(lineNumber);
     let content = '';
+    let sectionRange = { start: lineNumber, end: lineNumber };
+    let sectionTitle = '';
     
     if (info.sections.length > 0) {
-      const deepestSection = info.sections[info.sections.length - 1];
-      
-      // Get the content of the section
-      const lines = getAllLines();
-      content = lines.slice(deepestSection.start, deepestSection.end + 1).join('\n');
+      // Use the top-most section (first in array) for quoting
+      const topSection = info.sections[0];
+      const lines = getAllLines();  
+      content = lines.slice(topSection.start, topSection.end + 1).join('\n');
+      sectionRange = { start: topSection.start, end: topSection.end };
+      // Extract title from the first line of the section if it's a header
+      const headerLine = lines[topSection.start];
+      sectionTitle = headerLine.replace(/^#+\s+/, '').trim();
     } else if (info.isList) {
       const range = findListItemRange(lineNumber);
       if (range) {
         const lines = getAllLines();
         content = lines.slice(range.start, range.end + 1).join('\n');
+        sectionRange = { start: range.start, end: range.end };
+        sectionTitle = lines[range.start].trim().replace(/^[\*\-]\s+/, '');
       } else {
         const lines = getAllLines();
         content = lines[lineNumber];
+        sectionTitle = content.trim().replace(/^[\*\-]\s+/, '');
       }
     } else {
       const lines = getAllLines();
       content = lines[lineNumber];
+      sectionTitle = content.trim();
     }
     
-    // Prepare message for the chat
-    let message = '';
-    
-    switch (option) {
-      case 'analyze':
-        message = `Can you analyze this section from my project plan and ask me clarifying questions about it?\n\n${content}`;
-        break;
-      case 'improve':
-        message = `Can you suggest improvements for this section of my project plan?\n\n${content}`;
-        break;
-      case 'custom':
-        message = customMessage || '';
-        break;
-      default:
-        message = `I'd like to discuss this section of my project plan:\n\n${content}`;
-    }
-    
-    if (message) {
+    if (option === 'quote') {
+      // Add the quote using the QuoteProvider
+      addQuote(content, sectionRange, sectionTitle); // Now always uses top section header and range
+      
+      // Show a toast notification that the quote was added
+      toast.success('Added quote: ' + (sectionTitle.length > 25 ? 
+        sectionTitle.substring(0, 25) + '...' : sectionTitle));
+      
       // If onShowChat callback is provided, call it to show chat component
       if (onShowChat) {
         onShowChat();
       }
-      
-      // Send the message to the chat
-      setTimeout(() => {
-        // handleSendMessage(null, message);
-      }, 100);
     }
     
     // Close any open dropdown
     setOpenChatDropdownLine(null);
     
-  }, [getLineInfo, getAllLines, findListItemRange, onShowChat]);
+  }, [getLineInfo, getAllLines, findListItemRange, onShowChat, addQuote]);
 
   // New handler for double-click to edit
   const handleDoubleClick = useCallback((lineNumber: number) => {
@@ -336,14 +329,9 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
   }, [getLineInfo, findListItemRange, getAllLines]);
 
   // Save direct edits
-  const saveDirectEdit = useCallback((editedContent: string) => {
+  const saveDirectEdit = useCallback((_: string) => {
     if (!directEditingSection) return;
     
-    console.log('Saving direct edit', {
-      start: directEditingSection.start,
-      end: directEditingSection.end,
-      editedContent
-    });
     
     // saveText(newText);
     setDirectEditingSection(null);

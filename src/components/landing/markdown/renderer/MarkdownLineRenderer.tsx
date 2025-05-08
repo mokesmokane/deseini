@@ -50,7 +50,6 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
   handleOptionSelect,
   handleChatOptionSelect,
   setOpenDropdownLine,
-  setOpenChatDropdownLine,
   toggleLock,
   deleteSection,
   isLineEditing,
@@ -110,7 +109,6 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
       onMouseLeave={handleLineLeave}
       onClick={() => {
         handleLineHover(lineNumber);
-        console.log('Line clicked:', lineNumber, line);
       }}
       onDoubleClick={handleDoubleClick}
       data-line={lineNumber}
@@ -123,13 +121,11 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
           isLocked={isLocked}
           isLineEditing={isLineEditing(lineNumber)}
           isDropdownOpen={isDropdownOpen}
-          isChatDropdownOpen={isChatDropdownOpen}
           buttonRef={buttonRef}
           chatButtonRef={chatButtonRef}
           toggleLock={toggleLock}
           deleteSection={deleteSection}
           setOpenDropdownLine={setOpenDropdownLine}
-          setOpenChatDropdownLine={setOpenChatDropdownLine}
           handleLineHover={handleLineHover}
           handleOptionSelect={handleOptionSelect}
           handleChatOptionSelect={handleChatOptionSelect}
@@ -142,13 +138,11 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
           isLocked={isLocked}
           isLineEditing={isLineEditing(lineNumber)}
           isDropdownOpen={isDropdownOpen}
-          isChatDropdownOpen={isChatDropdownOpen}
           buttonRef={buttonRef}
           chatButtonRef={chatButtonRef}
           toggleLock={toggleLock}
           deleteSection={deleteSection}
           setOpenDropdownLine={setOpenDropdownLine}
-          setOpenChatDropdownLine={setOpenChatDropdownLine}
           handleLineHover={handleLineHover}
           handleOptionSelect={handleOptionSelect}
           handleChatOptionSelect={handleChatOptionSelect}

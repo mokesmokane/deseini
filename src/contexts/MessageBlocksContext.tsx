@@ -16,7 +16,6 @@ export const MessageBlocksProvider: React.FC<{ children: ReactNode }> = ({ child
     try {
     const lowercaseBlockType = blockType.toLowerCase();
     const [teedStream] = value.tee();
-    console.log('Updating block stream:', teedStream);
     setState(prev => ({
       ...prev,
       [lowercaseBlockType]: {

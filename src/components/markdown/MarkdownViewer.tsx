@@ -50,7 +50,6 @@ export const MarkdownViewer: React.FC<Props> = ({ onShowChat, onShowSectionDiff 
         
         // Only close if click is outside dropdown, its button, and any dropdown menu
         if (!isOnDropdown && !isOnDropdownButton && !isOnChatButton && !isOnDropdownMenu) {
-          console.log('Clicked outside dropdown, closing it');
           setOpenDropdownLine(null);
           setOpenChatDropdownLine(null);
         }
@@ -71,9 +70,7 @@ export const MarkdownViewer: React.FC<Props> = ({ onShowChat, onShowSectionDiff 
   // Log dropdown state changes
   useEffect(() => {
     if (openDropdownLine !== null) {
-      console.log('Dropdown opened for line:', openDropdownLine);
     } else {
-      console.log('Dropdown closed');
     }
   }, [openDropdownLine]);
 
@@ -198,7 +195,6 @@ export const MarkdownViewer: React.FC<Props> = ({ onShowChat, onShowSectionDiff 
     const lineInfo = getLineInfo(lineNumber);
     const sectionRange = getSectionRange(lineNumber, lineInfo, findListItemRange);
     
-    console.log('Editing section:', sectionRange, 'with instruction:', instruction);
     setEditingSection(sectionRange);
     
     if (option === 'test-delay') {

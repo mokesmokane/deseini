@@ -150,7 +150,6 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         setUserCharts([]); // No charts associated with this project
         return;
       }
-      console.log(chartIds)
       // 2. Fetch the actual chart details using the obtained IDs
       const { data: chartsData, error: chartsError } = await supabase
         .from('charts')
@@ -535,7 +534,6 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
   // Task Generation Logic (moved from Sidebar)
   const handleInitiateTaskGeneration = useCallback(async (chatMessages: ChatMessage[]): Promise<TreeTaskNode[] | null> => {
-    console.log("ProjectContext: Initiating task generation...");
     setIsGeneratingTasks(true);
     setTaskGenerationError(null);
     setInitialTasksForDialog([]);
@@ -561,8 +559,6 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       const lastUserMessage = chatMessages.filter((m: ChatMessage) => m.role === 'user').pop();
       const prompt = lastUserMessage?.content || "Generate project tasks based on the conversation.";
 
-      console.log("ProjectContext: Calling /api/create-tasks with prompt:", prompt.substring(0, 100) + "...");
-
       const response = await fetchApi('/api/create-tasks', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
@@ -582,11 +578,9 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       }
 
       if (responseData.tasks && Array.isArray(responseData.tasks) && responseData.tasks.length > 0) {
-        console.log("ProjectContext: Received tasks, setting state for dialog.", responseData.tasks);
         setInitialTasksForDialog(responseData.tasks);
         setIsCreateChartDialogOpen(true);
         setIsGeneratingTasks(false);
-        // toast.success('Tasks generated successfully! Ready to create chart.');
         return responseData.tasks;
       } else {
         console.warn("ProjectContext: Task generation succeeded but returned no tasks or invalid format.", responseData);

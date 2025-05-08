@@ -77,7 +77,6 @@ export function MessagesProvider({
 
   // No longer auto-initializes on mount - requires explicit initialization
   const fetchInitialMessage = async () => {
-    console.log('[MessagesContext] fetchInitialMessage: Fetching initial message...');
     if (loading) return; // Prevent multiple initializations
     
     setLoading(true);
@@ -120,7 +119,6 @@ export function MessagesProvider({
       while (isMounted) {
         const { value, done } = await reader.read();
         if (done) {
-          console.log("[MessagesContext] Initial message stream finished.");
           handleStreamCompletion(); // Trigger suggestion fetch etc.
           break;
         }
@@ -147,7 +145,6 @@ export function MessagesProvider({
                 console.error('Error parsing initial stream data chunk:', line, e);
               }
           } else if (line.startsWith('event: confirmation_needed')) {
-               console.log("Confirmation needed received during initial message (should not happen?).");
                if (isMounted) {
                     setMessages(prev => prev.map(msg => 
                       msg.id === assistantMessageId 
@@ -158,7 +155,6 @@ export function MessagesProvider({
                     setSuggestedReplies([]); 
                }
           } else if (line.startsWith('event: stream_end')) {
-              console.log("Explicit stream_end event for initial message.");
               if (isMounted) {
                    setMessages(prev => prev.map(msg => 
                       msg.id === assistantMessageId 
@@ -219,19 +215,15 @@ export function MessagesProvider({
   const fetchSuggestions = async (currentMessages: ChatMessage[]) => {
     // Skip if there's already a request in progress or if we've already fetched for this message count
     if (suggestionsRequestInProgressRef.current) {
-      console.log("Skipping suggestions: A request is already in progress.");
       return;
     }
 
     const lastMessage = currentMessages[currentMessages.length - 1];
     if (!lastMessage || lastMessage.role !== 'assistant' || !lastMessage.content.trim() || lastMessage.requiresAction) {
-      console.log("Skipping suggestions: No assistant message, empty, or requires action.");
       setSuggestedReplies([]);
       setLoadingSuggestions(false);
       return;
     }
-
-    console.log("Fetching suggestions for messages:", currentMessages);
     setLoadingSuggestions(true);
     setSuggestedReplies([]);
     suggestionsRequestInProgressRef.current = true;
@@ -268,12 +260,10 @@ export function MessagesProvider({
   };
 
   const handleRefreshSuggestions = () => {
-    console.log("Refreshing suggestions...");
     fetchSuggestions(messages);
   };
 
   const handleStreamCompletion = () => {
-    console.log("Stream complete for conversation.");
     
     // Implementing Single Responsibility Principle:
     // This function now handles only stream completion concerns
@@ -334,7 +324,6 @@ export function MessagesProvider({
       while (true) {
         const { value, done } = await reader.read();
         if (done) {
-           console.log("Conversation stream finished.");
            handleStreamCompletion(); 
            break;
         }
@@ -359,16 +348,14 @@ export function MessagesProvider({
                 console.error('Error parsing conversation stream data chunk:', line, e);
               }
           } else if (line.startsWith('event: confirmation_needed')) {
-              console.log("Confirmation needed for task generation received.");
               setMessages(prev => prev.map(msg => 
-                 msg.id === assistantMessageId 
-                    ? { ...msg, content: streamBuffer.current, requiresAction: true } 
+                  msg.id === assistantMessageId 
+                      ? { ...msg, content: streamBuffer.current, requiresAction: true } 
                     : msg
               ));
               setLoadingSuggestions(false);
               setSuggestedReplies([]); 
           } else if (line.startsWith('event: stream_end')) {
-              console.log("Explicit stream_end event for conversation.");
               setMessages(prev => prev.map(msg => 
                   msg.id === assistantMessageId 
                   ? { ...msg, content: streamBuffer.current, requiresAction: false } 
@@ -408,7 +395,6 @@ export function MessagesProvider({
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (!loading && lastMessage.role === 'assistant' && lastMessage.content && !lastMessage.requiresAction) {
-        console.log("useEffect: Scheduling fetchSuggestions based on new assistant message (with debounce).");
         
         // Clear any existing timeout
         if (timeoutId) {
@@ -417,11 +403,9 @@ export function MessagesProvider({
         
         // Schedule a new suggestions fetch with debounce
         timeoutId = setTimeout(() => {
-          console.log("useEffect: Executing fetchSuggestions after debounce period.");
           fetchSuggestions(messages);
-        }, suggestionsDebounceTimeout);
-      } else {
-         console.log(`useEffect: Skipping suggestion fetch. Loading: ${loading}, Role: ${lastMessage.role}, Content: ${!!lastMessage.content}, RequiresAction: ${lastMessage.requiresAction}`);
+          }, suggestionsDebounceTimeout);
+        } else {
          if (suggestedReplies.length > 0) {
              setSuggestedReplies([]);
          }
@@ -446,18 +430,14 @@ export function MessagesProvider({
   };
   
   const handleGenerateTasksClick = async (): Promise<void> => {
-    console.log("Task generation initiated from context...");
     setIsGeneratingTasks(true);
     setError(null);
     try {
         const generatedTasks = await onInitiateTaskGeneration(messages);
         if (generatedTasks) {
-            console.log("Task generation successful in context.");
         } else {
-            console.log("Task generation handled by callback, but returned null/falsy.");
         }
     } catch (error) {
-        console.error("Error during handleGenerateTasksClick call:", error);
         const message = error instanceof Error ? error.message : 'Unknown error initiating task generation.';
         setError(message);
         toast.error(message);

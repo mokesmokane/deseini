@@ -514,7 +514,6 @@ const GridView: React.FC<GridViewProps> = ({ content, onShowChat }) => {
       }
     }
     
-    console.log('Editing section:', { start, end }, 'with instruction:', instruction);
     setEditingSection(sectionIndex);
     
     try {

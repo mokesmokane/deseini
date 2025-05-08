@@ -59,7 +59,6 @@ export const DraftPlanProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
       
       const planData = await response.json();
-      console.log('[Plan data]', planData);
       
       // Process the tasks to convert date strings into Date objects and flatten the hierarchy
       if (planData.tasks && Array.isArray(planData.tasks)) {

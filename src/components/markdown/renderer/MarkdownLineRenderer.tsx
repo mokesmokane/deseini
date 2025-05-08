@@ -110,7 +110,6 @@ export const MarkdownLineRenderer: React.FC<MarkdownLineProps> = ({
       onMouseLeave={handleLineLeave}
       onClick={() => {
         handleLineHover(lineNumber);
-        console.log('Line clicked:', lineNumber, line);
       }}
       onDoubleClick={handleDoubleClick}
       data-line={lineNumber}

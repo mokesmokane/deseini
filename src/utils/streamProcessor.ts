@@ -66,7 +66,6 @@ export const processMermaidStreamData = (
   updatedTimeline: Timeline | undefined;
   updatedTaskDictionary: Record<string, Task>;
 } => {
-  console.log('[Mermaid stream] content:', content);
   // Merge new content
   const updatedStreamState: StreamState = {
     ...streamState,
@@ -113,7 +112,6 @@ export const processMermaidStreamData = (
   for (const rawLine of completeLines) {
     const line = rawLine.trim();
     if (!line) continue;
-    console.log('[Mermaid stream] parsing line:', line);
     let parseResult;
     try {
       parseResult = parseMermaidLine(line, updatedStreamState.currentSection, updatedTaskDictionary, updatedStreamState.lastMilestoneId);
@@ -170,7 +168,6 @@ export const processMermaidStreamData = (
           
           // Process each pending task that was waiting for a milestone
           for (const pendingTask of pendingMilestoneTasks) {
-            console.log('[Mermaid stream] processing pending task with milestone dependency:', pendingTask.line);
             try {
               // Re-process with the updated lastMilestoneId
               const pendingResult = parseMermaidLine(
@@ -275,7 +272,6 @@ export const processMermaidStreamData = (
         
         // Process each pending task that was waiting for this task
         for (const pendingTask of pendingDependentTasks) {
-          console.log('[Mermaid stream] processing pending task with dependency on:', task.id, pendingTask.line);
           try {
             // Re-process now that the dependency exists
             const pendingResult = parseMermaidLine(
@@ -368,10 +364,6 @@ export const processMermaidStreamData = (
     }
   }
 
-  //if sketchSummary has changed log it
-  if (sketchSummary !== updatedStreamState.streamSummary.sketchSummary) {
-    console.log('[Mermaid stream] sketchSummary changed:', updatedStreamState.streamSummary.sketchSummary);
-  }
   // Persist min/max for next chunk
   // @ts-ignore
   sketchSummary._minStart = minStart;

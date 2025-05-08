@@ -40,7 +40,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onActiveSectionChange, section }) => 
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log(`[Sidebar] useEffect: activeSection changed to: ${activeSection}`);
     onActiveSectionChange?.(activeSection);
   }, [activeSection, onActiveSectionChange]);
 

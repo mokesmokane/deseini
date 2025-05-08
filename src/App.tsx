@@ -11,6 +11,7 @@ import { DraftPlanProvider } from './contexts/DraftPlan/DraftPlanContext';
 import { DraftPlanMermaidProvider } from './contexts/DraftPlan/DraftPlanContextMermaid';
 import { DraftPlanFlowProvider } from './contexts/useDraftPlanFlow';
 import { FinalPlanProvider } from './hooks/useFinalPlan';
+import { QuoteProvider } from './contexts/QuoteProvider';
 import { useState, useEffect } from 'react';
 
 // App content that depends on authentication state
@@ -89,10 +90,12 @@ const StateManager = () => {
                 <FinalPlanProvider>
                   <ChartsListProvider>
                     <MessageBlocksProvider>
-                      <MessagingProvider>
-                        {/* Using key to force remounting and state reset */}
-                        <AppContent key={stateKey} />
-                      </MessagingProvider>
+                      <QuoteProvider>
+                        <MessagingProvider>
+                          {/* Using key to force remounting and state reset */}
+                          <AppContent key={stateKey} />
+                        </MessagingProvider>
+                      </QuoteProvider>
                     </MessageBlocksProvider>
                   </ChartsListProvider>
                 </FinalPlanProvider>

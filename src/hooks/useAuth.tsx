@@ -28,7 +28,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const { data } = await supabase.auth.getSession();
         setSession(data.session);
-        console.log("Auth initialized:", data.session ? "Logged in" : "Not logged in");
       } catch (error) {
         console.error("Auth error:", error);
       } finally {
@@ -41,7 +40,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set up auth listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        console.log("Auth state changed:", session ? "Logged in" : "Logged out");
         setSession(session);
       }
     );

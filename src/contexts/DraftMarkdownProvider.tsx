@@ -128,7 +128,6 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
       // Update the update state
       const updateState = update.updateState;
       if (seedMessageId) {
-       console.log('MOKES updateState', updateState);
         setStateUpdates(prev => ({ ...prev, [seedMessageId]: updateState}));
       }
       
@@ -169,7 +168,6 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
       // Update the update state
       const updateState = update.updateState;
       if (seedMessageId) {
-       console.log('MOKES updateState', updateState);
         setStateUpdates(prev => ({ ...prev, [seedMessageId]: updateState}));
       }
       

@@ -701,7 +701,6 @@ function useDraftPlanFlowInternal() {
   // Ref for debouncing drag updates
   const dragUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const onNodeDrag: NodeDragHandler = useCallback((_event, node) => {
-      console.log('onNodeDrag', node);
       if (node.type === 'section') {
         // Handle dragging of section: adjust its position and its child tasks visually
         setDraggingNodeId(node.id);
@@ -878,7 +877,6 @@ function useDraftPlanFlowInternal() {
           const movedEnd = node.type === 'milestone'
             ? newDate
             : (() => { const e = new Date(newDate); if (originalDuration) e.setDate(e.getDate() + originalDuration); return e; })();
-          console.log(`Moving task ${node.id} from ${originalStart} to ${movedEnd}`);
           if (newDate.getTime() > originalStart.getTime()) {
             processDownstream(node.id, movedEnd, anchorDate, baseX, pendingUpdates);
           } else if (newDate.getTime() < originalStart.getTime()) {

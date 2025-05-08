@@ -709,7 +709,6 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
   const [taskToAssign, setTaskToAssign] = useState<Task | null>(null);
 
   const onDeleteTask = useCallback((task: Task) => {
-    console.log('Delete task:', task.id);
     if (!currentChart) return;
     
     // Open the confirm dialog and set the task to delete
@@ -718,7 +717,6 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
   }, [currentChart]);
 
   const onShowAssignRoleDialog = useCallback((task: Task) => {
-    console.log('Assign role to task:', task.id);
     if (!currentChart) return;
     
     // Open the confirm dialog and set the task to delete
@@ -828,8 +826,7 @@ export const GanttChart: React.FC<GanttChartProps> = () => {
     );
   }, [setNodes, updateNodeDates, currentChart]);
 
-  const onNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
-    console.log('onNodeDragStop', event, node);
+  const onNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
     const newX = Math.round(node.position.x / DAY_WIDTH) * DAY_WIDTH;
     const updates = updateNodeDates(node, newX);
     updateTask(node.id, updates);

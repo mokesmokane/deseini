@@ -89,7 +89,6 @@ export const processAction = (
     case 'ADD_TASK':
     case 'UPDATE_TASK': {
       const { sectionName, task } = action.payload;
-      console.log('action.payload', action.payload);
 
       if (!state.x0Date) {
         updatedState.x0Date = task.startDate;
@@ -102,7 +101,6 @@ export const processAction = (
 
           if (existingIndex >= 0) {
             // Update existing task
-            console.log('existing task', section.tasks[existingIndex]);
             const updatedTasks = [...section.tasks];
             task.duration = task.endDate ? 
               (task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24) : task.duration;
@@ -120,13 +118,11 @@ export const processAction = (
       });
       
       // Update the task dictionary
-      console.log('updated task', task);
       updatedTaskDictionary[task.id] = task;
       break;
     }
     case 'UPDATE_TASK_STARTDATE':
       let { sectionName, taskId, startDate } = action.payload;
-      // Update the task dictionaryconsole.log('action.payload', action.payload);
 
       if (!state.x0Date) {
         updatedState.x0Date = startDate;
@@ -192,8 +188,6 @@ export const processAction = (
             t.id === milestone.id && t.type === 'milestone');
           
           if (existingIndex >= 0) {
-            // Update existing milestone
-            console.log('existing milestone', milestone);
             const updatedTasks = [...section.tasks];
             updatedTasks[existingIndex] = milestone;
             return { ...section, tasks: updatedTasks };

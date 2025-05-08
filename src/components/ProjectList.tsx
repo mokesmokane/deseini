@@ -32,7 +32,6 @@ export const ProjectList = ({ projects, closeDropdown }: ProjectListProps) => {
     event.preventDefault();
     event.stopPropagation();
     
-    console.log(`Navigating to project: ${projectId}`);
     
     // Close dropdown first to avoid any potential state issues
     closeDropdown();

@@ -156,7 +156,6 @@ const Canvas: React.FC = () => {
           </div>
         );
       case 'markdown':
-        console.log('Markdown view selected');
         return (
           <MarkdownViewer 
             initialMarkdown={currentText} 
@@ -177,11 +176,8 @@ const Canvas: React.FC = () => {
   useEffect(() => {
     // Only call if not already initialized
     if (!hasInitializedRef.current) {
-      console.log('Canvas: createPlanIfMissing - first initialization');
       hasInitializedRef.current = true;
       createPlanIfMissing(project!);
-    } else {
-      console.log('Canvas: skipping duplicate createPlanIfMissing call');
     }
   }, []);
 

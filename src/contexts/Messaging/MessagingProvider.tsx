@@ -168,7 +168,6 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
             const result = await createMermaidPlan(stream);
             if(result){
               //replace the [[CREATE_PROJECT_GANTT]] with the result
-              console.log("resultMOKES",result);
               accumulatedMainContent = accumulatedMainContent.replace('[[CREATE_PROJECT_GANTT]]', `\n\`\`mermaid\n${result.allMermaidSyntax || ''}\n\`\`\``);
             }
           }
@@ -460,7 +459,6 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         // If this is the first message, create a new project and conversation
 
         try {
-          console.log('Creating new project and conversation for first message');
           const result = await projectService.initializeProjectWithFirstMessages(
             [...messages, userMessage],
             projectNameSuggestion || 'Project from Chat',
@@ -474,7 +472,6 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
             
             // Generate project plan using the specific project ID directly
             // This avoids React state dependency issues
-            console.log('Project is ready!');
             setIsCanvasVisible(true);
             
             await projectConsultantChat(messages, projectReady, projectReadyReason, percentageComplete, projectReadyRecommendations, aiMessage, result.project.id, result.conversationId);
@@ -492,7 +489,6 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   const postProjectReply = async (messages: Message[], userMessage: Message, aiMessage: Message, conversationId: string, projectMarkdown: string, mermaidMarkdown: string) => {
     
     try {
-        console.log('Creating new project and conversation for first message');
         editProjectChat([...messages, userMessage], aiMessage, conversationId, projectMarkdown, mermaidMarkdown);
       } catch (error) {
         console.error('Error creating project and conversation:', error);
