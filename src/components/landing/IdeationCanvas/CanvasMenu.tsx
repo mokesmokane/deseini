@@ -3,11 +3,10 @@ import { MoreHorizontal, Settings, Upload } from 'lucide-react';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useFinalPlan } from '../../../hooks/useFinalPlan';
 
-interface ContentHeaderProps {
-  activeTab: 'notes' | 'plan';
+interface CanvasMenuProps {
 }
 
-const ContentHeader: React.FC<ContentHeaderProps> = ({ activeTab }) => {
+const CanvasMenu: React.FC<CanvasMenuProps> = () => {
   const { setSettingsOpen } = useDraftPlanMermaidContext();  
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
@@ -37,10 +36,7 @@ const ContentHeader: React.FC<ContentHeaderProps> = ({ activeTab }) => {
     };
   }, []);
 
-  // Only render the menu button when on the plan tab
-  if (activeTab !== 'plan') {
-    return null;
-  }
+  
   
   return (
     <div className="relative" ref={moreMenuRef}>
@@ -80,44 +76,5 @@ const ContentHeader: React.FC<ContentHeaderProps> = ({ activeTab }) => {
     </div>
           );
         };
-            {/* </div>
-    <div className="relative" ref={moreMenuRef}>
-      <button 
-        className="p-2 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-        onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-        aria-haspopup="true"
-        aria-expanded={isMoreMenuOpen}
-      >
-        <MoreHorizontal size={18} />
-      </button>
-      
-      {isMoreMenuOpen && (
-        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-          <ul className="py-1">
-            <li>
-              <button 
-                onClick={handleRefreshPlan}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <RefreshCw size={16} className="mr-2" />
-                Refresh Plan
-              </button>
-            </li>
-          </ul>
-        </div>
-      )}
-    </div> */}
-// Add CSS for shimmer animation in case it's needed elsewhere in the app
-if (typeof document !== 'undefined' && !document.getElementById('shimmer-animation-style')) {
-  const styleElement = document.createElement('style');
-  styleElement.id = 'shimmer-animation-style';
-  styleElement.innerHTML = `
-    @keyframes shimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-  `;
-  document.head.appendChild(styleElement);
-}
 
-export default ContentHeader;
+export default CanvasMenu;
