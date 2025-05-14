@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Role } from '../types';
 import RoleCard from './RoleCard';
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { fetchApi } from '../utils/api';
+import { extractRoleInfo } from '../services/roleService';
 
 export interface RoleListProps {
   roles: Role[];
@@ -88,26 +88,18 @@ function AddRoleDialog({ isOpen, onClose, onAddRole }: AddRoleDialogProps) {
     setProcessingError('');
     
     try {
-      const response = await fetchApi('/api/extract-role-info', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: pastedText }),
-      });
-      
+      const response = await extractRoleInfo({ text: pastedText });
       if (!response.ok) {
-        throw new Error('Failed to process text');
+        const txt = await response.text();
+        let msg = `Failed to process text (${response.status})`;
+        try { msg = JSON.parse(txt).error || msg } catch {}
+        throw new Error(msg);
       }
-      
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
+      const payload = await response.json() as { error?: string; extraction: AIRoleExtraction };
+      if (payload.error) {
+        throw new Error(payload.error);
       }
-      
-      // Update form data with extracted information
-      const extracted: AIRoleExtraction = data.extraction;
+      const extracted = payload.extraction;
       
       setFormData(prev => ({
         ...prev,

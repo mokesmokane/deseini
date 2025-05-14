@@ -18,7 +18,8 @@ function useDraftPlanFlowInternal() {
     x0Date, 
     TIMELINE_PIXELS_PER_DAY,
     updateTaskStartDate,
-    updateTaskDuration
+    updateTaskDuration,
+    updateTaskLabel
   } = useDraftPlanMermaidContext()
 
   const [timelineVisible, setTimelineVisible] = useState(false);
@@ -904,8 +905,20 @@ function useDraftPlanFlowInternal() {
       pendingUpdates.forEach(({ id, newStartDate }) => updateTaskStartDate(id, newStartDate));
     };
 
+    const onRenameNode = (nodeId: string, newLabel: string) => {
+      updateTaskLabel(nodeId, newLabel);
+    };
 
-  return { nodes, edges, onNodesChange, onResizeEnd, onNodeDrag, onNodeDragStop, anchorDate, timelineVisible  }
+    // Dependency edge management
+    const { deleteDependency, addDependency } = useDraftPlanMermaidContext();
+    const deleteDependencyEdge = (sourceId: string, targetId: string) => {
+      deleteDependency(sourceId, targetId);
+    };
+    const addDependencyEdge = (sourceId: string, targetId: string) => {
+      addDependency(sourceId, targetId);
+    };
+
+  return { nodes, edges, onNodesChange, onRenameNode, onResizeEnd, onNodeDrag, onNodeDragStop, anchorDate, timelineVisible, deleteDependencyEdge, addDependencyEdge }
 }
 
 // Provider and consumer hook

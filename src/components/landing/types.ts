@@ -9,12 +9,23 @@ export interface MessageSection {
   metadata?: Record<string, unknown>;
 }
 
+
+export interface Quote {
+  id: string;
+  content: string;
+  lineNumbers: { start: number; end: number };
+  sectionTitle: string;
+  sectionId: string;
+  conversationId: string | null;
+}
+
 export interface Message {
   id: string;
   sections?: MessageSection[];
   timestamp: Date;
   content?: string;
   role: 'user' | 'assistant';
+  quotes?: Quote[];
   status: MessageStatus;
   isTyping?: boolean;
 }

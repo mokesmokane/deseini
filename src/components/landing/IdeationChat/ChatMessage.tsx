@@ -5,6 +5,7 @@ import { MessageSection } from './MessageSection';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
+import { useActiveTab } from '../../../contexts/ActiveTabProvider';
 // import Generate from './Generate'; // legacy placeholder, can remove if unused
 import Placeholder from './Placeholder';
 import CodeBlock from './CodeBlock';
@@ -23,12 +24,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
   const { currentStreamingMessageId, currentStreamingContent } = useMessaging();
   const { setCurrentSectionId } = useDraftMarkdown();
   const { sections, newSummary, sketchSummary } = useDraftPlanMermaidContext();
+  const { setActiveTab } = useActiveTab();
   const isUser = message.role === 'user';
   const isStreaming = !isUser && currentStreamingMessageId === message.id;
 
   // Use a local state for smoother animation while streaming
   const [displayContent, setDisplayContent] = useState(message.content);
   const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
+
+  const quotes = message.quotes || [];
 
   // Update the display content when streaming or message changes
   useEffect(() => {
@@ -237,6 +241,32 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
         )}
         {(displayContent || (isStreaming && currentStreamingContent)) && (
           <div>
+            {quotes.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {quotes.map((quote) => (
+                  <div
+                    key={quote.id}
+                    className="flex items-center bg-black text-white border border-black rounded-full px-3 py-1 text-sm cursor-pointer transition-colors hover:bg-neutral-900 shadow-sm"
+                    style={{ fontFamily: 'monospace', letterSpacing: '0.02em', fontWeight: 500 }}
+                    title={quote.content.length > 50 ? quote.content.substring(0, 50) + '...' : quote.content}
+                    onClick={() => {
+                      setCurrentSectionId(quote.sectionId);
+                      setActiveTab('notes');
+                    }}
+                  >
+                    <span className="mr-2 flex items-center gap-1">
+                      <span className="text-white/70">@</span>
+                      <span className="font-semibold text-white/90 truncate max-w-[120px]">
+                        {quote.sectionTitle.length > 24 ? `${quote.sectionTitle.substring(0, 24)}...` : quote.sectionTitle}
+                      </span>
+                      <span className="text-xs text-white/60 pl-1">
+                        {quote.lineNumbers.start}-{quote.lineNumbers.end}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className={isUser
               ? 'text-black text-md font-mono break-words whitespace-pre-wrap'
               : 'text-white break-words whitespace-pre-wrap'

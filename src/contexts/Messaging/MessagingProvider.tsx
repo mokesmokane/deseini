@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { editProjectChat as editProjectChatService } from '../../services/projectPlanService';
 import { Message, MessageStatus } from '../../components/landing/types';
 import { useDraftMarkdown } from '../DraftMarkdownProvider';
 import { projectService } from '@/services/projectService';
@@ -11,10 +12,11 @@ import { streamToStreams, streamToStringStream } from '../../utils/stream';
 import {SectionData } from '../../components/landing/types';
 import { fetchApi } from '@/utils/api';
 import { useUpdateBlock } from '../MessageBlocksContext';
+import { Quote } from '../../components/landing/types';
 
 interface MessagingContextProps {
   messages: Message[];
-  addMessage: (content: string) => void;
+  addMessage: (content: string, quotes?: Quote[]) => void;
   setMessages: (messages: Message[]) => void;
   isCanvasVisible: boolean;
   toggleCanvas: () => void;
@@ -49,9 +51,9 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState<boolean>(false);
   const {project, projectConversations, setProject} = useProject();
-  const { createProjectPlan, sections } = useDraftMarkdown();
-  const { createPlanFromMarkdownStream: createMermaidPlan, createPlanFromPureMarkdownStream, getMermaidMarkdown, } = useDraftPlanMermaidContext();
-  const updateBlock = useUpdateBlock();
+  const { createProjectPlan, updateProjectPlan, sections } = useDraftMarkdown();
+  const { createPlanFromMarkdownStream: createMermaidPlan, createPlanFromPureMarkdownStream, getMermaidMarkdown } = useDraftPlanMermaidContext();
+  const {updateBlock} = useUpdateBlock();
 
   // Load conversation messages when conversation ID changes
   // useEffect(() => {
@@ -168,7 +170,7 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
             const result = await createMermaidPlan(stream);
             if(result){
               //replace the [[CREATE_PROJECT_GANTT]] with the result
-              accumulatedMainContent = accumulatedMainContent.replace('[[CREATE_PROJECT_GANTT]]', `\n\`\`mermaid\n${result.allMermaidSyntax || ''}\n\`\`\``);
+              accumulatedMainContent = accumulatedMainContent.replace('[[CREATE_PROJECT_GANTT]]', `\n\`\`\`mermaid\n${result.allMermaidSyntax || ''}\n\`\`\``);
             }
           }
         }
@@ -229,20 +231,13 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const editProjectChat = async (messageHistory: Message[], aiMessage: Message, conversationId: string, projectMarkdown: string, mermaidMarkdown: string) => {
+const editProjectChat = async (messageHistory: Message[], aiMessage: Message, conversationId: string, projectMarkdown: string, mermaidMarkdown: string) => {
     try {
-      const msg = JSON.stringify({
-        messageHistory, 
+      setCurrentStreamingContent('');
+      const response = await editProjectChatService({
+        messageHistory,
         projectMarkdown,
         mermaidMarkdown
-      });
-      setCurrentStreamingContent('');
-      const response = await fetchApi('/api/edit-project-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: msg,
       });
 
       if (!response.ok) {
@@ -253,7 +248,6 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Response body is null');
 
-      try {
         // Use the new streaming API
         const stringReader = streamToStringStream(reader);
         const { mainStream, codeBlockStreams } = streamToStreams<string>(stringReader, ["EditedProjectPlan", "EditedMermaidMarkdown"]);
@@ -266,8 +260,16 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
         });
 
         const mermaidMarkdownStream = streams["editedmermaidmarkdown"] || streams["EditedMermaidMarkdown"];
+        const projectPlanStream = streams["editedprojectplan"] || streams["EditedProjectPlan"];
+        
         if (mermaidMarkdownStream) {
+          console.log('mermaidMarkdownStreamMOKES', mermaidMarkdownStream);
           createPlanFromPureMarkdownStream(mermaidMarkdownStream);
+        }
+
+        if (projectPlanStream) {
+          console.log('projectPlanStreamMOKES', projectPlanStream);
+          updateProjectPlan(projectPlanStream, project?.id || '', aiMessage.id);  
         }
 
         // Process the main content stream
@@ -304,36 +306,19 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
           )
         );
 
-      
-        try {
-          await projectService.addMessagesToConversation(
-            conversationId,
-            [{
-              content: accumulatedMainContent,
-              role: 'assistant',
-              timestamp: new Date(),
-              id: uuidv4(),
-            }
-            ]
-          );
-        } catch (error) {
-          console.error('Error adding AI response to conversation:', error);
-        }
-        
-      } catch (error) {
-        console.error('Error processing streams:', error);
-        // Mark message as error
-        setCurrentStreamingMessageId(null);
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === aiMessage.id 
-              ? { ...msg, content: 'Error: Failed to get response.', status: 'error', isTyping: false } 
-              : msg
-          )
+    
+        await projectService.addMessagesToConversation(
+          conversationId,
+          [{
+            content: accumulatedMainContent,
+            role: 'assistant',
+            timestamp: new Date(),
+            id: uuidv4(),
+          }
+          ]
         );
-      }
     } catch (error) {
-      console.error('Error in projectConsultantChat:', error);
+      console.error('Error in editProjectChat:', error);
       // Mark message as error
       setCurrentStreamingMessageId(null);
       setMessages(prev => 
@@ -496,15 +481,15 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Add a message and get AI response
-  const addMessage = async (content: string) => {
+  const addMessage = async (content: string, quotes?: Quote[]) => {
     if (!content.trim()) return;
-
     // Create a user message
     const userMessage: Message = {
       id: uuidv4(),
       role: 'user',
       timestamp: new Date(),
       content: content.trim(),
+      quotes,
       status: 'delivered'
     };
 
@@ -521,7 +506,8 @@ export const MessagingProvider = ({ children }: { children: ReactNode }) => {
             id: userMessage.id,
             content: userMessage.content,
             role: userMessage.role,
-            timestamp: userMessage.timestamp
+            timestamp: userMessage.timestamp,
+            quotes: userMessage.quotes
           }]
         );
       } catch (err) {

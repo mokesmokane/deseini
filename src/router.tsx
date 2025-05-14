@@ -1,8 +1,7 @@
-        import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import App from './App';
 import ChartView from './views/ChartView';
 import LandingPage from './components/landing/LandingPage';
-import CanvasView from './views/CanvasView';
 import ProtectedRoute from './components/ProtectedRoute';
 import MermaidNotepad from './components/landing/MermaidNotepad/MermaidNotepad';
 
@@ -23,15 +22,15 @@ const router = createBrowserRouter([
         path: 'projects/:projectId/chart/:chartId',
         element: <ProtectedRoute><ChartView /></ProtectedRoute>
       },
-      {
-        path: 'projects/:projectId/charts/new',
-        element: <ProtectedRoute><ChartView /></ProtectedRoute>
-      },
-      {
-        path: 'projects/:projectId/canvas',
-        element: <ProtectedRoute><CanvasView /></ProtectedRoute>
-      },
-      {
+      // {
+      //   path: 'projects/:projectId/charts/new',
+      //   element: <ProtectedRoute><ChartView /></ProtectedRoute>
+      // },
+      // {
+      //   path: 'projects/:projectId/canvas',
+      //   element: <ProtectedRoute><CanvasView /></ProtectedRoute>
+      // },
+       {
         path: 'projects-new/:projectId',
         element: <ProtectedRoute><LandingPage /></ProtectedRoute>
       },

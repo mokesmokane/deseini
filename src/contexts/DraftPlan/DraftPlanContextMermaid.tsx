@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
-import{StreamState, StreamSummary, SketchSummary} from '../../utils/types';
+import { StreamState, StreamSummary, SketchSummary, LineValidation } from '../../utils/types';
+import { validateMermaidGantt } from '../../utils/mermaidValidator';
 import { 
   processMainStreamData,
   processMermaidStreamData
@@ -34,6 +35,7 @@ export interface StreamResponse {
   error?: string;
 }
 interface DraftPlanMermaidContextType {
+  updateSectionLabel: (oldName: string, newName: string) => void;
   sections: Section[];
   timeline: Timeline | undefined;
   x0Date: Date | null;
@@ -55,13 +57,22 @@ interface DraftPlanMermaidContextType {
   actionBuffer: BufferedAction[];
   updateTaskStartDate: (taskId: string, newStartDate: Date) => void;
   updateTaskDuration: (taskId: string, newDuration: number) => void;
+  updateTaskLabel: (taskId: string, newLabel: string) => void;
+  updateMilestoneLabel: (milestoneId: string, newLabel: string) => void;
+  deleteTask: (taskId: string) => void;
+  deleteDependency: (sourceId: string, targetId: string) => void;
+  addDependency: (sourceId: string, targetId: string) => void;
   newSummary: StreamSummary | undefined;
   sketchSummary: SketchSummary | undefined;
   getMermaidMarkdown: () => string;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
   toggleSettings: () => void;
+  lineValidations: Record<number, LineValidation>;
 }
+
+
+
 
 interface DraftPlanMermaidProviderProps {
   children: React.ReactNode;
@@ -85,6 +96,7 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
   const [actionBufferLength, setActionBufferLength] = useState<number>(0);
   const [nextAction, setNextAction] = useState<BufferedAction | null>(null);
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+  const [lineValidations, setLineValidations] = useState<Record<number, LineValidation>>({});
   const projectIdRef = useRef(project?.id);
 
   // Update refs when props change
@@ -142,6 +154,8 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
 
 
   // Helper function to add an action to the buffer, now using the extracted function
+  
+
   const addActionToBuffer = useCallback((type: ActionType, payload: any) => {
     const action: BufferedAction = { type, payload, timestamp: new Date().getTime() };
     
@@ -212,6 +226,9 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
           : undefined
       );
     }
+    // update line validations
+    const validations = validateMermaidGantt(newMermaidSyntax);
+    setLineValidations(validations);
   }, []);
 
   // Helper function to start processing the buffer if not already processing
@@ -353,6 +370,89 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     debouncedSave();
   }, [addActionToBuffer, processAllBuffer]);
 
+  // Function to update a task's label
+  const updateTaskLabel = useCallback(async (taskId: string, newLabel: string) => {
+    // Find task and its section for updating
+    let sectionName: string | undefined;
+    let originalTask: Task | undefined;
+    for (const sec of sectionsRef.current) {
+      const t = sec.tasks.find(task => task.id === taskId);
+      if (t) {
+        sectionName = sec.name;
+        originalTask = t;
+        break;
+      }
+    }
+    if (!sectionName || !originalTask) return;
+    addActionToBuffer('UPDATE_TASK_LABEL', { sectionName, taskId, newLabel });
+    await processAllBuffer();
+    debouncedSave();
+  }, [addActionToBuffer, processAllBuffer]);
+
+  // Function to update a milestone's label
+  const updateMilestoneLabel = useCallback(async (milestoneId: string, newLabel: string) => {
+    let sectionName: string | undefined;
+    let milestoneObj: Task | undefined;
+    for (const sec of sectionsRef.current) {
+      const m = sec.tasks.find(task => task.id === milestoneId && task.type === 'milestone');
+      if (m) {
+        sectionName = sec.name;
+        milestoneObj = m;
+        break;
+      }
+    }
+    if (!sectionName || !milestoneObj) return;
+    addActionToBuffer('UPDATE_MILESTONE', { sectionName, milestone: milestoneObj, newLabel });
+    await processAllBuffer();
+    debouncedSave();
+  }, [addActionToBuffer, processAllBuffer]);
+
+  // Function to delete a task
+  const deleteTask = useCallback(async (taskId: string) => {
+    // find section containing task
+    let sectionName: string | undefined;
+    for (const sec of sectionsRef.current) {
+      if (sec.tasks.some(t => t.id === taskId)) {
+        sectionName = sec.name;
+        break;
+      }
+    }
+    if (!sectionName) return;
+    addActionToBuffer('DELETE_TASK', { sectionName, taskId });
+    await processAllBuffer();
+    debouncedSave();
+  }, [addActionToBuffer, processAllBuffer]);
+
+  // Function to delete a dependency (edge)
+  const deleteDependency = useCallback(async (sourceId: string, targetId: string) => {
+    let sectionName: string | undefined;
+    for (const sec of sectionsRef.current) {
+      if (sec.tasks.some(t => t.id === targetId)) {
+        sectionName = sec.name;
+        break;
+      }
+    }
+    if (!sectionName) return;
+    addActionToBuffer('DELETE_DEPENDENCY', { sectionName, sourceId, targetId });
+    await processAllBuffer();
+    debouncedSave();
+  }, [addActionToBuffer, processAllBuffer]);
+
+  // Function to add a dependency (edge)
+  const addDependency = useCallback(async (sourceId: string, targetId: string) => {
+    let sectionName: string | undefined;
+    for (const sec of sectionsRef.current) {
+      if (sec.tasks.some(t => t.id === targetId)) {
+        sectionName = sec.name;
+        break;
+      }
+    }
+    if (!sectionName) return;
+    addActionToBuffer('ADD_DEPENDENCY', { sectionName, sourceId, targetId });
+    await processAllBuffer();
+    debouncedSave();
+  }, [addActionToBuffer, processAllBuffer]);
+
   // Process a batch of actions from the buffer
   const processNextBatchFromBuffer = useCallback(async () => {
     if (actionBufferRef.current.length === 0) {
@@ -451,16 +551,6 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
 
   const createPlanFromPureMarkdownStream = async (stream: ReadableStream<string>): Promise<void> => {
     try{
-    setIsLoading(true);
-      setStreamProgress(0);
-      setProcessingBufferProgress(0);
-
-      // Reset data
-      setSections([]);
-      setMermaidSyntax('');
-      setFullSyntax('');
-      setStreamSummary('');
-      
       // Reset refs
       streamStateRef.current = {
         mermaidData: '',
@@ -484,10 +574,23 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
 
       const mainTask = (async () => {
         try {
+          let first = true;
           while (true) {
             const { value, done } = await mermaidReader.read();
             if (done) break;
             try {
+              if (first) {
+                setIsLoading(true);
+                setStreamProgress(0);
+                setProcessingBufferProgress(0);
+
+                // Reset data
+                setSections([]);
+                setMermaidSyntax('');
+                setFullSyntax('');
+                setStreamSummary('');
+                first = false;
+              }
               handleMermaidStreamData(value);
             } catch (error) {
               console.error('Error processing main stream:', error);
@@ -648,6 +751,11 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     setSettingsOpen(prev => !prev);
   }, []);
 
+  // Correct, single definition for updateSectionLabel
+  const updateSectionLabel = useCallback((oldName: string, newName: string) => {
+    addActionToBuffer('UPDATE_SECTION_LABEL', { oldName, newName });
+  }, []);
+
   return (
     <DraftPlanMermaidContext.Provider
       value={{
@@ -672,8 +780,15 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
         actionBuffer: actionBufferRef.current,
         updateTaskStartDate,
         updateTaskDuration,
+        updateTaskLabel,
+        updateMilestoneLabel,
+        deleteTask,
+        deleteDependency,
+        addDependency,
+        updateSectionLabel,
         newSummary,
         sketchSummary: sketchSummaryState,
+        lineValidations,
         getMermaidMarkdown,
         settingsOpen,
         setSettingsOpen,

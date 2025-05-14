@@ -5,13 +5,20 @@ type BlockState = Record<string, Record<string, ReadableStream<string> | undefin
 interface MessageBlocksContextValue {
   state: BlockState;
   updateBlock: (blockType: string, id: string, value: ReadableStream<string>) => void;
+  clearBlocks: (id: string) => void;
 }
 
 const MessageBlocksContext = createContext<MessageBlocksContextValue | undefined>(undefined);
 
 export const MessageBlocksProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<BlockState>({});
-
+  const clearBlocks = useCallback((id: string) => {
+    setState(prev => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
+  }, []);
   const updateBlock = useCallback((blockType: string, id: string, value: ReadableStream<string>) => {
     try {
     const lowercaseBlockType = blockType.toLowerCase();
@@ -29,7 +36,7 @@ export const MessageBlocksProvider: React.FC<{ children: ReactNode }> = ({ child
 }, []);
 
   return (
-    <MessageBlocksContext.Provider value={{ state, updateBlock }}>
+    <MessageBlocksContext.Provider value={{ state, updateBlock, clearBlocks }}>
       {children}
     </MessageBlocksContext.Provider>
   );
@@ -44,10 +51,13 @@ export const useBlock = (blockType: string, id: string): ReadableStream<string> 
   return context.state[lowercaseBlockType]?.[id];
 };
 
-export const useUpdateBlock = (): ((blockType: string, id: string, value: ReadableStream<string>) => void) => {
+export const useUpdateBlock = (): {updateBlock: (blockType: string, id: string, value: ReadableStream<string>) => void, clearBlocks: (id: string) => void} => {
   const context = useContext(MessageBlocksContext);
   if (!context) {
     throw new Error('useUpdateBlock must be used within a MessageBlocksProvider');
   }
-  return context.updateBlock;
+  return {
+    updateBlock: context.updateBlock,
+    clearBlocks: context.clearBlocks,
+  }
 };

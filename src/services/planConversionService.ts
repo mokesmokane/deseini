@@ -5,6 +5,17 @@
 import { fetchApi } from '../utils/api';
 
 /**
+ * Converts a markdown plan to tasks using the backend API.
+ */
+export async function convertPlanToTasks(data: any): Promise<any> {
+  return fetchApi('/api/convert-plan-to-tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
+/**
  * Gets a stream for converting a markdown plan to a Gantt chart
  * 
  * @param markdownPlan The markdown plan to convert

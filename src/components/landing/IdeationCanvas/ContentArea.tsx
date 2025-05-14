@@ -2,14 +2,15 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MarkdownViewer } from '../markdown/MarkdownViewer';
 import DraftPlanMermaid from '@/components/draft_plan_mermaid/DraftPlanMermaid';
+import {SectionData } from '../../../components/landing/types';
 
 interface ContentAreaProps {
-  currentSectionId: string;
+  currentSection: SectionData | undefined;
   activeTab: 'notes' | 'plan';
   dualView?: boolean;
 }
 
-const ContentArea: React.FC<ContentAreaProps> = ({ currentSectionId, activeTab, dualView = false }) => {
+const ContentArea: React.FC<ContentAreaProps> = ({ currentSection, activeTab, dualView = false }) => {
   if (dualView) {
     return (
       <motion.div 
@@ -20,8 +21,8 @@ const ContentArea: React.FC<ContentAreaProps> = ({ currentSectionId, activeTab, 
       >
         <div className="flex-grow overflow-auto p-6 h-full flex gap-4">
           <div className="w-1/3 h-full overflow-auto border-r border-gray-200 pr-4">
-            {currentSectionId ? (
-              <MarkdownViewer section={currentSectionId} />
+            {currentSection ? (
+              <MarkdownViewer section={currentSection} />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-8">
                 <p className="mb-4">No section selected</p>
@@ -47,7 +48,7 @@ const ContentArea: React.FC<ContentAreaProps> = ({ currentSectionId, activeTab, 
       <div className="flex-grow overflow-auto">
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeTab + currentSectionId}
+            key={activeTab + currentSection?.id}
             initial={{ opacity: 0, x: activeTab === 'notes' ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: activeTab === 'notes' ? 20 : -20 }}
@@ -55,8 +56,8 @@ const ContentArea: React.FC<ContentAreaProps> = ({ currentSectionId, activeTab, 
             className="p-6 h-full"
           >
             {activeTab === 'notes' ? (
-              currentSectionId ? (
-                <MarkdownViewer section={currentSectionId} />
+              currentSection ? (
+                <MarkdownViewer section={currentSection} />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-8">
                   <p className="mb-4">No section selected</p>

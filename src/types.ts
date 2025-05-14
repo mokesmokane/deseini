@@ -14,6 +14,14 @@ export interface Deliverable {
   description: string;
 }
 
+export interface MarkdownSection {
+  sectionId: string;
+  content: string;
+  updatedAt: string;
+  version: number;
+  sectionIndex: number | null;
+}
+
 export interface Role {
   id?: string;
   title: string;

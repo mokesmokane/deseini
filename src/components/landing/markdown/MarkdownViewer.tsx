@@ -4,11 +4,11 @@ import { useSectionMarkdown } from '../hooks/useSectionMarkdown';
 import { MarkdownLineRenderer } from './renderer/MarkdownLineRenderer';
 import { MarkdownSectionEditor } from './MarkdownSectionEditor';
 import { useQuotes } from '../../../contexts/QuoteProvider';
-import { toast } from 'react-hot-toast';
-
-interface Props {
-  section: string | null;
-  onShowChat?: () => void;
+import { toast } from 'react-hot-toast';  
+import {SectionData } from '../../../components/landing/types';
+interface Props { 
+  section: SectionData;
+  onShowChat?: () => void;  
   onShowSectionDiff?: (range: {start: number, end: number}, instruction: string) => void;
 }
 
@@ -22,7 +22,7 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     unlockSection,
     editMarkdownSection,
     contentVersion
-  } = useSectionMarkdown(section);
+  } = useSectionMarkdown(section.id);
   
   const [activeLines, setActiveLines] = useState<Set<number>>(new Set());
   const [openDropdownLine, setOpenDropdownLine] = useState<number | null>(null);
@@ -249,22 +249,10 @@ export const MarkdownViewer: React.FC<Props> = ({ section, onShowChat, onShowSec
     const content = sortedLines.map(i => lines[i]).join('\n');
     // Compute section range (contiguous block, or min/max)
     const sectionRange = { start: sortedLines[0], end: sortedLines[sortedLines.length - 1] };
-    // Use the top-level section header if available, else fallback to first line
-    let sectionTitle = '';
-    if (sortedLines.length > 0) {
-      const info = getLineInfo(sortedLines[0]);
-      if (info.sections.length > 0) {
-        const topSection = info.sections[0];
-        const headerLine = lines[topSection.start];
-        sectionTitle = headerLine.replace(/^#+\s+/, '').trim();
-      } else {
-        sectionTitle = lines[sortedLines[0]].trim().replace(/^[\*\-]\s+/, '');
-      }
-    }
+    
     if (option === 'quote') {
-      addQuote(content, sectionRange, sectionTitle);
-      toast.success('Added quote: ' + (sectionTitle.length > 25 ? 
-        sectionTitle.substring(0, 25) + '...' : sectionTitle));
+      addQuote(content, sectionRange, section.title, section.id);
+      toast.success('Added quote');
       if (onShowChat) {
         onShowChat();
       }

@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo, useEffect } from 'react';
-import { Project, Chart, TreeTaskNode, ChatMessage, Role, Deliverable } from '../types';
+import { Project, Chart, TreeTaskNode, Role, Deliverable } from '../types';
 import { supabase } from '../lib/supabase';
+import { Message } from '../components/landing/types';
 // import toast from 'react-hot-toast';
-import { fetchApi } from '@/utils/api';
+import { createTasks } from '../services/projectPlanService';
 import { useNavigate } from 'react-router-dom';
 
 // Interface for project conversations
@@ -34,7 +35,7 @@ interface ProjectContextType {
   deleteRole: (roleId: string) => Promise<void>;
   deleteDeliverable: (deliverableId: string) => Promise<void>;
   createNewProject: () => void;
-  handleInitiateTaskGeneration: (chatMessages: ChatMessage[]) => Promise<TreeTaskNode[] | null>;
+  handleInitiateTaskGeneration: (chatMessages: Message[]) => Promise<TreeTaskNode[] | null>;
   setIsCreateChartDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   fetchProjectConversations: (projectId: string) => Promise<void>;
 }
@@ -533,7 +534,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
   };
 
   // Task Generation Logic (moved from Sidebar)
-  const handleInitiateTaskGeneration = useCallback(async (chatMessages: ChatMessage[]): Promise<TreeTaskNode[] | null> => {
+  const handleInitiateTaskGeneration = useCallback(async (messages: Message[]): Promise<TreeTaskNode[] | null> => {
     setIsGeneratingTasks(true);
     setTaskGenerationError(null);
     setInitialTasksForDialog([]);
@@ -556,20 +557,15 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         charts: userCharts || []
       };
 
-      const lastUserMessage = chatMessages.filter((m: ChatMessage) => m.role === 'user').pop();
+      const lastUserMessage = messages.filter((m: Message) => m.role === 'user').pop();
       const prompt = lastUserMessage?.content || "Generate project tasks based on the conversation.";
 
-      const response = await fetchApi('/api/create-tasks', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-             prompt: prompt,
-             projectContext: projectData,
-             messages: chatMessages,
-             model: "gpt-4.1"
-         }),
+      const response = await createTasks({
+        prompt: prompt,
+        projectContext: projectData,
+        messages: messages,
+        model: "gpt-4.1"
       });
-
       const responseData = await response.json();
 
       if (!response.ok) {

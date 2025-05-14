@@ -5,6 +5,8 @@ import { SimpleSectionProcessor } from '../SimpleSectionProcessor';
 import { createLineReader } from '../../../utils/streamToLines';
 import { ProcessUpdateEvent, UpdateState } from '../types';
 import { useState, useEffect, useCallback } from 'react';
+import { useActiveTab } from '../../../contexts/ActiveTabProvider';
+
 
 export const useProjectPlanStream = (messageId: string) => {
   const [stateUpdates, updateSectionState] = useState<UpdateState|undefined>(undefined);
@@ -70,6 +72,7 @@ interface ProjectPlanBlockProps {
 
 const ProjectPlanBlock: FC<ProjectPlanBlockProps> = ({ messageId, setCurrentSectionId, content }) => {
   const { stateUpdates, stream, processProjectPlanString } = useProjectPlanStream(messageId);
+  const { setActiveTab } = useActiveTab();
   
   if (!stream && !content) return null;
   
@@ -113,7 +116,10 @@ const ProjectPlanBlock: FC<ProjectPlanBlockProps> = ({ messageId, setCurrentSect
                 <button
                   className={`inline-flex items-center mr-2 ${iconClass} focus:outline-none focus:ring-2 focus:ring-white/70 rounded transition`}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                  onClick={() => setCurrentSectionId?.(update.sectionId!)}
+                  onClick={() => {
+                    setCurrentSectionId?.(update.sectionId!);
+                    setActiveTab("notes");
+                  }}
                   tabIndex={0}
                   aria-label={`Set current section to ${sectionId}`}
                   type="button"
@@ -122,7 +128,10 @@ const ProjectPlanBlock: FC<ProjectPlanBlockProps> = ({ messageId, setCurrentSect
                 </button>
                 <span
                   className="text-white/90 text-sm cursor-pointer"
-                  onClick={() => setCurrentSectionId?.(update.sectionId!)}
+                  onClick={() => {
+                    setCurrentSectionId?.(update.sectionId!);
+                    setActiveTab("notes");
+                  }}
                 >
                   {label}
                 </span>

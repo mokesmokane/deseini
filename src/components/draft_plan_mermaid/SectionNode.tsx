@@ -1,7 +1,7 @@
 import type { NodeProps } from 'reactflow';
 import { NodeResizeControl, ResizeDragEvent, ResizeParams } from 'reactflow';
 import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useDraftPlanFlow } from '@/contexts/useDraftPlanFlow';
 
 export interface SectionNodeData {
@@ -136,7 +136,8 @@ const SectionNode: React.FC<SectionNodeProps> = ({ id, data }) => {
         textOverflow: 'ellipsis',
       }}
     >
-      {data.label}
+      {/* Inline editable label */}
+      <SectionLabelEditor label={data.label} />
       {isHovering && (
         <NodeResizeControl
         nodeId={id}
@@ -172,4 +173,96 @@ const SectionNode: React.FC<SectionNodeProps> = ({ id, data }) => {
   );
 }
 
+// Inline label editor for section
+const SectionLabelEditor: React.FC<{ label: string }> = ({ label }) => {
+  const { updateSectionLabel, sections } = useDraftPlanMermaidContext();
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(label);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setInputValue(label);
+  }, [label]);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const handleDoubleClick = () => {
+    setEditing(true);
+    setInputValue(label);
+  };
+
+  const handleInputBlur = () => {
+    setEditing(false);
+    if (inputValue.trim() && inputValue !== label) {
+      // Ensure section name is unique
+      if (!sections.some(s => s.name === inputValue.trim())) {
+        updateSectionLabel(label, inputValue.trim());
+      } else {
+        setInputValue(label); // revert
+      }
+    } else {
+      setInputValue(label); // revert
+    }
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleInputBlur();
+    } else if (e.key === 'Escape') {
+      setEditing(false);
+      setInputValue(label);
+    }
+  };
+
+  return editing ? (
+    <input
+      ref={inputRef}
+      type="text"
+      value={inputValue}
+      onChange={e => setInputValue(e.target.value)}
+      onBlur={handleInputBlur}
+      onKeyDown={handleInputKeyDown}
+      style={{
+        fontSize: '16px',
+        padding: '2px 6px',
+        border: 'none',
+        outline: 'none',
+        background: 'white',
+        color: 'black',
+        fontWeight: 500,
+        textAlign: 'center',
+        borderRadius: 4,
+        width: 'auto',
+        minWidth: 40,
+        maxWidth: 220,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.07)'
+      }}
+      maxLength={60}
+    />
+  ) : (
+    <span
+      onDoubleClick={handleDoubleClick}
+      style={{
+        cursor: 'pointer',
+        background: 'transparent',
+        color: '#fff',
+        fontWeight: 700,
+        borderRadius: 4,
+        padding: '0 2px',
+        transition: 'background 0.2s',
+        userSelect: 'text',
+      }}
+      title={label}
+    >
+      {label}
+    </span>
+  );
+};
+
 export default SectionNode;
+

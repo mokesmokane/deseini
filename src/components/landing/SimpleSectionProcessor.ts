@@ -37,12 +37,11 @@ export class SimpleSectionProcessor {
    */
   public async processStream(
     lineReader: ReadableStreamDefaultReader<string>,
-    onUpdate: ProcessUpdateCallback
+    onUpdate: ProcessUpdateCallback,
   ): Promise<SectionData[]> {
     let reading = true;
     while (reading) {
       const { done, value } = await lineReader.read();
-      
       if (done) {
         reading = false;
         // Process any remaining content in the buffer

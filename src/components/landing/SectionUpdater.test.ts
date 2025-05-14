@@ -290,15 +290,10 @@ describe('SectionUpdater', () => {
         // The Tasks section has several top-level list items
         expect(tasksSection.children.length).toBeGreaterThan(0);
         
-        // Debug output to examine actual children structure
-        console.log('Tasks section children:', tasksSection.children.map(c => c.content));
-        
         // Find the "Develop AI-powered workout recommendation engine" list item
         const aiEngineItem = tasksSection.children.find(
           item => item.content.includes('Develop AI-powered workout recommendation engine')
         );
-        
-        console.log('AI Engine item found:', aiEngineItem ? aiEngineItem.content : 'not found');
         
         expect(aiEngineItem).toBeDefined();
         
@@ -314,10 +309,7 @@ describe('SectionUpdater', () => {
             item.content.includes('Tailor plans')
           );
           
-          console.log('Integrate item:', integrateItem ? 
-            {content: integrateItem.content, id: integrateItem.id, level: integrateItem.level} : 'not found');
-          console.log('Tailor item:', tailorItem ? 
-            {content: tailorItem.content, id: tailorItem.id, level: tailorItem.level} : 'not found');
+          
           
           // Check if these items are children of aiEngineItem
           if (integrateItem) {

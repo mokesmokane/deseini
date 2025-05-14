@@ -1,5 +1,6 @@
-import { memo, useState } from 'react';
+import React, { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
+
 
 interface MilestoneData {
   id: string;
@@ -9,8 +10,15 @@ interface MilestoneData {
   isVisible: boolean;
   hasDate: boolean;
 }
+ 
+interface MilestoneNodeProps extends NodeProps<MilestoneData> {
+  onLabelChange?: (id: string, newLabel: string) => void;
+  selected: boolean;
+  isAnyLabelEditing: boolean;
+  setIsAnyLabelEditing: (editing: boolean) => void;
+}
 
-const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
+const MilestoneNode: React.FC<MilestoneNodeProps> = ({ data, dragging, onLabelChange, selected, setIsAnyLabelEditing }) => {
   // Format date for display
   const formatDate = (date: Date): string => {
     if (!(date instanceof Date)) {
@@ -22,21 +30,69 @@ const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
       year: 'numeric' 
     });
   };
-  
+
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(data.label);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setInputValue(data.label);
+  }, [data.label]);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const handleDoubleClick = () => {
+    setEditing(true);
+    setInputValue(data.label);
+    setIsAnyLabelEditing(true);
+  };
+
+  const handleInputBlur = () => {
+    setEditing(false);
+    setIsAnyLabelEditing(false);
+    if (inputValue.trim() && inputValue !== data.label && onLabelChange) {
+      onLabelChange(data.id, inputValue.trim());
+    }
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleInputBlur();
+    } else if (e.key === 'Escape') {
+      setEditing(false);
+      setIsAnyLabelEditing(false);
+      setInputValue(data.label);
+    }
+  };
+
   const dateStr = formatDate(data.startDate);
-  const [hovered, setHovered] = useState(false);
+  // const [hovered, setHovered] = useState(false);
   
   return (
     <div
-      style={{ position: 'relative', width: '40px', height: '40px', transition: dragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
-      onMouseEnter={() => !dragging && setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative',
+        width: '40px',
+        height: '40px',
+        transition: dragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        background:'transparent',
+        borderRadius: 10,
+        boxShadow: 'none',
+        zIndex: selected ? 12 : undefined,
+      }}
+      // onMouseEnter={() => !dragging && setHovered(true)}
+      // onMouseLeave={() => setHovered(false)}
     >
-      {hovered && !dragging && (
+      {/* {hovered && !dragging && (
         <div
           style={{
             position: 'absolute',
-            top: '-60px',
+            top: '-100px',
             left: '50%',
             transform: 'translateX(-50%)',
             backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -50,7 +106,7 @@ const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
         >
           {data.label}
         </div>
-      )}
+      )} */}
       
       {/* Diamond shape */}
       <div
@@ -60,11 +116,12 @@ const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
           left: '-25px',
           width: '45px',
           height: '45px',
-          backgroundColor: '#ffffff',
-          border: '2px solid #000000',
+          backgroundColor: selected ? 'rgba(0,0,0,0.06)' : '#ffffff',
+          border: selected ? '2.5px solid #222' : '2px solid #000000',
           transform: 'rotate(45deg)',
           borderRadius: '8px',
           zIndex: 10,
+          boxShadow: 'none',
         }}
         title={!dragging ? `${data.label}\nDate: ${dateStr}` : undefined}
       />
@@ -72,19 +129,86 @@ const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
       <div
         style={{
           position: 'absolute',
-          top: '-13px', // vertical center of diamond/handle
-          left: '40px', // moved further right for better spacing
+          top: '-13px',
+          left: '40px',
           transform: 'translateY(-50%)',
           fontSize: '18px',
           color: '#000',
           fontWeight: 500,
-          whiteSpace: 'nowrap',
           zIndex: 15,
-          userSelect: 'none',
-          pointerEvents: 'none',
+          minWidth: 40,
+          background: 'transparent',
+          borderRadius: 4,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          whiteSpace: 'nowrap',
         }}
       >
-        {data.label}
+        {editing ? (
+          <>
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onBlur={handleInputBlur}
+              onKeyDown={handleInputKeyDown}
+              style={{
+                fontSize: '16px',
+                padding: '2px 6px',
+                border: 'none',
+                outline: 'none',
+                background: 'white',
+                color: 'black',
+                fontWeight: 500,
+                textAlign: 'center',
+                boxShadow: 'none',
+                width: 'auto',
+                minWidth: 40,
+                maxWidth: 'none',
+              }}
+              maxLength={80}
+            />
+            <span
+              ref={el => {
+                if (!el || !inputRef.current) return;
+                el.style.fontSize = '16px';
+                el.style.fontWeight = '500';
+                el.style.visibility = 'hidden';
+                el.style.position = 'absolute';
+                el.style.whiteSpace = 'pre';
+                el.style.pointerEvents = 'none';
+                setTimeout(() => {
+                  if (inputRef.current && el) {
+                    inputRef.current.style.width = `${el.offsetWidth + 16}px`;
+                  }
+                }, 0);
+              }}
+              aria-hidden="true"
+              style={{
+                fontSize: '16px',
+                fontWeight: 500,
+                visibility: 'hidden',
+                whiteSpace: 'pre',
+                pointerEvents: 'none',
+                left: 0,
+                top: 0,
+              }}
+            >{inputValue || ' '}</span>
+          </>
+        ) : (
+          <span
+            onDoubleClick={handleDoubleClick}
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >{data.label}</span>
+        )}
       </div>
       {/* Date display */}
       {data.hasDate && (
@@ -97,7 +221,11 @@ const MilestoneNode = ({ data, dragging }: NodeProps<MilestoneData>) => {
             fontSize: '10px',
             color: '#000000',
             textAlign: 'center',
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            background: 'transparent',
+            borderRadius: 0,
+            padding: 0,
+            boxShadow: 'none',
           }}
         >
           {dateStr}

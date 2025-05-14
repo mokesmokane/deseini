@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { ChatPanel } from './ChatPanel';
 import Canvas from '../IdeationCanvas/Canvas';
@@ -15,7 +15,6 @@ interface ChatCanvasContainerProps {
 const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisible }) => {
   const { isChatVisible, toggleChat } = useMessaging();
   const {project} = useProject();
-  const [activeTab, setActiveTab] = useState<'notes' | 'plan'>('notes');
   return (
     <div className="relative w-full bg-gray-100 h-full flex min-h-0 min-w-0">
       {/* Sidebar that slides in from the left when canvas is visible */}
@@ -37,7 +36,7 @@ const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisib
           <div className="relative z-0 h-full">
             <ChatPanel />
           </div>
-          
+
           {/* Position the TextInput absolutely at the bottom of the container */}
           <div className={`absolute bottom-0 left-0 right-0 px-2 pb-4 pt-2 z-10 ${project !== null ? 'pl-[80px]' : ''}`}>
             {isChatVisible && <TextInput hasStarted={true} />}
@@ -71,7 +70,7 @@ const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisib
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
-        <Canvas isVisible={isCanvasVisible} activeTab={activeTab} setActiveTab={setActiveTab} isChatVisible={isChatVisible} />
+        <Canvas isVisible={isCanvasVisible} isChatVisible={isChatVisible} />
       </motion.div>
     </div>
   );

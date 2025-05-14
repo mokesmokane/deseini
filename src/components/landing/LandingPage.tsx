@@ -8,6 +8,7 @@ import AuthForm from '../auth/AuthForm';
 import { useAuth } from '@/hooks/useAuth';
 import { useProject } from '@/contexts/ProjectContext';
 import { useParams } from 'react-router-dom';
+import { ActiveTabProvider } from '../../contexts/ActiveTabProvider';
 
 const AnimatedContent = () => {
   const { projectId } = useParams<{ projectId?: string; chatId?: string }>();
@@ -45,13 +46,13 @@ const AnimatedContent = () => {
   };
 
   return (
-    <div className="w-full h-screen bg-white text-black flex flex-col items-center justify-between relative">
-      <main className="flex flex-col items-center w-full flex-grow overflow-hidden hide-scrollbar"
-        style={{ 
-          maxWidth: '100%',
-          transition: 'max-width 0.3s ease-in-out'
-        }}
-      >
+      <div className="w-full h-screen bg-white text-black flex flex-col items-center justify-between relative">
+        <main className="flex flex-col items-center w-full flex-grow overflow-hidden hide-scrollbar"
+          style={{ 
+            maxWidth: '100%',
+            transition: 'max-width 0.3s ease-in-out'
+          }}
+        >
         {/* Show carousel or chat panel, no animation */}
         {!hasStarted ? (
           <div className="w-full max-w-[36rem] mx-auto">
@@ -126,7 +127,9 @@ const AnimatedContent = () => {
 
 const LandingPage = () => {
   return (
-        <AnimatedContent />
+    <ActiveTabProvider>
+      <AnimatedContent />
+    </ActiveTabProvider>
   );
 };
 

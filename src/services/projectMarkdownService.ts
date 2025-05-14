@@ -22,13 +22,19 @@
  * );
  */
 import { supabase } from './supabaseClient';
+import { MarkdownSection } from '../types';
 
-export interface MarkdownSection {
-  sectionId: string;
-  content: string;
-  updatedAt: string;
-  version: number;
-  sectionIndex: number | null;
+import { fetchApi } from '../utils/api';
+
+/**
+ * Edits a markdown section using the backend API.
+ */
+export async function editMarkdownSection(data: any): Promise<any> {
+  return fetchApi('/api/edit-markdown-section', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
 }
 
 export const projectMarkdownService = {

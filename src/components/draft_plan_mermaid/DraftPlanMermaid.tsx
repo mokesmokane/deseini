@@ -1,11 +1,14 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, KeyboardEvent, useCallback } from 'react';
 import ReactFlow, {
   Background,
   ReactFlowInstance,
   Node,
   NodeMouseHandler,
-  NodeProps
+  NodeProps,
+  Edge,
+  EdgeMouseHandler
 } from 'reactflow';
+import type { Connection } from 'reactflow';
 import { useDraftPlanFlow } from '../../contexts/useDraftPlanFlow';
 import "react-datepicker/dist/react-datepicker.css";
 import 'reactflow/dist/style.css';
@@ -17,6 +20,12 @@ import { MermaidTaskData } from '@/types';
 import SectionNode , { SectionNodeData } from './SectionNode';
 
 function DraftPlanMermaid() {
+  const [isAnyLabelEditing, setIsAnyLabelEditing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { deleteTask } = useDraftPlanMermaidContext();
+
+
+
   const { 
     TIMELINE_PIXELS_PER_DAY, 
     setTIMELINE_PIXELS_PER_DAY,
@@ -24,7 +33,7 @@ function DraftPlanMermaid() {
     setSettingsOpen
   } = useDraftPlanMermaidContext();
   const [ reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
-  const { nodes, edges, onNodesChange, timelineVisible, onResizeEnd, onNodeDrag, onNodeDragStop } = useDraftPlanFlow();
+  const { nodes, edges, onNodesChange, onRenameNode, timelineVisible, onResizeEnd, onNodeDrag, onNodeDragStop, deleteDependencyEdge, addDependencyEdge } = useDraftPlanFlow();
 
 
   // Track selected node and panel animation state
@@ -33,10 +42,44 @@ function DraftPlanMermaid() {
   const animationTimeout = useRef<NodeJS.Timeout | null>(null);
   const ANIMATION_DURATION = 300; // ms, match CSS duration
 
+  // Track selected edge for deletion
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+
   // Ref for the main container to get its size
   const containerRef = useRef<HTMLDivElement>(null);
   // Ref to ensure we only center once per load
   const hasCentered = useRef(false);
+
+  // ...existing hooks
+  // Handler to update a node label
+  const handleNodeLabelChange = (nodeId: string, newLabel: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    onRenameNode(nodeId, newLabel);
+  };
+
+  // Handler for edge click
+  const handleEdgeClick: EdgeMouseHandler = (_event, edge) => {
+    setSelectedEdge(edge);
+  };
+
+  // Keyboard handler for delete (edge or node)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent | KeyboardEventInit) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace')) {
+        if (isAnyLabelEditing) return; // Prevent deletion while editing labels
+        if (selectedEdge) {
+          // Remove the edge (dependency)
+          deleteDependencyEdge(selectedEdge.source, selectedEdge.target);
+          setSelectedEdge(null);
+        } else if (selectedNode && selectedNode.type !== 'section') {
+          setShowDeleteDialog(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown as any);
+    return () => window.removeEventListener('keydown', handleKeyDown as any);
+  }, [selectedEdge, selectedNode, deleteDependencyEdge, isAnyLabelEditing]);
 
   // Helper: Open settings panel and close node panel if open
   // const handleOpenSettings = () => {
@@ -144,11 +187,42 @@ function DraftPlanMermaid() {
     hasCentered.current = false;
   }, [timelineVisible]);
 
+  // Handler for connecting nodes (adding dependency)
+  const handleConnect = useCallback((connection: Connection) => {
+    if (connection.source && connection.target) {
+      addDependencyEdge(connection.source, connection.target);
+    }
+  }, [addDependencyEdge]);
+
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: '500px', position: 'relative' }}>
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && selectedNode && (
+        <DeleteDialog
+          label={selectedNode.data?.label}
+          type={selectedNode.type === 'milestone' ? 'Milestone' : 'Task'}
+          onCancel={() => setShowDeleteDialog(false)}
+          onDelete={async () => {
+            await deleteTask(selectedNode.id);
+            setShowDeleteDialog(false);
+            setSelectedNode(null);
+            setIsPanelVisible(false);
+          }}
+        />
+      )}
+
+
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={edges.map(edge => selectedEdge && edge.id === selectedEdge.id ? {
+          ...edge,
+          style: {
+            ...(edge.style || {}),
+            stroke: 'black',
+            strokeWidth: 4,
+            opacity: 1,
+          },
+        } : edge)}
         onNodesChange={onNodesChange}
         onNodeDrag={(...args) => { onNodeDrag(...args); }}
         onNodeDragStop={(...args) => { onNodeDragStop(...args); }}
@@ -159,14 +233,16 @@ function DraftPlanMermaid() {
         selectNodesOnDrag={false}
         zoomOnScroll={true}
         nodeTypes={useMemo(() => ({
-          section: (props: NodeProps<SectionNodeData>) => <SectionNode {...props} />,
-          task: (props: NodeProps<MermaidTaskData>) => <TaskNode {...props} onResizeEnd={onResizeEnd} />,
-          milestone: (props: NodeProps<any>) => <MilestoneNode {...props} />,
-          timeline: (props: NodeProps<any>) => <TimelineNode {...props} />,
-        }), [])}
+           section: (props: NodeProps<SectionNodeData>) => <SectionNode {...props} />, 
+           task: (props: NodeProps<MermaidTaskData>) => <TaskNode {...props} onResizeEnd={onResizeEnd} onLabelChange={handleNodeLabelChange} isAnyLabelEditing={isAnyLabelEditing} setIsAnyLabelEditing={setIsAnyLabelEditing} />, 
+           milestone: (props: NodeProps<any>) => <MilestoneNode {...props} onLabelChange={handleNodeLabelChange} isAnyLabelEditing={isAnyLabelEditing} setIsAnyLabelEditing={setIsAnyLabelEditing} />, 
+           timeline: (props: NodeProps<any>) => <TimelineNode {...props} />, 
+         }), [])}
         onInit={setReactFlowInstance}
         fitView
         onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
+        onConnect={handleConnect}
       >
         <Background />
         {/* Settings Panel - right-side sliding panel, matches node panel */}
@@ -261,4 +337,89 @@ function DraftPlanMermaid() {
   );
 }
 
+// DeleteDialog: Keyboard accessible, clean/modern, black/white
+function DeleteDialog({ label, type, onCancel, onDelete }: { label: string, type: string, onCancel: () => void, onDelete: () => void }) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        onDelete();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown as any);
+    return () => window.removeEventListener('keydown', handleKeyDown as any);
+  }, [onCancel, onDelete]);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      background: 'rgba(0,0,0,0.35)',
+      zIndex: 1000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <div style={{
+        background: '#fff',
+        color: '#111',
+        borderRadius: '16px',
+        boxShadow: '0 4px 32px rgba(0,0,0,0.10)',
+        padding: '2.5rem 2rem 2rem 2rem',
+        minWidth: 320,
+        maxWidth: '90vw',
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 24,
+      }}>
+        <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 10 }}>
+          Delete {type}?
+        </div>
+        <div style={{ fontSize: 16, marginBottom: 20, color: '#333' }}>
+          Are you sure you want to delete "{label}"? This cannot be undone.
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: '10px 28px',
+              borderRadius: 8,
+              border: '1.5px solid #000',
+              background: '#fff',
+              color: '#000',
+              fontWeight: 500,
+              fontSize: 16,
+              cursor: 'pointer',
+              marginRight: 8,
+              transition: 'background 0.15s',
+            }}
+          >Cancel</button>
+          <button
+            onClick={onDelete}
+            style={{
+              padding: '10px 28px',
+              borderRadius: 8,
+              border: 'none',
+              background: '#000',
+              color: '#fff',
+              fontWeight: 600,
+              fontSize: 16,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default DraftPlanMermaid;
+

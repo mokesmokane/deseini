@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useRef, ReactNode, useCallback, useMemo } from 'react';
-import { ChatMessage, Project } from '../types';
+import { Project } from '../types';
 import { toast } from 'react-hot-toast';
 import { MarkdownSectionAnalyzer } from '../utils/MarkdownSections';
 import { projectMarkdownService } from '../services/projectMarkdownService';
 import { useProject } from '../contexts/ProjectContext';
 import { streamByLine } from '../utils/streamByLine';
-import { fetchApi } from '@/utils/api';
+import { editMarkdownSection as editMarkdownSectionService } from '../services/projectMarkdownService';
+import { generateProjectPlan as generateProjectPlanService } from '../services/projectPlanService';
+import { Message } from '../components/landing/types';
 
 // Define the steps in the generation process
 export type PlanGenerationStep = 'idle' | 'generating' | 'reviewing' | 'finalizing';
@@ -31,7 +33,7 @@ interface ProjectPlanContextProps {
   setIsStreaming: (streaming: boolean) => void;
   currentLineNumber: number;
   setCurrentLineNumber: (lineNumber: number) => void;
-  generateProjectPlan: (messages: ChatMessage[], projectData: Project) => Promise<void>;
+  generateProjectPlan: (messages: Message[], projectData: Project) => Promise<void>;
   createPlanIfMissing: (project: Project) => Promise<void>;
   confirmChanges: (confirm: boolean) => Promise<void>;
   reset: () => void;
@@ -143,7 +145,7 @@ export function ProjectPlanProvider({
     }
   };
 
-  const generateProjectPlan = async (currentMessages: ChatMessage[], projectData: Project) => {
+  const generateProjectPlan = async (currentMessages: Message[], projectData: Project) => {
     if (isStreaming) {
       return;
     }
@@ -168,19 +170,10 @@ export function ProjectPlanProvider({
     setCurrentLineNumber(0);
 
     try {
-      const requestBody = JSON.stringify({
+      const response = await generateProjectPlanService({
         messages: currentMessages,
         projectContext: projectData,
-        currentPlan: currentText || null 
-      });
-
-      const response = await fetchApi('/api/generate-project-plan', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream' 
-        },
-        body: requestBody,
+        currentPlan: currentText || null
       });
 
       if (!response.ok) {
@@ -249,26 +242,19 @@ export function ProjectPlanProvider({
       const projectContextData = {
         id: projectIdRef.current,
         projectName: project?.projectName,
-        description: project?.description,
-        roles: project?.roles || [],
-        charts: userCharts || []
       };
-      
-      const response = await fetchApi('/api/edit-markdown-section', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullMarkdown: currentText,
-          sectionRange,
-          instruction,
-          projectContext: projectContextData
-        }),
+
+      const response = await editMarkdownSectionService({
+        sectionRange,
+        instruction,
+        projectContext: projectContextData,
+        currentPlan: currentText
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        let errorMessage = `Failed to edit section (Status: ${response.status})`;
-        try { 
+        let errorMessage = `Failed to edit markdown section (Status: ${response.status})`;
+        try {
           const errorData = JSON.parse(errorText); 
           errorMessage = errorData.error || errorMessage; 
         } catch(e) {}

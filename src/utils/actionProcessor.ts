@@ -177,9 +177,42 @@ export const processAction = (
         return section;
       });
       break;
+    case 'UPDATE_SECTION_LABEL': {
+      // Update a section's name (inline renaming)
+      const { oldName, newName } = action.payload;
+      updatedState.sections = updatedState.sections.map(section => {
+        if (section.name === oldName) {
+          // Update section name
+          return { ...section, name: newName };
+        }
+        return section;
+      });
+      // Optionally, update taskDictionary if you use section names as keys elsewhere
+      break;
+    }
+    case 'UPDATE_TASK_LABEL': {
+      const { sectionName, taskId, newLabel } = action.payload;
+      updatedState.sections = updatedState.sections.map(section => {
+        if (section.name === sectionName) {
+          // Check if task already exists
+          const existingIndex = section.tasks.findIndex(t => t.id === taskId);
+          const task = section.tasks[existingIndex];
+          if (existingIndex >= 0) {
+            const updatedTasks = [...section.tasks];
+            task.label = newLabel;
+            updatedTasks[existingIndex] = task;
+            return { ...section, tasks: updatedTasks };
+          }
+          updatedTaskDictionary[taskId] = task;
+        }
+        return section;
+      });
+      
+      break;
+    }
     case 'ADD_MILESTONE':
     case 'UPDATE_MILESTONE': {
-      const { sectionName, milestone } = action.payload;
+      const { sectionName, milestone, newLabel } = action.payload;
       // Add or update the milestone in the section
       updatedState.sections = updatedState.sections.map(section => {
         if (section.name === sectionName) {
@@ -189,7 +222,14 @@ export const processAction = (
           
           if (existingIndex >= 0) {
             const updatedTasks = [...section.tasks];
-            updatedTasks[existingIndex] = milestone;
+            // If newLabel is provided, update the label
+            if (newLabel) {
+              updatedTasks[existingIndex] = { ...milestone, label: newLabel };
+              updatedTaskDictionary[milestone.id] = { ...milestone, label: newLabel };
+            } else {
+              updatedTasks[existingIndex] = milestone;
+              updatedTaskDictionary[milestone.id] = milestone;
+            }
             return { ...section, tasks: updatedTasks };
           } else {
             // Add new milestone
@@ -202,8 +242,7 @@ export const processAction = (
         return section;
       });
       
-      // Update the task dictionary
-      updatedTaskDictionary[milestone.id] = milestone;
+      // If newLabel is provided, update in the dictionary (already handled above)
       break;
     }
       
@@ -211,7 +250,70 @@ export const processAction = (
       updatedState.timeline = action.payload.timeline;
       break;
     }
-    
+    case 'DELETE_TASK': {
+      const { taskId: dti }: { taskId: string } = action.payload;
+      updatedState.sections = updatedState.sections.map(section => {
+        const tasksFiltered = section.tasks
+          .filter(t => t.id !== dti)
+          .map(t => {
+            if (t.dependencies) {
+              const newDeps = t.dependencies.filter(dep => dep !== dti);
+              if (newDeps.length !== t.dependencies.length) {
+                return { ...t, dependencies: newDeps };
+              }
+            }
+            return t;
+          });
+        return { ...section, tasks: tasksFiltered };
+      });
+      // Remove from task dictionary if exists
+      delete updatedTaskDictionary[dti];
+      break;
+    }
+    case 'ADD_DEPENDENCY': {
+      // payload: { sectionName, sourceId, targetId }
+      const { sectionName, sourceId, targetId } = action.payload;
+      updatedState.sections = updatedState.sections.map(section => {
+        if (section.name === sectionName) {
+          const updatedTasks = section.tasks.map(task => {
+            if (task.id === targetId) {
+              if (!task.dependencies?.includes(sourceId)) {
+                const newDeps = [...(task.dependencies || []), sourceId];
+                const updatedTask = { ...task, dependencies: newDeps };
+                updatedTaskDictionary[targetId] = updatedTask;
+                return updatedTask;
+              }
+            }
+            return task;
+          });
+          return { ...section, tasks: updatedTasks };
+        }
+        return section;
+      });
+      break;
+    }
+    case 'DELETE_DEPENDENCY': {
+      // payload: { sectionName, sourceId, targetId }
+      const { sectionName, sourceId, targetId } = action.payload;
+      updatedState.sections = updatedState.sections.map(section => {
+        if (section.name === sectionName) {
+          const updatedTasks = section.tasks.map(task => {
+            if (task.id === targetId && Array.isArray(task.dependencies)) {
+              const newDeps = task.dependencies.filter(dep => dep !== sourceId);
+              if (newDeps.length !== task.dependencies.length) {
+                const updatedTask = { ...task, dependencies: newDeps };
+                updatedTaskDictionary[targetId] = updatedTask;
+                return updatedTask;
+              }
+            }
+            return task;
+          });
+          return { ...section, tasks: updatedTasks };
+        }
+        return section;
+      });
+      break;
+    }
     default:
       console.warn(`Unknown action type: ${action.type}`);
   }

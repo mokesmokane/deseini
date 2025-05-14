@@ -1273,7 +1273,7 @@ your resaoning process should be thought through in markdown using headers for t
 ${exampleMermaidOutput}
 
 
-AFTER thinking through your reasoning and immediately BEFORE outputting the Mermaid syntax, state all the CUSTOM RULES you need to follow in the output
+AFTER thinking through your reasoning and immediately BEFORE outputting the Mermaid syntax, state all the CUSTOM RULES amd other IMPORTANT information you need to follow in the output
 
 `
 ;
@@ -1811,6 +1811,17 @@ Please ONLY return the edited version of this specific section, not the entire d
       
       `;
       let systemContent = `You are an insightful consultant that has been asked to edit a project plan.
+
+      If the user has provided quotes about the markdown section or mermaid markdown section then you should focus your attention on that.
+
+      The quotes look like this:
+      
+      \`\`\`quote of {sectioname}
+      {content from section}
+      \`\`\`
+      and should match an existing section of the project plan.
+
+      they are just pointing to the section so that you kow what they are referring to
       
       You will see the conversation history, but you will also see the current project plan and mermaid markdown (gantt chart).
 
@@ -1833,6 +1844,9 @@ Please ONLY return the edited version of this specific section, not the entire d
 
       You can add new sections to the project plan, but only do so if the user has asked you to, or you cannot make sense of the project plan without it.
 
+      You can edit multiple section of the project plan in the same block.
+
+      You cannot provide multiple blocks of edited project plan.
 
       The edited mermaid markdown should be bracketed between three backticks at the start and end. (\`\`\`)
       You must follow the first three backticks with "EditedMermaidMarkdown" on the same line. (\`\`\`EditedMermaidMarkdown)
@@ -1850,7 +1864,10 @@ Please ONLY return the edited version of this specific section, not the entire d
 
       You should explain what you are changing and WHY you are changing it before each of the markdown blocks.
 
-      ONLY PROVIDE THE MERMAID MARKDOWN IF YOU NEED TO CHANGE IT - You do not need to provide the original mermaid markdown.
+      ONLY PROVIDE THE EDITED PROJECT PLAN IF YOU NEED TO CHANGE IT - You do not need to provide the original project plan.
+      ONLY PROVIDE THE EDITED MERMAID MARKDOWN IF YOU NEED TO CHANGE IT - You do not need to provide the original mermaid markdown.
+
+      ONLY PROVIDE A MAXIMUM OF 1 BLOCK OF EDITED PROJECT PLAN AND 1 BLOCK OF EDITED MERMAID MARKDOWN.
       `
 
       const messages: ChatCompletionMessageParam[] = [

@@ -184,12 +184,10 @@ export const useSectionMarkdown = (sectionId: string | null) => {
     instruction: string
   ): Promise<boolean> => {
     if (!section) {
-      console.error('[useSectionMarkdown] editMarkdownSection: No section to edit');
       return false;
     }
 
     if (isEditing) {
-      console.log('[useSectionMarkdown] editMarkdownSection: Already editing, skipping');
       return false;
     }
 

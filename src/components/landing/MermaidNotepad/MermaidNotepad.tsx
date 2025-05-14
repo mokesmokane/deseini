@@ -3,6 +3,9 @@ import DraftPlanMermaid from '../../draft_plan_mermaid/DraftPlanMermaid';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 import { useNavigate } from 'react-router-dom';
 import { draftPlanToMermaid } from '../../../utils/mermaidParser';
+import { validateMermaidGantt } from '../../../utils/mermaidValidator';
+import type { LineValidation } from '../../../utils/types';
+import SyntaxValidationSidebar from './SyntaxValidationSidebar';
 
 const MermaidNotepad: React.FC = () => {
   const [mermaidInput, setMermaidInput] = useState(`
@@ -54,11 +57,20 @@ gantt
       Final project documentation & closure: t16, after t11, 10d
 \`\`\`    `);
   const [hasRendered, setHasRendered] = useState(false);
+  const [validations, setValidations] = useState<LineValidation[]>(() => {
+    const lines = mermaidInput.split(/\r?\n/);
+    return validateMermaidGantt(lines.map((line, idx) => ({ index: idx, line })));
+  });
   const { createPlanFromMarkdownStream, isLoading, sections, timeline } = useDraftPlanMermaidContext();
   const navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMermaidInput(e.target.value);
+    const value = e.target.value;
+    setMermaidInput(value);
+    const lines = value.split(/\r?\n/);
+    const newValidations = validateMermaidGantt(lines.map((line, idx) => ({ index: idx, line })));
+    console.log('VALIDATIONS:', newValidations);
+    setValidations(newValidations);
   };
 
   const handleRender = async () => {
@@ -89,7 +101,7 @@ gantt
   };
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className="h-screen min-h-0 flex flex-col bg-white">
       <header className="border-b border-gray-200 p-4 flex justify-between items-center">
         <button 
           onClick={handleBackToSidebar}
@@ -119,13 +131,14 @@ gantt
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col p-4">
-        <div className="w-full flex flex-col">
+      <div className="flex-1 min-h-0 flex p-4 space-x-4">
+        {/* Left: syntax editor and diagram */}
+        <div className="w-1/2 flex-1 min-h-0 flex flex-col">
           <div className="mb-2 flex justify-between items-center">
             <h2 className="text-lg font-medium">Mermaid Syntax</h2>
-            <a 
-              href="https://mermaid.js.org/syntax/flowchart.html" 
-              target="_blank" 
+            <a
+              href="https://mermaid.js.org/syntax/flowchart.html"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-gray-600 hover:text-gray-900 underline"
             >
@@ -133,22 +146,32 @@ gantt
             </a>
           </div>
           <textarea
-            className="flex-1 p-4 border border-gray-300 rounded-md font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+            className="p-4 border border-gray-300 rounded-md font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+            style={{ minHeight: '6rem', maxHeight: '40vh' }}
             value={mermaidInput}
             onChange={handleInputChange}
             placeholder="Enter Mermaid syntax here..."
             spellCheck={false}
             rows={16}
           />
-        </div>
-        {hasRendered && (
-          <div className="w-full h-full mt-8">
-            <DraftPlanMermaid />
+          {/* Syntax validation fills remaining space and scrolls */}
+          <div className="mt-2 flex-1 min-h-0 flex flex-col">
+            <SyntaxValidationSidebar syntax={mermaidInput} validations={validations} />
           </div>
-        )}
+        </div>
+        {/* Right: rendered chart only */}
+        <div className="w-1/2 border-l border-gray-200 pl-4 flex flex-col">
+          {hasRendered && (
+            <div className="flex-1">
+              <DraftPlanMermaid />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
-
 export default MermaidNotepad;
+
+
+

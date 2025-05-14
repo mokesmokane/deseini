@@ -56,17 +56,18 @@ export const createProjectPlanPrompt = `
                 title Project Timeline
                 dateFormat YYYY-MM-DD
                 section Phase 1
-                Task 1: t1, 2025-01-01, 10d
-                Task 2: t2, after t1, 5d
-                Milestone 1: m1, milestone, after t1
+                Task 1:             t1, 2025-01-01, 10d
+                Task 2:             t2, after t1, 5d
+                Milestone 1:        m1, milestone, after t1
                 section Phase 2
-                Task 3: t3, after m1, 7d
+                Task 3:             t3, after m1, 7d
             \`\`\`
       
-            Important:
-            - SPECIAL CHARACTERS - Do not use any of the reserverd characters as part of task or milestone names or ids. commas, colons, semicolons, etc
+            IMPORTANT:
+            - SPECIAL CHARACTERS - DO NOT use any of the reserverd characters as part of task or milestone names or ids. commas, colons, semicolons, etc
             - CUSTOM RULE: Tasks are always defined as <taskname>: <id>, <startdate|"after <taskid>"|"after <milestoneid>">, <duration|enddate>
             - CUSTOM RULE: Always specify an explicit start date OR an "after <taskid>" OR an "after <milestoneid>". NOT BOTH
+            - CUSTOM RULE: Milestones are ALWAYS defined as <milestone name>: <id>, "milestone", <after <taskid> | after <milestoneid>>
             - CUSTOM RULE: Start dates are ALWAYS defined as <date> or "after <taskid>" or "after <milestoneid>" - there are no other options. ie "Task 1: t1, 2025-01-01, 10d" or "Task 2: t2, after t1, 5d" or "Task 3: t3, after m1, 7d"
             - DO NOT write it in any other way
                   - e.g. "Developed Design Theme: edt, 2024-06-30, milestone" is not a valid milestone, use "Developed Design Theme: m1, milestone, after t1" instead
@@ -88,16 +89,17 @@ export const createProjectPlanPrompt = `
                       title Project Timeline
                       dateFormat YYYY-MM-DD
                       section Phase 1
-                      Task 1: t1, 2025-01-01, 10d
-                      Task 2: t2, after t1, 5d
-                      Milestone 1: m1, milestone, after t1
+                      Task 1:             t1, 2025-01-01, 10d
+                      Task 2:             t2, after t1, 5d
+                      Milestone 1:        m1, milestone, after t1
                       section Phase 2
-                      Task 3: t3, after m1, 7d
-                  Important:
-                  - SPECIAL CHARACTERS - Do not use any of the reserverd characters as part of task or milestone names or ids. commas, colons, semicolons, etc
+                      Task 3:             t3, after m1, 7d
+                  IMPORTANT:
+                  - SPECIAL CHARACTERS - DO NOT use any of the reserverd characters as part of task or milestone names or ids. commas, colons, semicolons, etc
                   - CUSTOM RULE: Tasks are always defined as <taskname>: <id>, <startdate|"after <taskid>"|"after <milestoneid>">, <duration|enddate>
                   - CUSTOM RULE: Always specify an explicit start date OR an "after <taskid>" OR an "after <milestoneid>". NOT BOTH
                   - CUSTOM RULE: Start dates are ALWAYS defined as <date> or "after <taskid>" or "after <milestoneid>" - there are no other options. ie "Task 1: t1, 2025-01-01, 10d" or "Task 2: t2, after t1, 5d" or "Task 3: t3, after m1, 7d"
+                  - CUSTOM RULE: Milestones are ALWAYS defined as <milestone name>: <id>, "milestone", <after <taskid> | after <milestoneid>>
                   - DO NOT write it in any other way
                         - e.g. "Developed Design Theme: edt, 2024-06-30, milestone" is not a valid milestone, use "Developed Design Theme: m1, milestone, after t1" instead
                         - e.g. "Developed Design Theme: edt, 2024-06-30, task" is not a valid task, use "Developed Design Theme: t1, 2024-06-30, 10d" instead

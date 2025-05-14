@@ -3,7 +3,9 @@ import { Paperclip, Sparkles, ArrowRight, Loader2, X } from 'lucide-react';
 import { sampleIdeas as sampleIdeasx } from '../sample';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { useQuotes } from '../../../contexts/QuoteProvider';
-import { fetchApi } from '../../../utils/api';
+import { enhanceProjectPrompt } from '../../../services/projectPlanService';
+import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
+import { useActiveTab } from '../../../contexts/ActiveTabProvider';
 
 // Get API base URL from environment or use relative path for proxy in development
 // const API_BASE_URL = import.meta.env.VITE_API_SERVER || '';
@@ -44,8 +46,10 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cancelledRef = useRef(false);
+  const { setCurrentSectionId } = useDraftMarkdown();
   const { addMessage, percentageComplete, currentConversationId } = useMessaging();
-  const { quotes, getQuotesByConversationId, removeQuote } = useQuotes();
+  const { quotes, getQuotesByConversationId, removeQuote, clearQuotes } = useQuotes();
+  const { setActiveTab } = useActiveTab();
   const randomisedorder = sampleIdeasx.sort(() => Math.random() - 0.5);
   const [sampleIdeas] = useState(["What would you build if you had the world's best Designers at your fingertips???",
     ...randomisedorder]);
@@ -194,7 +198,9 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
 
   const handleSendClick = () => {
     if (currentText.trim() === '') return;
-    addMessage(currentText);
+
+    addMessage(currentText, activeQuotes);
+    clearQuotes();
     if (onSendMessage) onSendMessage(currentText);
     setCurrentText('');
   };
@@ -211,22 +217,13 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
       let enhancedPrompt = '';
       
       // Set up the response with proper headers for SSE
-      const response = await fetchApi('/api/enhance-project-prompt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          initialPrompt: currentText
-        }),
-      });
-
+      // Use the service function (assume it returns the same Response object)
+      const response = await enhanceProjectPrompt({ initialPrompt: currentText });
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Error enhancing prompt:', errorData);
         throw new Error(errorData.error || 'Failed to enhance prompt');
       }
-      
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error('Failed to get response reader');
@@ -366,34 +363,6 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
     setTimeout(resizeTextArea, 0);
   };
 
-  // Insert quote at cursor position
-  const insertQuote = (quoteContent: string) => {
-    const textarea = textAreaRef.current;
-    if (!textarea) return;
-    
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    
-    // Format the quote with > markdown syntax
-    const formattedQuote = quoteContent
-      .split('\n')
-      .map(line => `> ${line}`)
-      .join('\n');
-    
-    // Insert the quote at cursor position or at the end
-    const newText = text.substring(0, start) + formattedQuote + text.substring(end);
-    setCurrentText(newText);
-    
-    // Focus the textarea and set cursor after the inserted text
-    setTimeout(() => {
-      textarea.focus();
-      const newPosition = start + formattedQuote.length;
-      textarea.selectionStart = newPosition;
-      textarea.selectionEnd = newPosition;
-    }, 0);
-  };
-
   // Resize textarea when content changes programmatically
   useEffect(() => {
     resizeTextArea();
@@ -418,7 +387,10 @@ const TextInput: React.FC<TextInputProps> = ({ onSendMessage, hasStarted = false
               className="flex items-center bg-black text-white border border-black rounded-full px-3 py-1 text-sm cursor-pointer transition-colors hover:bg-neutral-900 shadow-sm"
               style={{ fontFamily: 'monospace', letterSpacing: '0.02em', fontWeight: 500 }}
               title={quote.content.length > 50 ? quote.content.substring(0, 50) + '...' : quote.content}
-              onClick={() => insertQuote(quote.content)}
+              onClick={() => {
+                setCurrentSectionId(quote.sectionId);
+                setActiveTab('notes');
+              }}
             >
               <span className="mr-2 flex items-center gap-1">
                 <span className="text-white/70">@</span>

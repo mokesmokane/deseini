@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import * as diffLib from 'diff';
 import { useProjectPlan } from './ProjectPlanContext';
-import { fetchApi } from '@/utils/api';
+import { editMarkdownSection } from '../services/projectMarkdownService';
 
 interface EditedSectionContextType {
   originalContent: string;
@@ -125,18 +125,11 @@ export const EditedSectionProvider: React.FC<{ children: React.ReactNode }> = ({
     
     try {
       // Make API request to edit the section
-      const response = await fetchApi('/api/edit-markdown-section', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream' 
-        },
-        body: JSON.stringify({
-          fullMarkdown: currentText,
-          sectionRange: range,
-          instruction: instruction,
-          projectContext: null
-        }),
+      const response = await editMarkdownSection({
+        fullMarkdown: currentText,
+        sectionRange: range,
+        instruction: instruction,
+        projectContext: null
       });
       
       // Handle streaming response (if the endpoint supports streaming)

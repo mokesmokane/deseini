@@ -1,17 +1,10 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-
-export interface Quote {
-  id: string;
-  content: string;
-  lineNumbers: { start: number; end: number };
-  sectionTitle: string;
-  conversationId: string | null;
-}
+import { Quote } from '../components/landing/types';
 
 interface QuoteContextProps {
   quotes: Quote[];
-  addQuote: (content: string, lineNumbers: { start: number; end: number }, sectionTitle: string) => void;
+  addQuote: (content: string, lineNumbers: { start: number; end: number }, sectionTitle: string, sectionId: string) => void;
   removeQuote: (id: string) => void;
   getQuotesByConversationId: (conversationId: string | null) => Quote[];
   clearQuotes: (conversationId?: string | null) => void;
@@ -28,7 +21,8 @@ export const QuoteProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const addQuote = (
     content: string, 
     lineNumbers: { start: number; end: number }, 
-    sectionTitle: string
+    sectionTitle: string,
+    sectionId: string
   ) => {
     
     const newQuote: Quote = {
@@ -36,6 +30,7 @@ export const QuoteProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       content,
       lineNumbers,
       sectionTitle,
+      sectionId,
       conversationId: currentConversationId
     };
     

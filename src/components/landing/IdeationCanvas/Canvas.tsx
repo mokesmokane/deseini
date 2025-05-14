@@ -8,15 +8,16 @@ import TabSelector from './TabSelector';
 import CanvasMenu from './CanvasMenu';
 import { useDraftPlanMermaidContext } from '../../../contexts/DraftPlan/DraftPlanContextMermaid';
 
+import { useActiveTab } from '../../../contexts/ActiveTabProvider';
+
 interface CanvasProps {
   isVisible: boolean;
-  activeTab: 'notes' | 'plan';
-  setActiveTab: (tab: 'notes' | 'plan') => void;
   isChatVisible: boolean;
 }
 
-const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab, isChatVisible }) => {
-  const { currentSectionId, selectSection } = useDraftMarkdown();
+const Canvas: React.FC<CanvasProps> = ({ isVisible, isChatVisible }) => {
+  const { activeTab, setActiveTab } = useActiveTab();
+  const { getCurrentSection, currentSectionId, selectSection } = useDraftMarkdown();
   const { 
     isLoading: isPlanGenerating, 
   } = useDraftPlanMermaidContext();
@@ -94,7 +95,7 @@ const Canvas: React.FC<CanvasProps> = ({ isVisible, activeTab, setActiveTab, isC
                 )}
               </AnimatePresence>
               <ContentArea 
-                currentSectionId={currentSectionId || ''}
+                currentSection={getCurrentSection()}
                 activeTab={activeTab}
                 dualView={dualView}
               />

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useRef, useCallback, ReactNode, useEffect } from 'react';
-import { ChatMessage } from '../types';
+import { Message } from '../components/landing/types';
 import toast from 'react-hot-toast';
 import { getCleanProjectPlanStream } from '../services/projectPlanService';
 import { createLineReader } from '../utils/streamToLines';
@@ -18,8 +18,8 @@ interface DraftMarkdownContextProps {
   stateUpdates: Record<string, UpdateState>;
   
   // Actions
-  generateProjectPlan: (currentMessages: ChatMessage[]) => Promise<SectionData[]>;
-  generateProjectPlanForProjectId: (currentMessages: ChatMessage[], projectId: string) => Promise<SectionData[]>;
+  generateProjectPlan: (currentMessages: Message[]) => Promise<SectionData[]>;
+  generateProjectPlanForProjectId: (currentMessages: Message[], projectId: string) => Promise<SectionData[]>;
   createProjectPlan: (projectMarkdownStream: ReadableStream<string>, projectId: string, seedMessageId?: string) => Promise<SectionData[]>;
   updateProjectPlan: (projectMarkdownStream: ReadableStream<string>, projectId: string, seedMessageId?: string) => Promise<SectionData[]>;
   resetMarkdown: () => void;
@@ -27,6 +27,7 @@ interface DraftMarkdownContextProps {
   setCurrentSectionId: (id: string | null) => void;
   // Content access helpers
   getSectionById: (id: string) => SectionData | undefined;
+  getCurrentSection: () => SectionData | undefined;
 }
 
 const DraftMarkdownContext = createContext<DraftMarkdownContextProps | undefined>(undefined);
@@ -95,7 +96,7 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
   }, []);
 
   // Generate a project plan for a specific project ID
-  const generateProjectPlanForProjectId = useCallback(async (currentMessages: ChatMessage[], projectId: string): Promise<SectionData[]> => {
+  const generateProjectPlanForProjectId = useCallback(async (currentMessages: Message[], projectId: string): Promise<SectionData[]> => {
     if (isStreaming) return [];
     
     setIsStreaming(true);
@@ -193,7 +194,7 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
   }, [sections, updateSection]);
 
   // Generate a new project plan
-  const generateProjectPlan = useCallback(async (currentMessages: ChatMessage[]): Promise<SectionData[]> => {
+  const generateProjectPlan = useCallback(async (currentMessages: Message[]): Promise<SectionData[]> => {
     if (isStreaming || !project?.id) {
       console.warn('[DraftMarkdownProvider] Cannot generate project plan: ',
         isStreaming ? 'Already streaming' : 'No project ID available');
@@ -232,6 +233,7 @@ export const DraftMarkdownProvider = ({ children }: { children: ReactNode }) => 
     updateProjectPlan,
     resetMarkdown,
     selectSection,
+    getCurrentSection: () => getSectionById(currentSectionId || ''),
     getSectionById,
     setCurrentSectionId
   };

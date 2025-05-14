@@ -9,7 +9,12 @@ export type ActionType =
   | 'RESOLVE_DEPENDENCY'
   | 'PROCESS_DEPENDENCIES'
   | 'UPDATE_TASK_STARTDATE'
-  | 'UPDATE_TASK_DURATION';
+  | 'UPDATE_TASK_DURATION'
+  | 'UPDATE_TASK_LABEL'
+  | 'UPDATE_SECTION_LABEL' // New: update section name inline
+  | 'DELETE_TASK'
+  | 'DELETE_DEPENDENCY'
+  | 'ADD_DEPENDENCY';
 
 // Define the structure of a buffered action
 export interface BufferedAction {
@@ -37,6 +42,15 @@ export interface StreamResponse {
 
 
 /**
+ * Interface for per-line validation results
+ */
+export interface LineValidation {
+  line: string;
+  lineNumber: number;
+  success: boolean;
+  errors: string[];
+}
+/**
  * Interface for tracking the state of streaming data processing
  */
 export interface StreamState {
@@ -53,6 +67,8 @@ export interface StreamState {
   lastMilestoneId?: string;
   // store all processed mermaid syntax
   allMermaidSyntax?: string;
+  // validation results for each line (key = line number, value = validation info)
+  lineValidations?: Record<number, LineValidation>;
 }
 
 /**

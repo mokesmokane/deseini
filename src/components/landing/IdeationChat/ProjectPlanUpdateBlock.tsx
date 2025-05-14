@@ -5,16 +5,14 @@ import { SimpleSectionProcessor } from '../SimpleSectionProcessor';
 import { createLineReader } from '../../../utils/streamToLines';
 import { ProcessUpdateEvent, UpdateState } from '../types';
 import { useState, useEffect, useCallback } from 'react';
-import { useDraftMarkdown } from '../../../contexts/DraftMarkdownProvider';
 import { useProject } from '../../../contexts/ProjectContext';
+import { useActiveTab } from '../../../contexts/ActiveTabProvider';
 
 export const useProjectPlanStream = (messageId: string) => {
   const [stateUpdates, updateSectionState] = useState<UpdateState|undefined>(undefined);
   const stream = useBlock('editedprojectplan', messageId);
   const sectionProcessor = useRef<SimpleSectionProcessor>(new SimpleSectionProcessor());
   const { project } = useProject();
-  const { updateProjectPlan } = useDraftMarkdown();
-  
   const processProjectPlanStream = useCallback(async (projectPlanStream: ReadableStream<string>) => {
     try {
       sectionProcessor.current.reset();
@@ -34,10 +32,9 @@ export const useProjectPlanStream = (messageId: string) => {
     if (stream.locked) {
       return;
     }
-    
-    const [newStream, newStream2] = stream.tee();
-    updateProjectPlan(newStream, project?.id || '', messageId);  
-    processProjectPlanStream(newStream2);
+
+    const [newStream] = stream.tee();
+    processProjectPlanStream(newStream);
     
   }, [stream, messageId, processProjectPlanStream, project]);
 
@@ -55,6 +52,7 @@ export const useProjectPlanStream = (messageId: string) => {
   return { stateUpdates, stream, setContent };
 };
 
+
 interface ProjectPlanUpdateBlockProps {
   messageId: string;
   setCurrentSectionId?: (id: string | null) => void;
@@ -63,9 +61,10 @@ interface ProjectPlanUpdateBlockProps {
 
 const ProjectPlanUpdateBlock: FC<ProjectPlanUpdateBlockProps> = ({ messageId, setCurrentSectionId, content }) => {
   const { stateUpdates, stream, setContent } = useProjectPlanStream(messageId);
+  const { setActiveTab } = useActiveTab();
 
   useEffect(() => {
-    if (content) {
+    if (!stream && content) {
       setContent(content);
     }
   }, [content, stream]);
@@ -106,7 +105,10 @@ const ProjectPlanUpdateBlock: FC<ProjectPlanUpdateBlockProps> = ({ messageId, se
                 <button
                   className={`inline-flex items-center mr-2 ${iconClass} focus:outline-none focus:ring-2 focus:ring-white/70 rounded transition`}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                  onClick={() => setCurrentSectionId?.(update.sectionId!)}
+                  onClick={() => {
+                    setCurrentSectionId?.(update.sectionId!);
+                    setActiveTab("notes");
+                  }}
                   tabIndex={0}
                   aria-label={`Set current section to ${sectionId}`}
                   type="button"
@@ -115,7 +117,10 @@ const ProjectPlanUpdateBlock: FC<ProjectPlanUpdateBlockProps> = ({ messageId, se
                 </button>
                 <span
                   className="text-white/90 text-sm cursor-pointer"
-                  onClick={() => setCurrentSectionId?.(update.sectionId!)}
+                  onClick={() => {
+                    setCurrentSectionId?.(update.sectionId!);
+                    setActiveTab("notes");
+                  }}
                 >
                   {label}
                 </span>
