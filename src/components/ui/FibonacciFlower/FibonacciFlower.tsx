@@ -35,7 +35,7 @@ const FibonacciFlower: React.FC<FibonacciFlowerProps> = ({
   };
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState(0);
+  // const [containerSize, setContainerSize] = useState(0);
   const [rotation, setRotation] = useState(0);
   
   const totalDots = items.length * dotsPerItem;
@@ -51,31 +51,31 @@ const FibonacciFlower: React.FC<FibonacciFlowerProps> = ({
     prevItemsLengthRef.current = items.length;
   }, [items, enableRotation]);
   
-  useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        const width = containerRef.current.offsetWidth;
-        setContainerSize(width);
-      }
-    };
+  // useEffect(() => {
+  //   const updateSize = () => {
+  //     if (containerRef.current) {
+  //       const width = containerRef.current.offsetWidth;
+  //       setContainerSize(width);
+  //     }
+  //   };
     
-    updateSize();
+  //   updateSize();
     
-    const resizeObserver = new ResizeObserver(() => {
-      updateSize();
-    });
+  //   const resizeObserver = new ResizeObserver(() => {
+  //     updateSize();
+  //   });
     
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
+  //   if (containerRef.current) {
+  //     resizeObserver.observe(containerRef.current);
+  //   }
     
-    return () => {
-      if (containerRef.current) {
-        resizeObserver.unobserve(containerRef.current);
-      }
-      resizeObserver.disconnect();
-    };
-  }, []);
+  //   return () => {
+  //     if (containerRef.current) {
+  //       resizeObserver.unobserve(containerRef.current);
+  //     }
+  //     resizeObserver.disconnect();
+  //   };
+  // }, []);
   
   const renderDots = () => {
     const dots = [];
@@ -90,9 +90,8 @@ const FibonacciFlower: React.FC<FibonacciFlowerProps> = ({
           DOT_STYLE.MIN_SIZE,
           DOT_STYLE.MAX_SIZE
         );
-        const color = getDotColor(itemIndex, dotIndex, currentPalette);
+        const color = getDotColor(itemIndex, currentPalette);
         const delay = calculateDotDelay(
-          itemIndex,
           dotIndex,
           ANIMATION.DOT_APPEAR_DELAY_BASE
         );

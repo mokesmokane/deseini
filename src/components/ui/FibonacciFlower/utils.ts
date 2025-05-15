@@ -14,8 +14,8 @@ export const calculateDotPosition = (index: number, total: number) => {
 /**
  * Generates a color for a dot based on its position in the spiral
  */
-export const getDotColor = (itemIndex: number, dotIndex: number, palette = 'neon') => {
-  const colors = COLOR_PALETTES[palette]?.colors || COLOR_PALETTES.neon.colors;
+export const getDotColor = (itemIndex: number, palette = 'neon') => {
+  const colors = COLOR_PALETTES[palette as keyof typeof COLOR_PALETTES]?.colors || COLOR_PALETTES.neon.colors;
   const colorIndex = itemIndex % colors.length;
   return colors[colorIndex];
 };
@@ -53,7 +53,6 @@ export const hashString = (str: string): number => {
  * Creates a stable dot delay based on indices
  */
 export const calculateDotDelay = (
-  itemIndex: number,
   dotIndex: number,
   baseDelay: number
 ) => {
