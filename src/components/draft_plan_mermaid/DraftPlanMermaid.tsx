@@ -218,7 +218,7 @@ function DraftPlanMermaid() {
           ...edge,
           style: {
             ...(edge.style || {}),
-            stroke: 'black',
+            // stroke: 'black',
             strokeWidth: 4,
             opacity: 1,
           },

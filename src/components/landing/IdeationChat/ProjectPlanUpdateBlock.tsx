@@ -72,7 +72,7 @@ const ProjectPlanUpdateBlock: FC<ProjectPlanUpdateBlockProps> = ({ messageId, se
   if (!stream && !content) return null;
 
   return (
-    <pre className="bg-gray-800 text-white p-4 rounded-md font-mono whitespace-pre-wrap overflow-auto">
+    <pre className="bg-gray-800 text-white p-4 rounded-md font-mono whitespace-pre-wrap overflow-auto mt-2">
       {stateUpdates && stateUpdates.sectionUpdateStates.length > 0 ? (
         <ul className="list-none p-0 m-0">
           {stateUpdates.sectionUpdateStates.map((update, index) => {

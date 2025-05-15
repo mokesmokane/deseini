@@ -16,14 +16,12 @@ export const PlanSummary = memo(({ sketchSummary }: PlanSummaryProps) => {
   const durationUnit = durationParts[1] || 'days';
 
   return (
-    <div className="bg-gray-800 rounded-md relative overflow-hidden p-1">
-      {/* Black & white theme: removed gradients */}
-      <div className="relative z-10 p-2">
+      <div className="relative z-10 pt-2">
         {/* Timeline card with duration */}
-        <div className="mb-4">
-          <div className="relative bg-gray-900 rounded-md p-4 shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-3">
+        <div className="mb-2">
+          <div className="relative bg-black  rounded-md p-4 shadow-md">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
                 <button
                   className="bg-transparent border-none p-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded-full"
                   aria-label="View Mermaid Chart Syntax"
@@ -55,9 +53,9 @@ export const PlanSummary = memo(({ sketchSummary }: PlanSummaryProps) => {
 
         {/* Tasks and Milestones cards */}
         {sketchSummary && (
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
-            <div className="relative bg-gray-900 rounded-lg p-4 shadow h-full">
+            <div className="relative bg-black rounded-lg p-4 shadow h-full">
               <div className="flex items-center space-x-2 mb-1">
                 <CheckSquare className="text-white w-5 h-5" />
                 <span className="text-white font-medium">Tasks</span>
@@ -66,7 +64,7 @@ export const PlanSummary = memo(({ sketchSummary }: PlanSummaryProps) => {
             </div>
           </div>
           <div>
-            <div className="relative bg-gray-900 rounded-lg p-4 shadow h-full">
+            <div className="relative bg-black rounded-lg p-4 shadow h-full">
               <div className="flex items-center space-x-2 mb-1">
                 <Flag className="text-white w-5 h-5" />
                 <span className="text-white font-medium">Milestones</span>
@@ -79,6 +77,5 @@ export const PlanSummary = memo(({ sketchSummary }: PlanSummaryProps) => {
       </div>
 
       
-    </div>
   );
 });

@@ -24,15 +24,17 @@ export const processMainStreamData = (
   };
   let newStreamSummary: string | undefined;
   const lines = content.split('\n');
+  
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (line.startsWith('#')) {
+      // When we find a header, create a new thought
       const headerText = line.replace(/^#+\s*/, '').trim();
       if (headerText) {
         updatedStreamState.lastHeader = headerText;
         const newThought: Thought = {
           summary: headerText,
-          thoughts: line
+          thoughts: line // Initialize with header line
         };
         updatedStreamState.streamSummary = {
           ...updatedStreamState.streamSummary,
@@ -40,8 +42,19 @@ export const processMainStreamData = (
         };
         newStreamSummary = headerText;
       }
+    } else if (line && updatedStreamState.streamSummary.thinking?.length > 0) {
+      // For non-header lines, append to the most recent thought's 'thoughts' property
+      const thoughts = updatedStreamState.streamSummary.thinking;
+      const lastThoughtIndex = thoughts.length - 1;
+      
+      // Append the current line to the thoughts of the most recent Thought
+      thoughts[lastThoughtIndex] = {
+        ...thoughts[lastThoughtIndex],
+        thoughts: (thoughts[lastThoughtIndex].thoughts || '') + '\n' + rawLine
+      };
     }
   }
+  console.log(updatedStreamState.streamSummary.thinking);
   return { updatedStreamState, newStreamSummary };
 };
 

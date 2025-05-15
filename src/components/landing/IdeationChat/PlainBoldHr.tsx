@@ -5,7 +5,12 @@ interface PlainBoldItalicHrProps {
 }
 
 const PlainBoldItalicHr: React.FC<PlainBoldItalicHrProps> = ({ text }) => {
-  const lines = text.split('\n');
+  // if text is just white space return  asimple empty line
+  if (text.trim() === '') {
+    return <br />;
+  }
+  
+  const lines = text.trim().split('\n');
 
   return (
     <>

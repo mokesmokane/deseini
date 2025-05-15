@@ -132,9 +132,9 @@ const MilestoneNode: React.FC<MilestoneNodeProps> = ({ data, dragging, onLabelCh
           top: '-13px',
           left: '40px',
           transform: 'translateY(-50%)',
-          fontSize: '18px',
+          fontSize: '22px',
           color: '#000',
-          fontWeight: 500,
+          fontWeight: 400,
           zIndex: 15,
           minWidth: 40,
           background: 'transparent',
@@ -156,7 +156,7 @@ const MilestoneNode: React.FC<MilestoneNodeProps> = ({ data, dragging, onLabelCh
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
               style={{
-                fontSize: '16px',
+                fontSize: '22px',
                 padding: '2px 6px',
                 border: 'none',
                 outline: 'none',
@@ -174,7 +174,7 @@ const MilestoneNode: React.FC<MilestoneNodeProps> = ({ data, dragging, onLabelCh
             <span
               ref={el => {
                 if (!el || !inputRef.current) return;
-                el.style.fontSize = '16px';
+                el.style.fontSize = '22px';
                 el.style.fontWeight = '500';
                 el.style.visibility = 'hidden';
                 el.style.position = 'absolute';
@@ -188,7 +188,7 @@ const MilestoneNode: React.FC<MilestoneNodeProps> = ({ data, dragging, onLabelCh
               }}
               aria-hidden="true"
               style={{
-                fontSize: '16px',
+                fontSize: '22px',
                 fontWeight: 500,
                 visibility: 'hidden',
                 whiteSpace: 'pre',
@@ -218,7 +218,7 @@ const MilestoneNode: React.FC<MilestoneNodeProps> = ({ data, dragging, onLabelCh
             top: '15px',
             left: '-25px',
             width: '100%',
-            fontSize: '10px',
+            fontSize: '16px',
             color: '#000000',
             textAlign: 'center',
             whiteSpace: 'nowrap',

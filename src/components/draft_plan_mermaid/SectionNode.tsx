@@ -128,7 +128,7 @@ const SectionNode: React.FC<SectionNodeProps> = ({ id, data }) => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '10px 20px', // Match task padding
-        fontSize: '16px', // Match task font size
+        fontSize: '22px', // Match task font size
         fontWeight: 'bold',
         color: '#ffffff',
         whiteSpace: 'nowrap',

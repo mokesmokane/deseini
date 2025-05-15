@@ -13,7 +13,7 @@ export default function Deseini() {
   const {projectsList, setNoProject} = useProject();
   const navigate = useNavigate();
   const {session, logout} = useAuth();
-  const {setMessages} = useMessaging();
+  const {setMessages, reset} = useMessaging();
   const {resetMarkdown} = useDraftMarkdown();
 
   const navigateToLanding = () => {
@@ -23,7 +23,7 @@ export default function Deseini() {
     // Then update all states to maintain a consistent UI
     setTimeout(() => {
       setNoProject();
-      setMessages([]);
+      reset();
       resetMarkdown();
     }, 10);
   };

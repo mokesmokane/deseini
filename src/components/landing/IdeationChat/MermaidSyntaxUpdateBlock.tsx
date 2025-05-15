@@ -143,7 +143,19 @@ const MermaidSyntaxUpdateBlock: FC<MermaidSyntaxUpdateBlockProps> = ({ messageId
   if (!sketchSummaryState) return null;
 
   return (
-    <PlanSummary sketchSummary={sketchSummaryState}/>
+    <div
+        className="relative bg-gray-800 rounded-md overflow-hidden border border-gray-700 shadow-md px-2"
+        style={{
+          opacity: 1,
+          transition: 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+          // margin: '2rem 0 1.5rem 0',
+          boxSizing: 'border-box',
+          width: '100%',
+          maxWidth: 1200,
+        }}
+      >
+        <PlanSummary sketchSummary={sketchSummaryState}/>
+      </div>
   );
 };
 

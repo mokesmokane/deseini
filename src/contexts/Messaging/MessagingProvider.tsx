@@ -33,6 +33,7 @@ interface MessagingContextProps {
   setCurrentProjectId: (id: string | null) => void;
   loadConversation: (conversationId: string) => Promise<void>;
   isLoadingMessages: boolean;
+  reset: () => void;
 }
 
 const MessagingContext = createContext<MessagingContextProps | undefined>(undefined);
@@ -543,6 +544,7 @@ const editProjectChat = async (messageHistory: Message[], aiMessage: Message, co
 
   const reset = () => {
     setMessages([]);
+    setIsCanvasVisible(false);
     setCurrentProjectId(null);
     setCurrentConversationId(null);
     setProjectIsReady(false);
@@ -570,7 +572,8 @@ const editProjectChat = async (messageHistory: Message[], aiMessage: Message, co
       currentConversationId,
       setCurrentProjectId,
       loadConversation,
-      isLoadingMessages
+      isLoadingMessages,
+      reset
     }}>
       {children}
     </MessagingContext.Provider>

@@ -81,7 +81,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
         borderRadius: '8px',
         padding: '10px 20px',
         fontFamily: 'sans-serif',
-        fontSize: '16px',
+        fontSize: '22px',
         textAlign: 'center',
         // transition: dragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
         display: 'flex',

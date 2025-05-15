@@ -4,6 +4,7 @@ import ChartView from './views/ChartView';
 import LandingPage from './components/landing/LandingPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import MermaidNotepad from './components/landing/MermaidNotepad/MermaidNotepad';
+import TestGallery from './pages/TestGallery';
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,10 @@ const router = createBrowserRouter([
       {
         path: 'mermaid-notepad',
         element: <ProtectedRoute><MermaidNotepad /></ProtectedRoute>
+      },
+      {
+        path: 'testgallery',
+        element: <TestGallery />
       }
     ]
   }

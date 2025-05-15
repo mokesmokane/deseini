@@ -122,11 +122,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
           continue;
         } else if (lang.toLowerCase() === 'editedmermaidmarkdown' || lang.toLowerCase() === 'mermaid') {
           nodes.push(
+            newSummary ? 
+            <Placeholder
+              key={`placeholder-${idx}`}
+              action='CREATE_PROJECT_GANTT'
+              idx={idx}
+              hasPlan={hasPlan}
+              newSummary={newSummary}
+              sketchSummary={sketchSummary}
+            />
+            :(
             <MermaidSyntaxUpdateBlock
               key={`code-${idx}`}
               messageId={message.id}
               content={content.slice(newline + 1, close)}
             />
+            )
           );
           idx++;
           // If closing found, skip to after it, else to end
@@ -186,6 +197,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
       if (nextSpecial > i) {
         // Clean whitespace before line breaks in regular text content
         const textContent = content.slice(i, nextSpecial);
+
         const cleanedContent = textContent.replace(/[ \t]+\n/g, '\n');
         
         nodes.push(
@@ -224,7 +236,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
         </div>
       )}
      
-      <div className={`flex-1 min-w-0 ${isUser ? 'ml-0' : ''} ${!isUser ? 'relative group' : ''}`}>
+      <div className={`flex-1 min-w-0 relative group ${isUser ? 'ml-0' : ''}`}>
         {!isUser && (
           <div className="font-medium text-sm mb-1 text-white/70">
             Deseini AI
@@ -288,7 +300,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
                 />
               </div>
             ))}
-            {!isUser && (
+            {!isUser ? (
               <button
                 onClick={() => setIsTextDialogOpen(true)}
                 className="text-xs rounded-md px-2 py-1 inline-flex items-center transition-colors absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-800 text-white shadow-md hover:bg-gray-700"
@@ -297,7 +309,39 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
                   transform: 'translateY(50%)'
                 }}
               >
-                View Plain Text
+                View  Text
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(message.content || '');
+                  // Optional: Show a small tooltip or notification that text was copied
+                  const tooltip = document.createElement('div');
+                  tooltip.innerText = 'Copied!';
+                  tooltip.style.position = 'absolute';
+                  tooltip.style.right = '0';
+                  tooltip.style.bottom = '-30px';
+                  tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                  tooltip.style.color = 'white';
+                  tooltip.style.padding = '4px 8px';
+                  tooltip.style.borderRadius = '4px';
+                  tooltip.style.fontSize = '12px';
+                  tooltip.style.transition = 'opacity 0.3s';
+                  
+                  document.activeElement?.parentElement?.appendChild(tooltip);
+                  
+                  setTimeout(() => {
+                    tooltip.style.opacity = '0';
+                    setTimeout(() => tooltip.remove(), 300);
+                  }, 1000);
+                }}
+                className="text-xs rounded-md px-2 py-1 inline-flex items-center transition-colors absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-800 text-white shadow-md hover:bg-gray-700"
+                style={{ 
+                  bottom: '-12px',
+                  transform: 'translateY(50%)'
+                }}
+              >
+                Copy Text
               </button>
             )}
           </div>
