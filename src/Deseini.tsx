@@ -31,12 +31,12 @@ export default function Deseini() {
   return (
     <>
       <Toaster position="top-right" />
-      <header className="bg-white shadow-sm w-full border-b border-gray-200 h-16 flex-shrink-0">
-        <div className="py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+      <header className="bg-white shadow-sm w-full border-b border-gray-200 h-16 flex-shrink-0 overflow-visible">
+        <div className="py-4 px-2 sm:px-4 lg:px-6 flex items-center justify-between w-full overflow-visible">
           <div 
-            className="cursor-pointer flex items-center" 
+            className="cursor-pointer flex items-center flex-shrink-0" 
             onClick={navigateToLanding}
-            style={{ minWidth: '150px' }} // Adjust width as needed
+            style={{ width: '120px' }}
           >
             <LogoCarousel 
               height="40px"
@@ -46,13 +46,13 @@ export default function Deseini() {
          
           {/* Project Dropdown - Always Rendered if Projects Exist */}
           {projectsList.length > 0 && (
-            <div className="flex-1 flex justify-start px-4">
+            <div className="flex justify-center mx-2 flex-1 min-w-0">
               <ProjectsDropdown projects={projectsList} />
             </div>
           )}
           
           {/* Account Dropdown */}
-          <div style={{ minWidth: '150px' }} className="flex justify-end">
+          <div className="flex justify-end flex-shrink-0">
             <AccountDropdown
               userEmail={session?.user?.email}
               onAccount={() => {

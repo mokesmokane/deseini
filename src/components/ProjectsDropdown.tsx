@@ -50,7 +50,7 @@ export const ProjectsDropdown = ({ projects }: ProjectsDropdownProps) => {
         aria-haspopup="true"
       >
         <FolderIcon size={16} />
-        <span>{project ? project.projectName : 'Projects'}</span>
+        <span className="truncate whitespace-nowrap overflow-hidden max-w-[150px] block">{project ? project.projectName : 'Projects'}</span>
         <ChevronDown size={16} className="ml-1" />
       </button>
 
