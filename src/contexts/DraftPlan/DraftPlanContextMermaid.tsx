@@ -751,10 +751,12 @@ export function DraftPlanMermaidProvider({ children }: DraftPlanMermaidProviderP
     setSettingsOpen(prev => !prev);
   }, []);
 
-  // Correct, single definition for updateSectionLabel
-  const updateSectionLabel = useCallback((oldName: string, newName: string) => {
+  // Update section label and immediately process the buffer
+  const updateSectionLabel = useCallback(async (oldName: string, newName: string) => {
     addActionToBuffer('UPDATE_SECTION_LABEL', { oldName, newName });
-  }, []);
+    // Immediately process the buffer to apply the changes
+    await processAllBuffer();
+  }, [addActionToBuffer, processAllBuffer]);
 
   return (
     <DraftPlanMermaidContext.Provider

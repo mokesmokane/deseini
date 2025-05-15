@@ -1,7 +1,7 @@
 import type { NodeProps } from 'reactflow';
 import { NodeResizeControl, ResizeDragEvent, ResizeParams } from 'reactflow';
 import { useDraftPlanMermaidContext } from '../../contexts/DraftPlan/DraftPlanContextMermaid';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useDraftPlanFlow } from '@/contexts/useDraftPlanFlow';
 
 export interface SectionNodeData {
@@ -78,44 +78,86 @@ export function calculateSectionResize(
   return { updates, downstreamUpdates: downstream };
 }
 
+// SectionNode component with fixed label editing functionality
 const SectionNode: React.FC<SectionNodeProps> = ({ id, data }) => {
-  const { TIMELINE_PIXELS_PER_DAY, sections, updateTaskStartDate, updateTaskDuration } = useDraftPlanMermaidContext();
+  const { TIMELINE_PIXELS_PER_DAY, sections, updateTaskStartDate, updateTaskDuration, updateSectionLabel } = useDraftPlanMermaidContext();
   const {anchorDate} = useDraftPlanFlow();
-  // const {setNodes, nodes} = useDraftPlanFlow();
   const [localWidth, setLocalWidth] = useState(data.duration * TIMELINE_PIXELS_PER_DAY);
   const [isResizing, setIsResizing] = useState(false);
   const [originalWidth, setOriginalWidth] = useState(data.duration * TIMELINE_PIXELS_PER_DAY);
   const [isHovering, setIsHovering] = useState(false);
+  // refs and state for overflow detection
+  const containerRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  // Local editing state for label
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editedLabel, setEditedLabel] = useState(data.label);
+  const labelInputRef = useRef<HTMLInputElement>(null);
+  
+  // Track if we've just updated the label to avoid overwriting with old data
+  const labelJustUpdatedRef = useRef(false);
 
   useEffect(() => {
     setLocalWidth(data.duration * TIMELINE_PIXELS_PER_DAY);
     setOriginalWidth(data.duration * TIMELINE_PIXELS_PER_DAY);
   }, [data.duration, TIMELINE_PIXELS_PER_DAY]);
 
-    const onResizeEnd = useCallback(( _evt: ResizeDragEvent, _params: ResizeParams, ratio: number, data: SectionNodeData) => {      
-      const sec = sections.find(s => s.name === data.label);
-      if (!sec) return;
-      // Delegate to pure calculation
-      const { updates, downstreamUpdates } = calculateSectionResize(
-        sec.tasks.map(t => ({ id: t.id, startDate: t.startDate, duration: t.duration, type: t.type })),
-        ratio,
-        anchorDate!,
-        ()=>{}
-      );
-      // Apply direct updates
-      updates.forEach(u => {
-        updateTaskStartDate(u.id, u.newStartDate);
-        if (u.newDuration !== undefined) updateTaskDuration(u.id, u.newDuration);
-      });
-      // Apply downstream updates
-      downstreamUpdates.forEach(u => updateTaskStartDate(u.id, u.newStartDate));
-    }, [sections, anchorDate, updateTaskStartDate, updateTaskDuration]);
+  useEffect(() => {
+    // Only update the editedLabel from props if we haven't just updated it ourselves
+    if (!labelJustUpdatedRef.current) {
+      setEditedLabel(data.label);
+    } else {
+      // Reset the flag after we've processed the update
+      labelJustUpdatedRef.current = false;
+    }
+  }, [data.label]);
+
+  // check if label overflows its container
+  useEffect(() => {
+    if (containerRef.current && labelRef.current) {
+      const containerWidth = containerRef.current.clientWidth;
+      const labelWidth = labelRef.current.scrollWidth;
+      setIsOverflowing(labelWidth > containerWidth);
+    }
+  }, [data.label, localWidth]);
+
+  useEffect(() => {
+    if (isEditingLabel && labelInputRef.current) {
+      labelInputRef.current.focus();
+      labelInputRef.current.select();
+    }
+  }, [isEditingLabel]);
+
+
+
+  const onResizeEnd = useCallback(( _evt: ResizeDragEvent, _params: ResizeParams, ratio: number, data: SectionNodeData) => {      
+    const sec = sections.find(s => s.name === data.label);
+    if (!sec) return;
+    // Delegate to pure calculation
+    const { updates, downstreamUpdates } = calculateSectionResize(
+      sec.tasks.map(t => ({ id: t.id, startDate: t.startDate, duration: t.duration, type: t.type })),
+      ratio,
+      anchorDate!,
+      ()=>{}
+    );
+    // Apply direct updates
+    updates.forEach(u => {
+      updateTaskStartDate(u.id, u.newStartDate);
+      if (u.newDuration !== undefined) updateTaskDuration(u.id, u.newDuration);
+    });
+    // Apply downstream updates
+    downstreamUpdates.forEach(u => updateTaskStartDate(u.id, u.newStartDate));
+  }, [sections, anchorDate, updateTaskStartDate, updateTaskDuration]);
 
   return (
     <div
+      ref={containerRef}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       style={{
+        position: 'relative',
         width: `${localWidth}px`,
         height: '60px', // Match task height exactly
         borderRadius: '8px', // Match task border radius
@@ -132,12 +174,208 @@ const SectionNode: React.FC<SectionNodeProps> = ({ id, data }) => {
         fontWeight: 'bold',
         color: '#ffffff',
         whiteSpace: 'nowrap',
-        overflow: 'hidden',
+        overflow: 'visible',
         textOverflow: 'ellipsis',
       }}
     >
-      {/* Inline editable label */}
-      <SectionLabelEditor label={data.label} />
+      {/* Hidden label for measuring overflow */}
+      <div
+        ref={labelRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          visibility: 'hidden',
+          whiteSpace: 'nowrap',
+          padding: '10px 20px',
+          fontSize: '22px',
+          fontWeight: 'bold',
+        }}
+      >
+        {editedLabel}
+      </div>
+      {/* Inline editable label, TaskNode style */}
+      {!isOverflowing && (
+        <div
+          style={{
+            width: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            textAlign: 'center',
+            cursor: 'pointer',
+          }}
+          onDoubleClick={() => setIsEditingLabel(true)}
+        >
+          {isEditingLabel ? (
+            <input
+              ref={labelInputRef}
+              type="text"
+              value={editedLabel}
+              onChange={e => setEditedLabel(e.target.value)}
+              onBlur={() => {
+                setIsEditingLabel(false);
+                const newLabel = editedLabel.trim();
+                if (newLabel && newLabel !== data.label) {
+                  // Set the flag to prevent our useEffect from overwriting with old data
+                  labelJustUpdatedRef.current = true;
+                  // Update the edited label to match what we're sending to the context
+                  setEditedLabel(newLabel);
+                  // Update the section label in the context
+                  updateSectionLabel(data.label, newLabel);
+                } else if (!newLabel) {
+                  setEditedLabel(data.label);
+                }
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  setIsEditingLabel(false);
+                  const newLabel = editedLabel.trim();
+                  if (newLabel && newLabel !== data.label) {
+                    // Set the flag to prevent our useEffect from overwriting with old data
+                    labelJustUpdatedRef.current = true;
+                    // Update the edited label to match what we're sending to the context
+                    setEditedLabel(newLabel);
+                    // Update the section label in the context
+                    updateSectionLabel(data.label, newLabel);
+                  } else if (!newLabel) {
+                    setEditedLabel(data.label);
+                  }
+                } else if (e.key === 'Escape') {
+                  setIsEditingLabel(false);
+                  setEditedLabel(data.label);
+                }
+              }}
+              style={{
+                fontSize: '16px',
+                padding: '2px 6px',
+                border: 'none',
+                outline: 'none',
+                background: 'white',
+                color: 'black',
+                fontWeight: 500,
+                textAlign: 'center',
+                borderRadius: 4,
+                width: 'auto',
+                minWidth: 40,
+                maxWidth: 220,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+              }}
+              maxLength={60}
+            />
+          ) : (
+            <span
+              style={{
+                cursor: 'pointer',
+                background: 'transparent',
+                color: '#fff',
+                fontWeight: 700,
+                borderRadius: 4,
+                padding: '0 2px',
+                transition: 'background 0.2s',
+                userSelect: 'text',
+              }}
+              title={data.label}
+            >
+              {data.label}
+            </span>
+          )}
+        </div>
+      )}
+      {isOverflowing && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '100%',
+            marginLeft: '8px',
+            transform: 'translateY(-50%)',
+            whiteSpace: 'nowrap',
+            color: 'black',
+            zIndex: 2,
+            fontSize: '22px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            background: 'transparent',
+          }}
+          onDoubleClick={() => setIsEditingLabel(true)}
+        >
+          {isEditingLabel ? (
+            <input
+              ref={labelInputRef}
+              type="text"
+              value={editedLabel}
+              onChange={e => setEditedLabel(e.target.value)}
+              onBlur={() => {
+                setIsEditingLabel(false);
+                const newLabel = editedLabel.trim();
+                if (newLabel && newLabel !== data.label) {
+                  // Set the flag to prevent our useEffect from overwriting with old data
+                  labelJustUpdatedRef.current = true;
+                  // Update the edited label to match what we're sending to the context
+                  setEditedLabel(newLabel);
+                  // Update the section label in the context
+                  updateSectionLabel(data.label, newLabel);
+                } else if (!newLabel) {
+                  setEditedLabel(data.label);
+                }
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  setIsEditingLabel(false);
+                  const newLabel = editedLabel.trim();
+                  if (newLabel && newLabel !== data.label) {
+                    // Set the flag to prevent our useEffect from overwriting with old data
+                    labelJustUpdatedRef.current = true;
+                    // Update the edited label to match what we're sending to the context
+                    setEditedLabel(newLabel);
+                    // Update the section label in the context
+                    updateSectionLabel(data.label, newLabel);
+                  } else if (!newLabel) {
+                    setEditedLabel(data.label);
+                  }
+                } else if (e.key === 'Escape') {
+                  setIsEditingLabel(false);
+                  setEditedLabel(data.label);
+                }
+              }}
+              style={{
+                fontSize: '16px',
+                padding: '2px 6px',
+                border: 'none',
+                outline: 'none',
+                background: 'white',
+                color: 'black',
+                fontWeight: 500,
+                textAlign: 'center',
+                borderRadius: 4,
+                width: 'auto',
+                minWidth: 40,
+                maxWidth: 220,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+              }}
+              maxLength={60}
+            />
+          ) : (
+            <span
+              style={{
+                cursor: 'pointer',
+                background: 'transparent',
+                color: 'black',
+                fontWeight: 700,
+                borderRadius: 4,
+                padding: '0 2px',
+                transition: 'background 0.2s',
+                userSelect: 'text',
+                fontSize: '22px',
+              }}
+              title={data.label}
+            >
+              {data.label}
+            </span>
+          )}
+        </div>
+      )}
       {isHovering && (
         <NodeResizeControl
         nodeId={id}
@@ -173,96 +411,9 @@ const SectionNode: React.FC<SectionNodeProps> = ({ id, data }) => {
   );
 }
 
-// Inline label editor for section
-const SectionLabelEditor: React.FC<{ label: string }> = ({ label }) => {
-  const { updateSectionLabel, sections } = useDraftPlanMermaidContext();
-  const [editing, setEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(label);
-  const inputRef = React.useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setInputValue(label);
-  }, [label]);
+// Component now uses inline editing without a separate editor component
 
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editing]);
 
-  const handleDoubleClick = () => {
-    setEditing(true);
-    setInputValue(label);
-  };
-
-  const handleInputBlur = () => {
-    setEditing(false);
-    if (inputValue.trim() && inputValue !== label) {
-      // Ensure section name is unique
-      if (!sections.some(s => s.name === inputValue.trim())) {
-        updateSectionLabel(label, inputValue.trim());
-      } else {
-        setInputValue(label); // revert
-      }
-    } else {
-      setInputValue(label); // revert
-    }
-  };
-
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleInputBlur();
-    } else if (e.key === 'Escape') {
-      setEditing(false);
-      setInputValue(label);
-    }
-  };
-
-  return editing ? (
-    <input
-      ref={inputRef}
-      type="text"
-      value={inputValue}
-      onChange={e => setInputValue(e.target.value)}
-      onBlur={handleInputBlur}
-      onKeyDown={handleInputKeyDown}
-      style={{
-        fontSize: '16px',
-        padding: '2px 6px',
-        border: 'none',
-        outline: 'none',
-        background: 'white',
-        color: 'black',
-        fontWeight: 500,
-        textAlign: 'center',
-        borderRadius: 4,
-        width: 'auto',
-        minWidth: 40,
-        maxWidth: 220,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.07)'
-      }}
-      maxLength={60}
-    />
-  ) : (
-    <span
-      onDoubleClick={handleDoubleClick}
-      style={{
-        cursor: 'pointer',
-        background: 'transparent',
-        color: '#fff',
-        fontWeight: 700,
-        borderRadius: 4,
-        padding: '0 2px',
-        transition: 'background 0.2s',
-        userSelect: 'text',
-      }}
-      title={label}
-    >
-      {label}
-    </span>
-  );
-};
 
 export default SectionNode;
-

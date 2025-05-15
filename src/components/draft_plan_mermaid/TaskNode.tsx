@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useRef } from 'react';
 import { Handle, Position, NodeResizeControl, NodeProps } from 'reactflow';
 import '@reactflow/node-resizer/dist/style.css';
 import type { ResizeDragEvent, ResizeParams } from '@reactflow/node-resizer';
@@ -18,6 +18,11 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const { TIMELINE_PIXELS_PER_DAY, deleteTask } = useDraftPlanMermaidContext();
+  
+  // Refs and state for overflow detection
+  const containerRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
   
   // Calculate the width based on duration
   const initialWidth = data.hasDuration ? (data.width || 60) : 60;
@@ -39,6 +44,15 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
       labelInputRef.current.select();
     }
   }, [isEditingLabel]);
+
+  // Check if label overflows its container
+  useEffect(() => {
+    if (containerRef.current && labelRef.current) {
+      const containerWidth = containerRef.current.clientWidth;
+      const labelWidth = labelRef.current.scrollWidth;
+      setIsOverflowing(labelWidth > containerWidth - 60); // Account for buttons and padding
+    }
+  }, [data.label, localWidth]);
 
   // Format date for display in tooltip
   const formatDate = (date: Date): string => {
@@ -70,6 +84,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
 
   return (
     <div
+      ref={containerRef}
       className="node"
       style={{
         overflow: 'visible',
@@ -98,6 +113,23 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
       onMouseUp={() => setIsDragging(false)}
       aria-label={tooltipText}
     >
+      {/* Hidden label for measuring overflow */}
+      <div
+        ref={labelRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          visibility: 'hidden',
+          whiteSpace: 'nowrap',
+          padding: '10px 20px',
+          fontSize: '22px',
+          fontWeight: 'bold',
+        }}
+      >
+        {editedLabel}
+      </div>
+      
       <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
       {showSubMenu && !dragging && (
         <NodeResizeControl
@@ -157,20 +189,21 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
         </div>
       )}
       
-      <div 
-        style={{
-          width: '100%',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          cursor: 'pointer',
-        }}
-        onDoubleClick={() => {
-          setIsEditingLabel(true);
-          setIsAnyLabelEditing(true);
-        }}
-      >
-        {isEditingLabel ? (
+      {!isOverflowing && (
+        <div 
+          style={{
+            width: '100%',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            cursor: 'pointer',
+          }}
+          onDoubleClick={() => {
+            setIsEditingLabel(true);
+            setIsAnyLabelEditing(true);
+          }}
+        >
+          {isEditingLabel ? (
           <input
             ref={labelInputRef}
             type="text"
@@ -210,7 +243,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
               outline: 'none',
               background: 'white',
               color: 'black',
-              fontWeight: 500,
+              fontWeight: 400,
               textAlign: 'center',
               boxShadow: 'none',
             }}
@@ -222,7 +255,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
               display: 'block',
               width: '100%',
               textAlign: 'center',
-              fontWeight: 500,
+              fontWeight: 400,
               color: 'black',
               background: 'transparent',
               letterSpacing: 0.1,
@@ -234,6 +267,98 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
           </span>
         )}
       </div>
+      )}
+      
+      {/* Render label outside the node when overflowing */}
+      {isOverflowing && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '100%',
+            marginLeft: '8px',
+            transform: 'translateY(-50%)',
+            whiteSpace: 'nowrap',
+            color: 'black',
+            zIndex: 2,
+            fontSize: '22px',
+            cursor: 'pointer',
+            background: 'transparent',
+          }}
+          onDoubleClick={() => {
+            setIsEditingLabel(true);
+            setIsAnyLabelEditing(true);
+          }}
+        >
+          {isEditingLabel ? (
+            <input
+              ref={labelInputRef}
+              type="text"
+              value={editedLabel}
+              onChange={e => setEditedLabel(e.target.value)}
+              onBlur={() => {
+                setIsEditingLabel(false);
+                setIsAnyLabelEditing(false);
+                const newLabel = editedLabel.trim();
+                if (newLabel && newLabel !== data.label && onLabelChange) {
+                  onLabelChange(data.id, newLabel);
+                } else if (!newLabel) {
+                  setEditedLabel(data.label);
+                }
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  setIsEditingLabel(false);
+                  setIsAnyLabelEditing(false);
+                  const newLabel = editedLabel.trim();
+                  if (newLabel && newLabel !== data.label && onLabelChange) {
+                    onLabelChange(data.id, newLabel);
+                  } else if (!newLabel) {
+                    setEditedLabel(data.label);
+                  }
+                } else if (e.key === 'Escape') {
+                  setIsEditingLabel(false);
+                  setIsAnyLabelEditing(false);
+                  setEditedLabel(data.label);
+                }
+              }}
+              style={{
+                fontSize: '16px',
+                padding: '2px 6px',
+                border: 'none',
+                outline: 'none',
+                background: 'white',
+                color: 'black',
+                fontWeight: 400,
+                textAlign: 'center',
+                borderRadius: 4,
+                width: 'auto',
+                minWidth: 40,
+                maxWidth: 220,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+              }}
+              maxLength={60}
+            />
+          ) : (
+            <span
+              style={{
+                cursor: 'pointer',
+                background: 'transparent',
+                color: 'black',
+                fontWeight: 400,
+                borderRadius: 4,
+                padding: '0 2px',
+                transition: 'background 0.2s',
+                userSelect: 'text',
+                fontSize: '22px',
+              }}
+              title={data.label}
+            >
+              {data.label}
+            </span>
+          )}
+        </div>
+      )}
       
       {/* Task details panel that appears on hover (but not when dragging) */}
       {showSubMenu && !dragging && (
