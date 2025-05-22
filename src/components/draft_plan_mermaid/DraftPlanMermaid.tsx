@@ -38,6 +38,7 @@ function DraftPlanMermaid() {
 
   // Track selected node and panel animation state
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [toDelete, setToDelete] = useState<{label: string, type: string | undefined, id: string} | null>(null);
   const [isPanelVisible, setIsPanelVisible] = useState(false);
   const animationTimeout = useRef<NodeJS.Timeout | null>(null);
   const ANIMATION_DURATION = 300; // ms, match CSS duration
@@ -73,6 +74,7 @@ function DraftPlanMermaid() {
           deleteDependencyEdge(selectedEdge.source, selectedEdge.target);
           setSelectedEdge(null);
         } else if (selectedNode && selectedNode.type !== 'section') {
+          setToDelete({label: selectedNode.data?.label, type: selectedNode.type, id: selectedNode.id});
           setShowDeleteDialog(true);
         }
       }
@@ -197,13 +199,13 @@ function DraftPlanMermaid() {
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: '500px', position: 'relative' }}>
       {/* Delete Confirmation Dialog */}
-      {showDeleteDialog && selectedNode && (
+      {showDeleteDialog && toDelete && (
         <DeleteDialog
-          label={selectedNode.data?.label}
-          type={selectedNode.type === 'milestone' ? 'Milestone' : 'Task'}
+          label={toDelete.label}
+          type={toDelete.type === 'milestone' ? 'Milestone' : 'Task'}
           onCancel={() => setShowDeleteDialog(false)}
           onDelete={async () => {
-            await deleteTask(selectedNode.id);
+            await deleteTask(toDelete.id);
             setShowDeleteDialog(false);
             setSelectedNode(null);
             setIsPanelVisible(false);
@@ -234,7 +236,18 @@ function DraftPlanMermaid() {
         zoomOnScroll={true}
         nodeTypes={useMemo(() => ({
            section: (props: NodeProps<SectionNodeData>) => <SectionNode {...props} />, 
-           task: (props: NodeProps<MermaidTaskData>) => <TaskNode {...props} onResizeEnd={onResizeEnd} onLabelChange={handleNodeLabelChange} isAnyLabelEditing={isAnyLabelEditing} setIsAnyLabelEditing={setIsAnyLabelEditing} />, 
+           task: (props: NodeProps<MermaidTaskData>) => 
+            <TaskNode {...props}
+              onDeleteTask={
+                (task: MermaidTaskData) => {
+                  setToDelete({label: task.label, type: 'task', id: task.id});
+                  setShowDeleteDialog(true);
+                }
+              }
+              onResizeEnd={onResizeEnd} 
+              onLabelChange={handleNodeLabelChange} 
+              isAnyLabelEditing={isAnyLabelEditing} 
+              setIsAnyLabelEditing={setIsAnyLabelEditing} />, 
            milestone: (props: NodeProps<any>) => <MilestoneNode {...props} onLabelChange={handleNodeLabelChange} isAnyLabelEditing={isAnyLabelEditing} setIsAnyLabelEditing={setIsAnyLabelEditing} />, 
            timeline: (props: NodeProps<any>) => <TimelineNode {...props} />, 
          }), [])}
@@ -243,6 +256,7 @@ function DraftPlanMermaid() {
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
         onConnect={handleConnect}
+        fitViewOptions={{ duration: 0 }}
       >
         <Background />
         {/* Settings Panel - right-side sliding panel, matches node panel */}

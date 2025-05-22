@@ -1035,6 +1035,7 @@ const handleAssign = useCallback((roleId: string) => {
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
         onConnect={onConnect}
+        defaultViewport={{ x: 10, y: 0, zoom: 1 }}
         fitView
         minZoom={0.1}
         maxZoom={2}

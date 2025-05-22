@@ -1,5 +1,6 @@
-import { SearchIcon, ClockIcon, BarChart2 } from 'lucide-react';
+import { SearchIcon, ClockIcon, BarChart2, ChevronLeftIcon, Upload } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { useFinalPlan } from '@/hooks/useFinalPlan';
 
 interface Chart {
   id: string;
@@ -10,11 +11,40 @@ interface Chart {
 interface SidebarChartsPanelProps {
   charts: Chart[];
   onClose: () => void;
-  onChartSelect: (chartId: string) => void;
+  onChartSelect: (chartId: string, event: React.MouseEvent) => void;
 }
 
 export const SidebarChartsPanel = ({ charts, onClose, onChartSelect }: SidebarChartsPanelProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishComplete, setPublishComplete] = useState(false);
+  const [publishTimeout, setPublishTimeout] = useState<NodeJS.Timeout | null>(null);
+  const { generateFinalPlan, isGeneratingFinalPlan } = useFinalPlan();
+
+  const Spinner = () => (
+    <div className="inline-block w-4 h-4 mr-2 align-middle">
+      <div className="w-full h-full rounded-full border-2 border-b-transparent border-black animate-spin" />
+    </div>
+  );
+
+  const handlePublish = async () => {
+    setPublishComplete(false);
+    setIsPublishing(true);
+    
+    try {
+      await generateFinalPlan();
+      setPublishComplete(true);
+      
+      // Reset success state after 3 seconds
+      if (publishTimeout) clearTimeout(publishTimeout);
+      setPublishTimeout(setTimeout(() => setPublishComplete(false), 3000));
+    } catch (err) {
+      console.error('Publish error:', err);
+      // Error is already logged to console
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   const uniqueCharts = useMemo(() => {
     const uniqueMap = new Map<string, Chart>();
@@ -44,17 +74,37 @@ export const SidebarChartsPanel = ({ charts, onClose, onChartSelect }: SidebarCh
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-2">
-        <div className="font-semibold text-lg pl-1">Published Schedules</div>
-        <button
-          className="p-1 rounded hover:bg-gray-100 transition-colors"
-          onClick={onClose}
-          title="Close"
-          aria-label="Close charts panel"
-          type="button"
-        >
-          <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5 text-gray-500"><path d="M6 6l8 8M6 14L14 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-        </button>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Schedules</h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePublish}
+            disabled={isPublishing || isGeneratingFinalPlan}
+            className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 hover:bg-gray-50 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Publish current plan"
+          >
+            {isPublishing || isGeneratingFinalPlan ? (
+              <>
+                <Spinner />
+                <span>Publishing...</span>
+              </>
+            ) : publishComplete ? (
+              <span>Published! ✓</span>
+            ) : (
+              <>
+                <Upload size={14} className="mr-1.5" />
+                <span>Publish</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full hover:bg-gray-100"
+            aria-label="Close panel"
+          >
+            <ChevronLeftIcon size={20} />
+          </button>
+        </div>
       </div>
       <div className="mb-4">
         <div className="relative">
@@ -81,11 +131,11 @@ export const SidebarChartsPanel = ({ charts, onClose, onChartSelect }: SidebarCh
                   <li
                     key={chart.id}
                     className="p-2 rounded-md hover:bg-gray-100 cursor-pointer transition-colors text-sm"
-                    onClick={() => onChartSelect(chart.id)}
+                    onClick={(event) => onChartSelect(chart.id, event)}
                   >
                     <div className="font-medium truncate flex items-center gap-2">
                       <BarChart2 size={16} className="text-gray-400" />
-                      {chart.name}
+                      <span className="truncate">{chart.name}</span>
                     </div>
                     {chart.updatedAt && (
                       <div className="text-xs text-gray-500 truncate">
@@ -112,7 +162,7 @@ export const SidebarChartsPanel = ({ charts, onClose, onChartSelect }: SidebarCh
                 <li
                   key={chart.id}
                   className="p-2 rounded-md hover:bg-gray-100 cursor-pointer transition-colors text-sm"
-                  onClick={() => onChartSelect(chart.id)}
+                  onClick={(event) => onChartSelect(chart.id, event)}
                 >
                   <div className="font-medium truncate flex items-center gap-2">
                     <BarChart2 size={16} className="text-gray-400" />
@@ -135,7 +185,7 @@ export const SidebarChartsPanel = ({ charts, onClose, onChartSelect }: SidebarCh
                 <li
                   key={chart.id}
                   className="p-2 rounded-md hover:bg-gray-100 cursor-pointer transition-colors text-sm"
-                  onClick={() => onChartSelect(chart.id)}
+                  onClick={(event) => onChartSelect(chart.id, event)}
                 >
                   <div className="font-medium truncate flex items-center gap-2">
                     <BarChart2 size={16} className="text-gray-400" />

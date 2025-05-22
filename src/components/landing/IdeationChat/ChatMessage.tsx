@@ -202,6 +202,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest }) => {
         
         nodes.push(
           <PlainBoldHr
+            key={`text-${idx}`}
             text={cleanedContent}
           />
         );

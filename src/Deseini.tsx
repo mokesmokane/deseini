@@ -46,7 +46,7 @@ export default function Deseini() {
          
           {/* Project Dropdown - Always Rendered if Projects Exist */}
           {projectsList.length > 0 && (
-            <div className="flex justify-center mx-2 flex-1 min-w-0">
+            <div className="flex justify-start mx-2 flex-1 min-w-0">
               <ProjectsDropdown projects={projectsList} />
             </div>
           )}

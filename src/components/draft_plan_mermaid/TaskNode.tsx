@@ -9,15 +9,21 @@ import { Trash2, Edit2 } from 'lucide-react';
 interface TaskNodeProps extends NodeProps<MermaidTaskData> {
   onResizeEnd: (event: ResizeDragEvent, params: ResizeParams, data: MermaidTaskData) => void;
   onLabelChange?: (id: string, newLabel: string) => void;
+  onDeleteTask: (task: MermaidTaskData) => void;
   selected: boolean;
   isAnyLabelEditing: boolean;
   setIsAnyLabelEditing: (editing: boolean) => void;
 }
 
-const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabelChange, selected, setIsAnyLabelEditing }) => {
+const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabelChange, selected, setIsAnyLabelEditing, onDeleteTask }) => {
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const { TIMELINE_PIXELS_PER_DAY, deleteTask } = useDraftPlanMermaidContext();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { TIMELINE_PIXELS_PER_DAY } = useDraftPlanMermaidContext();
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
+  };
   
   // Refs and state for overflow detection
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,9 +54,15 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
   // Check if label overflows its container
   useEffect(() => {
     if (containerRef.current && labelRef.current) {
+      // Get exact measurements
       const containerWidth = containerRef.current.clientWidth;
       const labelWidth = labelRef.current.scrollWidth;
-      setIsOverflowing(labelWidth > containerWidth - 60); // Account for buttons and padding
+      
+      // Minimal padding to account for borders
+      const minPadding = 2; // Just enough to prevent text touching the border
+      
+      // Only set overflow if the text would touch the borders
+      setIsOverflowing(labelWidth > containerWidth - minPadding);
     }
   }, [data.label, localWidth]);
 
@@ -94,11 +106,11 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
         background: selected ? 'rgba(0,0,0,0.06)' : 'white',
         border: selected ? '2.5px solid #222' : '2px solid black',
         borderRadius: '8px',
-        padding: '10px 20px',
+        // padding: '10px 20px',
         fontFamily: 'sans-serif',
         fontSize: '22px',
         textAlign: 'center',
-        // transition: dragging ? 'none' : 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'none',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -122,7 +134,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
           left: 0,
           visibility: 'hidden',
           whiteSpace: 'nowrap',
-          padding: '10px 20px',
+          // padding: '10px 20px',
           fontSize: '22px',
           fontWeight: 'bold',
         }}
@@ -167,7 +179,7 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
         >
           <button
             aria-label="Delete Task"
-            onClick={() => deleteTask(data.id)}
+            onClick={()=>{onDeleteTask(data);}}
             disabled={isEditingLabel}
             style={{
               background: 'none',
@@ -237,8 +249,8 @@ const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabe
             }}
             style={{
               width: '100%',
-              fontSize: '16px',
-              padding: '2px 6px',
+              fontSize: '22px',
+              // padding: '2px 6px',
               border: 'none', // No border when editing
               outline: 'none',
               background: 'white',

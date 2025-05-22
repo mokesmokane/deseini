@@ -3,20 +3,21 @@ import TextInput from './IdeationChat/TextInput';
 import { useMessaging } from '../../contexts/Messaging/MessagingProvider';
 import ChatCanvasContainer from './IdeationChat/ChatCanvasContainer';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AuthForm from '../auth/AuthForm';
 import { useAuth } from '@/hooks/useAuth';
 import { useProject } from '@/contexts/ProjectContext';
 import { useParams } from 'react-router-dom';
 import { ActiveTabProvider } from '../../contexts/ActiveTabProvider';
+import { useGantt } from '../../contexts/GanttContext';
 
 const AnimatedContent = () => {
-  const { projectId } = useParams<{ projectId?: string; chatId?: string }>();
+  const { projectId, chartId } = useParams<{ projectId?: string; chatId?: string, chartId?: string }>();
   const { session } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const [authView, setAuthView] = useState<'sign_in' | 'sign_up'>('sign_in');
-  const { messages, isCanvasVisible } = useMessaging();
-  const {project, fetchProject, fetchProjectCharts} = useProject();
+  const {project, fetchProject} = useProject();
+  const { messages } = useMessaging();
   const hasStarted = messages.length > 0 || (projectId !== null && projectId !== undefined);
   
   // Only handle project loading via useEffect
@@ -27,13 +28,6 @@ const AnimatedContent = () => {
       }
     }
   }, [projectId, fetchProject, project?.id]);
-
-  // Fetch charts when project is loaded or projectId changes
-  useEffect(() => {
-    if (projectId && projectId !== project?.id && projectId !== 'new') {
-      fetchProjectCharts(projectId);
-    }
-  }, [projectId, fetchProjectCharts]); // Added fetchProjectCharts dependency
 
   // Show auth UI only when user explicitly requests it
   const handleShowAuth = (view: 'sign_in' | 'sign_up') => {
@@ -63,7 +57,7 @@ const AnimatedContent = () => {
         ) : (
           <>
             <div className="w-full flex-1 overflow-hidden hide-scrollbar">
-              <ChatCanvasContainer isCanvasVisible={isCanvasVisible || projectId !== null && projectId !== undefined} />
+              <ChatCanvasContainer />
             </div>
           </>
         )}

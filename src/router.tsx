@@ -21,6 +21,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'projects/:projectId/chart/:chartId',
+        element: <ProtectedRoute><LandingPage /></ProtectedRoute>
+      },
+
+      {
+        path: 'chartView/:projectId/chart/:chartId',
         element: <ProtectedRoute><ChartView /></ProtectedRoute>
       },
       // {

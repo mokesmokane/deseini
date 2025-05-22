@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { GanttData, Task } from '../types';
 import { useChartsList } from './ChartsListContext';
 
@@ -32,7 +32,19 @@ interface GanttProviderProps {
 
 // Provider component
 export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialData }) => {
-  const [currentChart, setCurrentChart] = useState<GanttData | null>(initialData || null);
+  console.log('[GanttProvider] Initializing with initialData:', initialData ? 'exists' : 'none');
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  console.log(`[GanttProvider] Render #${renderCount.current}`);
+  const [currentChart, _setCurrentChart] = useState<GanttData | null>(initialData || null);
+  
+  // Wrapper for setCurrentChart with logging
+  const setCurrentChart = useCallback((chart: GanttData | null) => {
+    console.log('[GanttContext] setCurrentChart called with:', chart ? `chart with ${chart.tasks?.length || 0} tasks` : 'null');
+    console.time('setCurrentChart');
+    _setCurrentChart(chart);
+    console.timeEnd('setCurrentChart');
+  }, []);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredNodes, setHoveredNodes] = useState<string[]>([]);
@@ -51,6 +63,8 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
   
   // Load a specific chart by ID
   const loadChartById = useCallback(async (id: string) => {
+    console.log(`[GanttContext] loadChartById called for id: ${id}`);
+    console.time('loadChartById');
     try {
       setCurrentChart(null);
       setIsLoading(true);
@@ -68,11 +82,15 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       console.error(error);
     } finally {
       setIsLoading(false);
+      console.timeEnd('loadChartById');
+      console.log('[GanttContext] loadChartById completed, currentChart:', currentChart ? 'loaded' : 'null');
     }
   }, [fetchChartById]);
 
   // Update a specific task within a chart
   const updateTask = useCallback(async (chartId: string, taskId: string, updates: Partial<Task>): Promise<boolean> => {
+    console.log(`[GanttContext] updateTask called for chart ${chartId}, task ${taskId} with updates:`, updates);
+    console.time('updateTask');
     // Get the current chart value from state at call time rather than from closure
     const chart = currentChart;
     if (!chart || chart.id !== chartId) {
@@ -129,6 +147,7 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       
       // Save the updated chart
       setCurrentChart(updatedChart);
+      console.timeEnd('updateTask');
       return saveChart(updatedChart);
     } catch (error) {
       setError('Failed to update task');
@@ -136,6 +155,16 @@ export const GanttProvider: React.FC<GanttProviderProps> = ({ children, initialD
       return false;
     }
   }, [loadChartById, saveChart, setError, setCurrentChart]);
+
+  // Log when context value changes
+  useEffect(() => {
+    console.log('[GanttContext] Context value updated', {
+      hasCurrentChart: !!currentChart,
+      isLoading,
+      error,
+      hasUnsavedChanges
+    });
+  }, [currentChart, isLoading, error, hasUnsavedChanges]);
 
   // Provide the context value
   const contextValue: GanttContextType = {

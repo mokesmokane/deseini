@@ -7,14 +7,66 @@ import Sidebar from '../IdeationSidebar/Sidebar';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { useProject } from '../../../contexts/ProjectContext';
+import { useGantt } from '../../../contexts/GanttContext';
+import { useParams } from 'react-router-dom';
+import { GanttChart } from '../../chart/GanttChart';
+import { useState, useEffect, useRef } from 'react';
 
-interface ChatCanvasContainerProps {
-  isCanvasVisible: boolean;
-}
+const ChatCanvasContainer: React.FC = () => {
+  const { messages, isCanvasVisible: canvasVisible, isChatVisible, toggleChat } = useMessaging();
+  const {projectId, chartId} = useParams<{ projectId: string , chartId: string }>();
+  //if theres a chartid on the url then we are displaying the chart pane reather than the canvas
+  const showChart = chartId && chartId !== 'new';
+  const {project, fetchProjectCharts} = useProject();
+  const isCanvasVisible = canvasVisible || project !== null && project !== undefined
 
-const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisible }) => {
-  const { isChatVisible, toggleChat } = useMessaging();
-  const {project} = useProject();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const { loadChartById } = useGantt();
+
+
+    
+  // Fetch charts when project is loaded or projectId changes
+  useEffect(() => {
+    if (projectId && projectId !== project?.id && projectId !== 'new') {
+      fetchProjectCharts(projectId);
+    }
+  }, [projectId, fetchProjectCharts]); // Added fetchProjectCharts dependency
+
+    // Use a ref to track if we've already loaded this chart ID to prevent infinite loops
+    const loadedChartRef = useRef<string | null>(null);
+    
+    // Only load the chart when the ID changes and we haven't loaded it yet
+    useEffect(() => {
+      // Skip loading if we're on the "new" route or no chart ID
+      if (!chartId || chartId === 'new') {
+        setIsLoading(false);
+        return;
+      }
+      
+      // Skip if we've already loaded this chart ID
+      if (loadedChartRef.current === chartId) {
+        return;
+      }
+      
+      const loadChart = async () => {
+        try {
+          setIsLoading(true);
+          await loadChartById(chartId);
+          
+          // Mark this chart as loaded
+          loadedChartRef.current = chartId;
+        } catch (error) {
+          console.error('Error loading chart:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadChart();
+    }, [chartId, loadChartById]);
+
+
   return (
     <div className="relative w-full bg-gray-100 h-full flex min-h-0 min-w-0">
       {/* Sidebar that slides in from the left when canvas is visible */}
@@ -69,8 +121,14 @@ const ChatCanvasContainer: React.FC<ChatCanvasContainerProps> = ({ isCanvasVisib
           width: isCanvasVisible ? (isChatVisible ? 'calc(100% - 36rem)' : '') : 0,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
-        <Canvas isVisible={isCanvasVisible} isChatVisible={isChatVisible} />
+      >{showChart ? 
+
+    <div className="flex items-center justify-center p-4 w-full h-full min-h-0 min-w-0">
+    <div className="w-full h-full min-h-0 min-w-0 bg-white rounded-xl shadow-xl overflow-hidden flex flex-col border-gray-200">
+        <GanttChart />
+    </div>
+    </div>
+    : <Canvas isVisible={isCanvasVisible} isChatVisible={isChatVisible} />}
       </motion.div>
     </div>
   );

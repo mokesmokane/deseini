@@ -85,30 +85,7 @@ const MilestoneNode: React.FC<MilestoneNodeProps> = ({ data, dragging, onLabelCh
         boxShadow: 'none',
         zIndex: selected ? 12 : undefined,
       }}
-      // onMouseEnter={() => !dragging && setHovered(true)}
-      // onMouseLeave={() => setHovered(false)}
     >
-      {/* {hovered && !dragging && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '-100px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            color: '#fff',
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '26px',
-            whiteSpace: 'nowrap',
-            zIndex: 20
-          }}
-        >
-          {data.label}
-        </div>
-      )} */}
-      
-      {/* Diamond shape */}
       <div
         style={{
           position: 'absolute',
@@ -125,7 +102,6 @@ const MilestoneNode: React.FC<MilestoneNodeProps> = ({ data, dragging, onLabelCh
         }}
         title={!dragging ? `${data.label}\nDate: ${dateStr}` : undefined}
       />
-      {/* Label centered with diamond */}
       <div
         style={{
           position: 'absolute',

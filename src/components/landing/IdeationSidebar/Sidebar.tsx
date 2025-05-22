@@ -12,8 +12,10 @@ import {
 import { projectService, Conversation } from '@/services/projectService';
 import { useMessaging } from '../../../contexts/Messaging/MessagingProvider';
 import { useProject } from '../../../contexts/ProjectContext';
+import { useFinalPlan } from '../../../hooks/useFinalPlan';
 import { SidebarProjectsPanel } from '../../SidebarProjectsPanel';
 import { SidebarChartsPanel } from '../../SidebarChartsPanel';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   isVisible: boolean;
@@ -25,6 +27,38 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const { projectConversations, project, userCharts, projectsList } = useProject();
+  const { isGeneratingFinalPlan } = useFinalPlan();
+  const [publishComplete, setPublishComplete] = useState(false);
+  const publishTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const navigate = useNavigate();
+  // Track if we've shown the publish complete state for the current publish
+  const [hasShownPublishComplete, setHasShownPublishComplete] = useState(true);
+
+  // Handle publish completion state
+  useEffect(() => {
+    if (isGeneratingFinalPlan) {
+      // Reset completion state when a new publish starts
+      setPublishComplete(false);
+      setHasShownPublishComplete(false);
+    } else if (!isGeneratingFinalPlan && !hasShownPublishComplete) {
+      // Only set complete if we just finished publishing
+      setPublishComplete(true);
+      setHasShownPublishComplete(true);
+    }
+
+    return () => {
+      if (publishTimeoutRef.current) {
+        clearTimeout(publishTimeoutRef.current);
+      }
+    };
+  }, [isGeneratingFinalPlan, hasShownPublishComplete]);
+  
+  // Clear publish complete state when charts section is opened
+  useEffect(() => {
+    if (activeSection === 'charts' && publishComplete) {
+      setPublishComplete(false);
+    }
+  }, [activeSection, publishComplete]);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const INACTIVITY_TIMEOUT = 3000; // 3 seconds
@@ -33,12 +67,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
     setCurrentProjectId, 
     loadConversation
   } = useMessaging();
-
+  
   // Chart select navigation logic
-  const handleChartSelect = (chartId: string) => {
+  const handleChartSelect = (chartId: string, event: React.MouseEvent) => {
+    // Prevent any parent handlers from executing
+    event.preventDefault();
+    event.stopPropagation();
     if (project?.id) {
-      // Use your navigation logic here, e.g. react-router-dom's useNavigate
-      window.location.href = `/projects/${project.id}/chart/${chartId}`;
+      navigate(`/projects/${project.id}/chart/${chartId}`);
+    }
+  };
+
+  const handleEditSelect = (event: React.MouseEvent) => {
+    // Prevent any parent handlers from executing
+    event.preventDefault();
+    event.stopPropagation();
+    if (project?.id) {
+      navigate(`/projects/${project.id}`);
     }
   };
   
@@ -157,15 +202,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
             disabled={collapsed || projectConversations.length === 0}
           />
           <SidebarIcon 
-            icon={<PencilIcon className="h-6 w-6" />}   
-            onClick={() => {}}
+            icon={
+                <PencilIcon className="h-6 w-6" />
+            }   
+            onClick={(event) => handleEditSelect(event)}
             isActive={false}
           />
-          <SidebarIcon
-            icon={<ChartBarIcon className="h-6 w-6" />}
-            onClick={() => !collapsed && toggleSection('charts')}
-            isActive={activeSection === 'charts'}
-          />
+          <div className="relative">
+            <SidebarIcon
+              icon={
+                <div className="relative">
+                  <ChartBarIcon className="h-6 w-6" />
+                  {(isGeneratingFinalPlan || publishComplete) && (
+                    <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[8px] ${
+                      isGeneratingFinalPlan 
+                        ? 'border-2 border-gray-400 border-t-black animate-spin' 
+                        : 'bg-green-500 text-white'
+                    }`}>
+                      {publishComplete && '✓'}
+                    </div>
+                  )}
+                </div>
+              }
+              onClick={() => !collapsed && toggleSection('charts')}
+              isActive={activeSection === 'charts'}
+            />
+          </div>
         </nav>
         <div className="flex justify-center pt-4">
           <button 
@@ -192,7 +254,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
             <SidebarChartsPanel
               charts={userCharts}
               onClose={() => setActiveSection(null)}
-              onChartSelect={handleChartSelect}
+              onChartSelect={(chartId, event) => handleChartSelect(chartId, event)}
             />
           )}
           {activeSection !== 'charts' && activeSection !== 'projects' && (
@@ -201,7 +263,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
               <button 
                 className="flex items-center justify-center bg-white hover:bg-gray-100 text-gray-700 p-2 rounded-md transition-colors w-8 h-8"
                 title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                onClick={toggleCollapse}
+                onClick={() => setActiveSection(null)}
               >
                 {collapsed ? 
                   <ChevronRightIcon className="h-6 w-6" /> : 
@@ -267,7 +329,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
 
 interface SidebarIconProps {
   icon: React.ReactNode;
-  onClick: () => void;
+  onClick: (event: React.MouseEvent) => void;
   isActive?: boolean;
   disabled?: boolean;
 }
@@ -278,9 +340,9 @@ const SidebarIcon: React.FC<SidebarIconProps> = ({
   isActive = false,
   disabled = false
 }) => {
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent) => {
     if (!disabled) {
-      onClick();
+      onClick(event);
     }
   };
   
