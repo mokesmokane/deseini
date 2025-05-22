@@ -10,18 +10,15 @@ import { useProject } from '../../../contexts/ProjectContext';
 import { useGantt } from '../../../contexts/GanttContext';
 import { useParams } from 'react-router-dom';
 import { GanttChart } from '../../chart/GanttChart';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 const ChatCanvasContainer: React.FC = () => {
-  const { messages, isCanvasVisible: canvasVisible, isChatVisible, toggleChat } = useMessaging();
+  const {  isCanvasVisible: canvasVisible, isChatVisible, toggleChat } = useMessaging();
   const {projectId, chartId} = useParams<{ projectId: string , chartId: string }>();
   //if theres a chartid on the url then we are displaying the chart pane reather than the canvas
   const showChart = chartId && chartId !== 'new';
   const {project, fetchProjectCharts} = useProject();
   const isCanvasVisible = canvasVisible || project !== null && project !== undefined
-
-
-  const [isLoading, setIsLoading] = useState(true);
   const { loadChartById } = useGantt();
 
 
@@ -40,7 +37,6 @@ const ChatCanvasContainer: React.FC = () => {
     useEffect(() => {
       // Skip loading if we're on the "new" route or no chart ID
       if (!chartId || chartId === 'new') {
-        setIsLoading(false);
         return;
       }
       
@@ -51,16 +47,13 @@ const ChatCanvasContainer: React.FC = () => {
       
       const loadChart = async () => {
         try {
-          setIsLoading(true);
           await loadChartById(chartId);
           
           // Mark this chart as loaded
           loadedChartRef.current = chartId;
         } catch (error) {
           console.error('Error loading chart:', error);
-        } finally {
-          setIsLoading(false);
-        }
+        } 
       };
       
       loadChart();

@@ -6,7 +6,6 @@ import {
   ChatBubbleLeftRightIcon,
   ChartBarIcon,
   ChevronLeftIcon,
-  ChevronRightIcon,
   CogIcon
 } from '@heroicons/react/24/outline';
 import { projectService, Conversation } from '@/services/projectService';
@@ -25,7 +24,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
   const { projectConversations, project, userCharts, projectsList } = useProject();
   const { isGeneratingFinalPlan } = useFinalPlan();
   const [publishComplete, setPublishComplete] = useState(false);
@@ -117,7 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
   };
 
   const handleMouseLeave = () => {
-    if (activeSection && !collapsed) {
+    if (activeSection) {
       inactivityTimerRef.current = setTimeout(() => {
         setActiveSection(null);
       }, INACTIVITY_TIMEOUT);
@@ -160,13 +158,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
     }
   };
 
-  const toggleCollapse = () => {
-    setCollapsed(!collapsed);
-    if (activeSection) {
-      setActiveSection(null);
-    }
-  };
-
   const handleSketchesClick = () => {
     // Navigate to the mermaid notepad page
     window.location.href = '/mermaid-notepad';
@@ -179,7 +170,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
       initial={{ width: 0, x: -340 }}
       animate={{
         width: isVisible
-          ? (collapsed ? '72px' : (activeSection ? '340px' : '72px'))
+          ? (activeSection ? '340px' : '72px')
           : 0,
         x: isVisible ? 0 : -340
       }}
@@ -192,14 +183,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
         <nav className="flex-1 pb-4 flex flex-col items-center space-y-6">
           <SidebarIcon 
             icon={<FolderIcon className="h-6 w-6" />} 
-            onClick={() => !collapsed && toggleSection('projects')}
+            onClick={() => toggleSection('projects')}
             isActive={activeSection === 'projects'}
           />
           <SidebarIcon 
             icon={<ChatBubbleLeftRightIcon className="h-6 w-6" />} 
-            onClick={() => !collapsed && toggleSection('chats')}
+            onClick={() => toggleSection('chats')}
             isActive={activeSection === 'chats'}
-            disabled={collapsed || projectConversations.length === 0}
+            disabled={projectConversations.length === 0}
           />
           <SidebarIcon 
             icon={
@@ -224,7 +215,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
                   )}
                 </div>
               }
-              onClick={() => !collapsed && toggleSection('charts')}
+              onClick={() => toggleSection('charts')}
               isActive={activeSection === 'charts'}
             />
           </div>
@@ -240,8 +231,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
         </div>
       </div>
         
-      {/* Section content - only shown when a section is active and not collapsed */}
-      {activeSection && !collapsed && (
+      {/* Section content - only shown when a section is active */}
+      {activeSection && (
         <div className="relative h-full bg-transparent w-[260px] p-3">
           {activeSection === 'projects' && (
             <SidebarProjectsPanel
@@ -262,13 +253,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible }) => {
               <h3 className="text-lg font-medium capitalize">{activeSection}</h3>
               <button 
                 className="flex items-center justify-center bg-white hover:bg-gray-100 text-gray-700 p-2 rounded-md transition-colors w-8 h-8"
-                title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                title="Collapse Sidebar"
                 onClick={() => setActiveSection(null)}
               >
-                {collapsed ? 
-                  <ChevronRightIcon className="h-6 w-6" /> : 
-                  <ChevronLeftIcon className="h-6 w-6" />
-                }
+                <ChevronLeftIcon className="h-6 w-6" />
               </button>
             </div>
           )}

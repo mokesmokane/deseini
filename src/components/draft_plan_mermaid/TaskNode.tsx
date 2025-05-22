@@ -18,13 +18,8 @@ interface TaskNodeProps extends NodeProps<MermaidTaskData> {
 const TaskNode: React.FC<TaskNodeProps> = ({ data, dragging, onResizeEnd, onLabelChange, selected, setIsAnyLabelEditing, onDeleteTask }) => {
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { TIMELINE_PIXELS_PER_DAY } = useDraftPlanMermaidContext();
 
-  const handleCancelDelete = () => {
-    setShowDeleteDialog(false);
-  };
-  
   // Refs and state for overflow detection
   const containerRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
