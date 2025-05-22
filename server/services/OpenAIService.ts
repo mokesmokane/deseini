@@ -191,7 +191,7 @@ export interface AIService {
 }
 
 // Helper function to parse markdown list into ProjectTask tree
-function parseMarkdownToTaskTreeInternal(markdown: string): ProjectTask[] {
+export function parseMarkdownToTaskTreeInternal(markdown: string): ProjectTask[] {
     const lines = markdown.trim().split('\n');
     const rootTasks: ProjectTask[] = [];
     const stack: { task: ProjectTask; indentLevel: number }[] = [];
